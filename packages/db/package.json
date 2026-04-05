@@ -1,0 +1,21 @@
+{
+  "name": "@albionbox/db",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "migrate:local": "wrangler d1 migrations apply albion-box-db --local --config=../../apps/api/wrangler.jsonc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.0",
+  "dependencies": {
+    "drizzle-orm": "^0.45.2"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10"
+  }
+}

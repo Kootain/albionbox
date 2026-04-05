@@ -1,0 +1,78 @@
+# =========================================
+# 📦 依赖与包管理 (Dependencies & Package Managers)
+# =========================================
+node_modules/
+.pnpm-store/
+package-lock.json
+yarn.lock
+# 注：我们保留 pnpm-lock.yaml，不忽略它！
+
+# =========================================
+# 🏗️ 构建与编译产物 (Build Outputs)
+# =========================================
+dist/
+build/
+out/
+.tscache/
+
+# =========================================
+# ☁️ Cloudflare & Serverless 专属 (CRITICAL)
+# =========================================
+# 极其重要：拦截本地 D1 数据库、KV 缓存和 Miniflare 状态
+.wrangler/
+# 拦截 Cloudflare 本地测试的敏感环境变量
+.dev.vars
+
+# =========================================
+# 🔑 环境变量与私钥 (Env & Secrets)
+# =========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+*.cert
+
+# =========================================
+# ⚡ 框架工具与缓存 (Frameworks & Caches)
+# =========================================
+# Vite
+.vite/
+# TypeScript
+*.tsbuildinfo
+# ESLint / Prettier
+.eslintcache
+.prettiercache
+# Drizzle ORM (如果有生成的 sqlite 日志)
+*.sqlite-journal
+
+# =========================================
+# 📝 日志文件 (Logs)
+# =========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================================
+# 💻 操作系统与编辑器 (OS & Editors)
+# =========================================
+# Mac
+.DS_Store
+.AppleDouble
+.LSOverride
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+# IDEs
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+*~

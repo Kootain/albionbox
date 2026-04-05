@@ -1,0 +1,19 @@
+{
+  "name": "api",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "@albionbox/db": "workspace:*",
+    "@albionbox/shared": "workspace:*",
+    "@hono/zod-validator": "^0.7.6",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.10"
+  },
+  "devDependencies": {
+    "wrangler": "^4.4.0"
+  }
+}
