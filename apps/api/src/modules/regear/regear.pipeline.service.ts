@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/d1'
 import { and, asc, eq } from 'drizzle-orm'
 import { regearApprovalRules, regearRecords, regearApprovalLogs } from '@albionbox/db'
-import { calculatePLevel } from './regear.service'
+import { calculatePLevel } from './regear.utils'
 
 type EquipmentSlot = { Type: string } | null
 
