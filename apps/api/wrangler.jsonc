@@ -8,7 +8,9 @@
   // ],
   "vars": {
     "RESEND_API_KEY": "",
-    "APP_BASE_URL": "http://localhost:5173"
+    "APP_BASE_URL": "http://localhost:5173",
+    "BATTLE_DB_URL": "",
+    "BATTLE_DB_TOKEN": ""
   },
     "kv_namespaces": [
       {

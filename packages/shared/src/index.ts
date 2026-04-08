@@ -1,3 +1,5 @@
 export * from './schemas/user'
 export * from './schemas/game_account'
 export * from './schemas/guild'
+export * from './schemas/admin'
+export * from './schemas/battle'
