@@ -6,9 +6,10 @@
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],
-  // "vars": {
-  //   "MY_VAR": "my-variable"
-  // },
+  "vars": {
+    "RESEND_API_KEY": "",
+    "APP_BASE_URL": "http://localhost:5173"
+  },
     "kv_namespaces": [
       {
         "binding": "KV",
