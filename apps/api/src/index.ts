@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { usersRouter } from './modules/users'
 import { permissionsRouter, seedPermissions } from './modules/permissions'
+import { gameAccountsRouter } from './modules/game_accounts'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -17,6 +18,7 @@ app.use('*', async (c, next) => {
 const routes = app
   .route('/users', usersRouter)
   .route('/admin', permissionsRouter)
+  .route('/game_accounts', gameAccountsRouter)
 
 export type AppType = typeof routes
 
