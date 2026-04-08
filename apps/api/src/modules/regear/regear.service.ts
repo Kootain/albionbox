@@ -209,13 +209,24 @@ export async function transitionRecord(
 export async function submitRecord(
   db: D1Database,
   recordId: string,
-  activeAlbionPlayerId: string | null,
+  activeGameAccountId: string | null,
 ) {
-  if (!activeAlbionPlayerId) {
+  if (!activeGameAccountId) {
     throw Object.assign(new Error('请先设置激活游戏角色'), { status: 403 })
   }
 
   const d = drizzle(db)
+
+  // 通过 activeGameAccountId 查出对应的 albion_player_id
+  const account = await d.select({ albionPlayerId: gameAccounts.albionPlayerId })
+    .from(gameAccounts)
+    .where(eq(gameAccounts.id, activeGameAccountId))
+    .get()
+
+  if (!account?.albionPlayerId) {
+    throw Object.assign(new Error('游戏账号未完成绑定，无法提交补装申请'), { status: 403 })
+  }
+
   const record = await d.select({ battleDeathId: regearRecords.battleDeathId, status: regearRecords.status })
     .from(regearRecords)
     .where(eq(regearRecords.id, recordId))
@@ -228,7 +239,7 @@ export async function submitRecord(
     .get()
   if (!death) throw Object.assign(new Error('死亡记录不存在'), { status: 404 })
 
-  if (death.albionPlayerId !== activeAlbionPlayerId) {
+  if (death.albionPlayerId !== account.albionPlayerId) {
     throw Object.assign(new Error('只有本人才能提交补装申请'), { status: 403 })
   }
 
