@@ -9,6 +9,7 @@ export const guilds = sqliteTable('guilds', {
   albionGuildId: text('albion_guild_id'),
   server: text('server', { enum: ['asia', 'eu', 'us'] }).notNull(),
   status: text('status', { enum: ['pending', 'active', 'rejected'] }).notNull().default('pending'),
+  reviewNote: text('review_note'),
   ownerId: text('owner_id').notNull().references(() => users.id),
   createdAt: text('created_at').notNull(),
 })

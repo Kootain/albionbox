@@ -1,7 +1,7 @@
 export interface AlbionBattleVictim {
   Id: string
   Name: string
-  GuildId: string
+  GuildID: string
   Equipment: Record<string, unknown>
 }
 

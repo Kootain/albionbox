@@ -33,6 +33,7 @@ export const gameAccounts = sqliteTable('game_accounts', {
   albionPlayerId: text('albion_player_id'),
   server: text('server', { enum: ['asia', 'eu', 'us'] }).notNull(),
   status: text('status', { enum: ['pending', 'active', 'rejected'] }).notNull().default('pending'),
+  reviewNote: text('review_note'),
   createdAt: text('created_at').notNull(),
 })
 

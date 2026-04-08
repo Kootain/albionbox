@@ -37,13 +37,14 @@ router.post('/guild_reviews/:id/approve', zValidator('json', ApproveGuildSchema)
 
 router.post('/guild_reviews/:id/reject', zValidator('json', RejectGuildSchema), async (c) => {
   const guildId = c.req.param('id')
+  const { note } = c.req.valid('json')
   const db = drizzle(c.env.DB)
 
   const guild = await db.select().from(guilds).where(eq(guilds.id, guildId)).get()
   if (!guild) return c.json({ error: '工会不存在' }, 404)
   if (guild.status !== 'pending') return c.json({ error: '工会不在待审核状态' }, 400)
 
-  await db.update(guilds).set({ status: 'rejected' }).where(eq(guilds.id, guildId)).execute()
+  await db.update(guilds).set({ status: 'rejected', reviewNote: note ?? null }).where(eq(guilds.id, guildId)).execute()
   return c.json({ message: '工会已拒绝' })
 })
 
@@ -79,13 +80,14 @@ router.post('/binding_reviews/:id/approve', zValidator('json', ApproveBindingSch
 
 router.post('/binding_reviews/:id/reject', zValidator('json', RejectBindingSchema), async (c) => {
   const accountId = c.req.param('id')
+  const { note } = c.req.valid('json')
   const db = drizzle(c.env.DB)
 
   const account = await db.select().from(gameAccounts).where(eq(gameAccounts.id, accountId)).get()
   if (!account) return c.json({ error: '游戏账号不存在' }, 404)
   if (account.status !== 'pending') return c.json({ error: '账号不在待审核状态' }, 400)
 
-  await db.update(gameAccounts).set({ status: 'rejected' }).where(eq(gameAccounts.id, accountId)).execute()
+  await db.update(gameAccounts).set({ status: 'rejected', reviewNote: note ?? null }).where(eq(gameAccounts.id, accountId)).execute()
   return c.json({ message: '绑定已拒绝' })
 })
 
