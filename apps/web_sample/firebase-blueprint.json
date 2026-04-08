@@ -1,0 +1,126 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Platform user profile",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "gameAccounts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "gameId": { "type": "string" },
+              "server": { "type": "string", "enum": ["East", "West", "Europe"] },
+              "status": { "type": "string", "enum": ["pending", "verified"] },
+              "token": { "type": "string" }
+            }
+          }
+        },
+        "selectedCharacterId": { "type": "string" },
+        "kookId": { "type": "string" },
+        "discordId": { "type": "string" }
+      },
+      "required": ["email"]
+    },
+    "Guild": {
+      "title": "Guild",
+      "description": "Albion Online Guild",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "server": { "type": "string", "enum": ["East", "West", "Europe"] },
+        "adminUid": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "token": { "type": "string" },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "permissions": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      },
+      "required": ["name", "server", "adminUid", "status"]
+    },
+    "GuildMember": {
+      "title": "Guild Member",
+      "description": "Membership in a guild",
+      "type": "object",
+      "properties": {
+        "guildId": { "type": "string" },
+        "uid": { "type": "string" },
+        "gameId": { "type": "string" },
+        "roleIds": { "type": "array", "items": { "type": "string" } },
+        "boxX": { "type": "integer" },
+        "boxY": { "type": "integer" }
+      },
+      "required": ["guildId", "uid"]
+    },
+    "BattleLog": {
+      "title": "Battle Log",
+      "description": "Imported battle record",
+      "type": "object",
+      "properties": {
+        "guildId": { "type": "string" },
+        "externalId": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "data": { "type": "object" }
+      },
+      "required": ["guildId", "externalId"]
+    },
+    "RegearSession": {
+      "title": "Regear Session",
+      "description": "A session grouping multiple battles for regear",
+      "type": "object",
+      "properties": {
+        "guildId": { "type": "string" },
+        "name": { "type": "string" },
+        "battleIds": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["active", "closed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["guildId", "status", "createdAt"]
+    },
+    "RegearRecord": {
+      "title": "Regear Record",
+      "description": "Individual regear request for a death",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string" },
+        "guildId": { "type": "string" },
+        "victimId": { "type": "string" },
+        "deathId": { "type": "string" },
+        "status": { "type": "integer", "enum": [1, 2, 3, 4, 5] },
+        "equipment": { "type": "object" },
+        "approvals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "uid": { "type": "string" },
+              "timestamp": { "type": "string", "format": "date-time" },
+              "fromStatus": { "type": "integer" },
+              "toStatus": { "type": "integer" },
+              "note": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": ["sessionId", "guildId", "victimId", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/guilds/{guildId}": { "schema": "Guild", "description": "Guild definitions" },
+    "/guilds/{guildId}/members/{memberId}": { "schema": "GuildMember", "description": "Guild members" },
+    "/guilds/{guildId}/sessions/{sessionId}": { "schema": "RegearSession", "description": "Regear sessions" },
+    "/guilds/{guildId}/battles/{battleId}": { "schema": "BattleLog", "description": "Battle logs" },
+    "/guilds/{guildId}/regears/{regearId}": { "schema": "RegearRecord", "description": "Regear records" }
+  }
+}

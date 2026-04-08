@@ -1,0 +1,5 @@
+{
+  "name": "Albion ERP",
+  "description": "A comprehensive ERP system for Albion Online guilds, featuring user management, guild registration, battle log tracking, and automated regear pipelines.",
+  "requestFramePermissions": []
+}
