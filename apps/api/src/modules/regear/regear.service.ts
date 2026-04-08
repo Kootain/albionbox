@@ -4,6 +4,7 @@ import {
   regearSessions, regearSessionBattles, regearRecords, regearApprovalLogs,
   battleDeaths, battleRecords, gameAccounts,
 } from '@albionbox/db'
+import { evaluateRecord } from './regear.pipeline.service'
 
 // P级 = Tier + 附魔等级（T6_ITEM@2 → P8）
 export function calculatePLevel(itemType: string): number {
@@ -41,19 +42,24 @@ export async function createRegearSession(
       d.insert(regearSessionBattles).values({ sessionId, battleRecordId: bid }).execute()
     )
   )
-  await generateRegearRecords(d, sessionId, battleIds, now)
+  await generateRegearRecords(d, db, sessionId, guildId, battleIds, now)
   return { sessionId }
 }
 
 async function generateRegearRecords(
   d: ReturnType<typeof drizzle>,
+  db: D1Database,
   sessionId: string,
+  guildId: string,
   battleIds: string[],
   now: string,
 ) {
-  const deaths = await d.select().from(battleDeaths)
-    .where(inArray(battleDeaths.battleRecordId, battleIds))
-    .all()
+  const [deaths, battleRecordRows] = await Promise.all([
+    d.select().from(battleDeaths).where(inArray(battleDeaths.battleRecordId, battleIds)).all(),
+    d.select().from(battleRecords).where(inArray(battleRecords.id, battleIds)).all(),
+  ])
+
+  const battleRecordMap = new Map(battleRecordRows.map(r => [r.id, r]))
 
   const existingDeathIds = await d.select({ battleDeathId: regearRecords.battleDeathId })
     .from(regearRecords)
@@ -64,17 +70,26 @@ async function generateRegearRecords(
   const newDeaths = deaths.filter(d => !existingDeathIds.has(d.id))
   if (newDeaths.length === 0) return
 
-  await Promise.all(
-    newDeaths.map(death =>
-      d.insert(regearRecords).values({
-        id: crypto.randomUUID(),
-        sessionId,
-        battleDeathId: death.id,
-        status: 'draft',
-        createdAt: now,
-      }).execute()
-    )
-  )
+  for (const death of newDeaths) {
+    const recordId = crypto.randomUUID()
+    await d.insert(regearRecords).values({
+      id: recordId,
+      sessionId,
+      battleDeathId: death.id,
+      status: 'draft',
+      createdAt: now,
+    }).execute()
+
+    const br = battleRecordMap.get(death.battleRecordId)
+    if (br) {
+      await evaluateRecord({
+        regearRecord: { id: recordId, status: 'draft' },
+        battleDeath: { albionPlayerId: death.albionPlayerId, equipment: death.equipment },
+        battleRecord: { participants: br.participants },
+        guildId,
+      }, db)
+    }
+  }
 }
 
 export async function updateSessionBattles(
@@ -93,7 +108,7 @@ export async function updateSessionBattles(
       d.insert(regearSessionBattles).values({ sessionId, battleRecordId: bid }).execute()
     )
   )
-  await generateRegearRecords(d, sessionId, battleIds, new Date().toISOString())
+  await generateRegearRecords(d, db, sessionId, session.guildId, battleIds, new Date().toISOString())
   return { sessionId }
 }
 

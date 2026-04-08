@@ -5,7 +5,7 @@ import { gameAccountsRouter } from './modules/game_accounts'
 import { guildsRouter, guildRolesRouter, guildMembersRouter } from './modules/guilds'
 import { adminReviewsRouter } from './modules/admin'
 import { battleRecordsRouter } from './modules/battle_records'
-import { regearSessionsRouter, regearRecordsRouter } from './modules/regear'
+import { regearSessionsRouter, regearRecordsRouter, regearApprovalRulesRouter } from './modules/regear'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -30,6 +30,7 @@ const routes = app
   .route('/guilds', battleRecordsRouter)
   .route('/guilds', regearSessionsRouter)
   .route('/guilds', regearRecordsRouter)
+  .route('/guilds', regearApprovalRulesRouter)
 
 export type AppType = typeof routes
 
