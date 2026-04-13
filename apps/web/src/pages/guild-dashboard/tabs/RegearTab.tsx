@@ -11,9 +11,11 @@ import { AlbionOfficialEvent } from '@albionbox/shared';
 
 interface RegearTabProps {
   guildId?: string;
+  initialPreviewBattleIds?: string[] | null;
+  onPreviewClear?: () => void;
 }
 
-export function RegearTab({ guildId }: RegearTabProps) {
+export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: RegearTabProps) {
   const { t } = useTranslation();
   const [currentView, setCurrentView] = useState<'list' | 'detail'>('list');
   const [orders, setOrders] = useState<RegearOrder[]>([]);
@@ -62,6 +64,17 @@ export function RegearTab({ guildId }: RegearTabProps) {
   const [previewBattleIdsText, setPreviewBattleIdsText] = useState('');
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState('');
+
+  useEffect(() => {
+    if (initialPreviewBattleIds && initialPreviewBattleIds.length > 0) {
+      setPreviewBattleIdsText(initialPreviewBattleIds.join(', '));
+      setShowCreateModal(true);
+      handleCreatePreview(initialPreviewBattleIds);
+      if (onPreviewClear) {
+        onPreviewClear();
+      }
+    }
+  }, [initialPreviewBattleIds]);
 
   const handleSelectOrder = async (orderId: string) => {
     if (!guildId) return;
@@ -163,14 +176,14 @@ export function RegearTab({ guildId }: RegearTabProps) {
     setCurrentView('list');
   };
 
-  const handleCreatePreview = async () => {
-    if (!previewBattleIdsText.trim() || !guildId) return;
+  const handleCreatePreview = async (overrideIds?: string[]) => {
+    const ids = overrideIds || previewBattleIdsText.split(/[\s,]+/).filter(id => id.trim());
+    if (ids.length === 0 || !guildId) return;
     
     setIsPreviewLoading(true);
     setPreviewError('');
     
     try {
-      const ids = previewBattleIdsText.split(/[\s,]+/).filter(id => id.trim());
       const allEvents: AlbionOfficialEvent[] = [];
       
       // Fetch events for each battle ID
@@ -327,6 +340,20 @@ export function RegearTab({ guildId }: RegearTabProps) {
     }
   };
 
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!guildId) return;
+    if (!confirm(t('guild_dashboard.regear_tab.confirm_delete_order', { defaultValue: 'Are you sure you want to delete this order?' }))) return;
+    
+    try {
+      const res = await api.guilds[':guildId'].regear.tickets[':ticketId'].$delete({ param: { guildId, ticketId: orderId } });
+      if (!res.ok) throw new Error('Failed to delete order');
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete order');
+    }
+  };
+
   const detailData = previewDetail ? previewDetail : realDetail;
 
   return (
@@ -337,7 +364,7 @@ export function RegearTab({ guildId }: RegearTabProps) {
             <Loader2 className="w-8 h-8 text-gold animate-spin" />
           </div>
         ) : (
-          <RegearList orders={orders} onSelectOrder={handleSelectOrder} onCreatePreview={() => setShowCreateModal(true)} />
+          <RegearList orders={orders} onSelectOrder={handleSelectOrder} onCreatePreview={() => setShowCreateModal(true)} onDeleteOrder={handleDeleteOrder} />
         )}
       </div>
 
@@ -384,7 +411,7 @@ export function RegearTab({ guildId }: RegearTabProps) {
                 {t('common.cancel', { defaultValue: 'Cancel' })}
               </button>
               <button 
-                onClick={handleCreatePreview}
+                onClick={() => handleCreatePreview()}
                 disabled={isPreviewLoading || !previewBattleIdsText.trim()}
                 className="flex items-center gap-2 px-6 py-2 bg-gold hover:bg-gold-hover text-black text-xs font-black uppercase tracking-widest rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >

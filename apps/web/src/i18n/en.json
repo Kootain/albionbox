@@ -263,9 +263,9 @@
       "no_more_battles": "No more battles"
     },
     "regear_tab": {
-      "title": "Regear Orders",
+      "title": "Regear Tickets",
       "desc": "Manage guild regearing sessions",
-      "create_btn": "Create Order",
+      "create_btn": "Create Ticket",
       "status": {
         "active": "Active",
         "completed": "Completed",
@@ -282,10 +282,10 @@
         "completed": "Completed",
         "excluded": "Excluded"
       },
-      "order_prefix": "Order: ",
+      "order_prefix": "Ticket: ",
       "order_prefix_list": "Regear Session: ",
       "battles_suffix": "Battles",
-      "order_not_found": "Regear order not found",
+      "order_not_found": "Regear ticket not found",
       "config_slots": "Config: {{count}} Slots Allowed",
       "config_modal_title": "Regear Configuration",
       "config_modal_desc": "Select which equipment slots are eligible for compensation. Unchecked slots will be ignored in this session.",
@@ -297,10 +297,12 @@
       "guild_kills": "Kills",
       "guild_deaths": "Deaths",
       "view_battles": "View Battle Reports",
-      "status_overview": "Order Status Overview",
+      "status_overview": "Ticket Status Overview",
       "equipment_stats_title": "Regear Equipment Stats",
       "create_preview_title": "Generate Regear Preview",
-      "create_preview_desc": "Enter Battle IDs (comma or space separated) to fetch events and generate a preview regear order.",
+      "create_preview_desc": "Enter Battle IDs (comma or space separated) to fetch events and generate a preview regear ticket.",
+      "preview_action_warning": "Current preview status, ticket generated yet",
+      "create_from_preview": "Create Regear Ticket",
       "no_items": "No items require regearing",
       "slots": {
         "MainHand": "Main Hand",

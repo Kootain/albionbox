@@ -497,7 +497,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
               onClick={onCreateFromPreview}
               className="hidden md:flex items-center gap-2 px-4 py-2 bg-gold hover:bg-gold-hover text-black rounded-lg border border-gold font-black uppercase tracking-widest transition-colors shadow-[0_0_15px_rgba(250,204,21,0.2)]"
             >
-              {t('guild_dashboard.regear_tab.create_from_preview', { defaultValue: 'Create Order' })}
+              {t('guild_dashboard.regear_tab.create_from_preview', { defaultValue: 'Create Ticket' })}
             </button>
           )}
           <button 

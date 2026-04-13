@@ -93,7 +93,7 @@ export default function Admin() {
     try {
       const updateRes = await api.admin.binding_reviews[':id'].approve.$post({
         param: { id: binding.id },
-        json: { token }
+        json: { albionPlayerId: token || '' }
       });
       
       if (updateRes.ok) await fetchData();

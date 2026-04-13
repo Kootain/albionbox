@@ -301,6 +301,8 @@
       "equipment_stats_title": "补装物品统计",
       "create_preview_title": "生成补装预览",
       "create_preview_desc": "输入战报 ID，自动拉取相关战斗事件，生成包含所有公会死亡记录的预览补装工单。支持通过逗号或空格分隔多个 ID。",
+      "preview_action_warning": "当前工单预览状态，尚未生成工单",
+      "create_from_preview": "创建补装工单",
       "no_items": "没有需要补装的物品",
       "slots": {
         "MainHand": "主武器",
