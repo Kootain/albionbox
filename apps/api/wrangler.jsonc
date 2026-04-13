@@ -1,69 +1,93 @@
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "api",
-	"main": "src/index.ts",
-	"compatibility_date": "2026-04-05",
-	// "compatibility_flags": [
-	//   "nodejs_compat"
-	// ],
-	"vars": {
-		"APP_BASE_URL": "https://erp-test.albionbox.com",
-		"WEB_ORIGIN": "https://erp-test.albionbox.com",
-		"API_BASE_URL": "https://api.albionbox.com",
-		"KOOK_CLIENT_ID": "",
-		"KOOK_CLIENT_SECRET": ""
-	},
-	"kv_namespaces": [
-		{
-			"binding": "KV",
-			"id": "785676a9ef7b4b8abd91c4c0fd0399c6"
-		}
-	],
-	// "r2_buckets": [
-	//   {
-	//     "binding": "MY_BUCKET",
-	//     "bucket_name": "my-bucket"
-	//   }
-	// ],
-	"d1_databases": [
-		{
-			"binding": "DB",
-			"database_name": "albion-box-db",
-			"database_id": "cf44ea0d-f03f-45f9-83a4-f03ee59df79a",
-			"migrations_dir": "../../packages/db/migrations"
-		}
-	],
-	// "ai": {
-	//   "binding": "AI"
-	// },
-	// "observability": {
-	//   "enabled": true,
-	//   "head_sampling_rate": 1
-	// }
-	"observability": {
-		"enabled": false,
-		"head_sampling_rate": 1,
-		"logs": {
-			"enabled": true,
-			"head_sampling_rate": 1,
-			"persist": true,
-			"invocation_logs": true
-		},
-		"traces": {
-			"enabled": false,
-		}
-	},
-	"routes": [
-		{
-			"pattern": "api.albionbox.com/*",
-			"zone_name": "albionbox.com"
-		},
-		{
-			"pattern": "api.albionbox.com",
-			"zone_name": "albionbox.com",
-			"custom_domain": true
-		}
-	],
-	"workers_dev": true,
-	"preview_urls": true
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-05",
+  // "compatibility_flags": [
+  //   "nodejs_compat"
+  // ],
+  "vars": {
+    "APP_BASE_URL": "https://erp-test.albionbox.com",
+    "WEB_ORIGIN": "https://erp-test.albionbox.com",
+    "API_BASE_URL": "https://api.albionbox.com",
+    "KOOK_CLIENT_ID": "",
+    "KOOK_CLIENT_SECRET": ""
+  },
+  "secrets": {
+    "required": [
+      "RESEND_API_KEY",
+      "ADMIN_EMAILS"
+    ],
+  },
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "785676a9ef7b4b8abd91c4c0fd0399c6"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "albion-box-db",
+      "database_id": "cf44ea0d-f03f-45f9-83a4-f03ee59df79a",
+      "migrations_dir": "../../packages/db/migrations"
+    }
+  ],
+  "observability": {
+    "enabled": false,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": false,
+    }
+  },
+  "routes": [
+    {
+      "pattern": "api.albionbox.com/*",
+      "zone_name": "albionbox.com"
+    },
+    {
+      "pattern": "api.albionbox.com",
+      "zone_name": "albionbox.com",
+      "custom_domain": true
+    }
+  ],
+  "workers_dev": true,
+  "preview_urls": true,
+  "env": {
+    "local": {
+      "vars": {
+        "API_BASE_URL": "http://127.0.0.1:8787",
+        "APP_BASE_URL": "http://127.0.0.1:5174",
+        "WEB_ORIGIN": "http://127.0.0.1:5174",
+        "KOOK_CLIENT_ID": "",
+        "KOOK_CLIENT_SECRET": ""
+      },
+      "secrets": {
+        "required": [
+          "RESEND_API_KEY",
+          "ADMIN_EMAILS"
+        ]
+      },
+      "kv_namespaces": [
+        {
+          "binding": "KV",
+          "id": "785676a9ef7b4b8abd91c4c0fd0399c6"
+        }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "albion-box-db",
+          "database_id": "cf44ea0d-f03f-45f9-83a4-f03ee59df79a",
+          "migrations_dir": "../../packages/db/migrations"
+        }
+      ]
+    }
+  },
 }

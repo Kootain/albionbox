@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
-import { GameData } from '@albionbox/shared'
+import { useState, useEffect } from 'react';
+import { GameData } from '@albionbox/shared';
+import { useToast } from '@/components/ui/Toast';
 
 export default function GameDataTestPage() {
+  const toast = useToast();
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
@@ -41,8 +43,8 @@ export default function GameDataTestPage() {
 
   const handleTestItem = () => {
     if (!GameData.isLoaded()) {
-      alert('请先加载数据')
-      return
+      toast.error('请先加载数据');
+      return;
     }
     
     let found: any = undefined;
@@ -70,8 +72,8 @@ export default function GameDataTestPage() {
 
   const handleTestSpell = () => {
     if (!GameData.isLoaded()) {
-      alert('请先加载数据')
-      return
+      toast.error('请先加载数据');
+      return;
     }
     const allSpells = GameData.getAllSpells()
     const found = allSpells.find(s => s.Index.toString() === testSpellId || s.UniqueName === testSpellId)

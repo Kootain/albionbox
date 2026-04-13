@@ -34,6 +34,11 @@ export interface RegearRecord {
 
 export interface RegearConfig {
   allowedSlots: string[]; // e.g. ['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Cape']
+  defaultPLevel?: number;
+  policies?: {
+    noRegear: { players: { id: string; name: string }[] };
+    levelGroups: { id: string; name: string; maxPLevel: number; players: { id: string; name: string }[] }[];
+  };
 }
 
 export interface RegearOrderDetail {

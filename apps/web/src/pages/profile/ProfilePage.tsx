@@ -3,12 +3,16 @@ import { useAuth } from '../../hooks/useAuth';
 import { Shield, User as UserIcon, Globe, CheckCircle, RefreshCw, Plus, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/Confirm';
 import { api } from '../../lib/api';
 import { GameAccount, BindingToken } from '@albionbox/shared';
 
 export default function Profile() {
   const { user, profile, refresh } = useAuth();
   const { t } = useTranslation();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [isLinking, setIsLinking] = useState(false);
   const [gameId, setGameId] = useState('');
   const [server, setServer] = useState<'asia' | 'eu' | 'us'>('asia');
@@ -153,17 +157,18 @@ export default function Profile() {
                       </div>
                       <button 
                         onClick={async () => {
-                          if (!confirm('Are you sure you want to unbind your Kook account?')) return;
+                          if (!(await confirm.confirm({ message: t('profile.kook.confirm_unbind', { defaultValue: 'Are you sure you want to unbind your Kook account?' }), danger: true }))) return;
                           try {
                             const res = await api.users.oauth.unbind.$delete({ json: { provider: 'kook' } });
                             if (res.ok) {
                               refresh();
                             } else {
                               const data = await res.json() as any;
-                              alert(data.error || 'Unbind failed');
+                              toast.error(data.error || 'Unbind failed');
                             }
                           } catch (e) {
-                            alert('Error unbinding');
+                            console.error(e);
+                            toast.error('Error unbinding');
                           }
                         }}
                         className="p-1.5 text-slate-600 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"

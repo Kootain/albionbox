@@ -31,6 +31,24 @@ export const ChestPositionSchema = z.object({
 export const UpdateGuildSettingsSchema = z.object({
   regearConfig: z.object({
     allowedSlots: z.array(z.string()),
+    defaultPLevel: z.number().int().optional(),
+    policies: z.object({
+      noRegear: z.object({
+        players: z.array(z.object({
+          id: z.string(),
+          name: z.string()
+        }))
+      }),
+      levelGroups: z.array(z.object({
+        id: z.string(),
+        name: z.string(),
+        maxPLevel: z.number().int(),
+        players: z.array(z.object({
+          id: z.string(),
+          name: z.string()
+        }))
+      }))
+    }).optional()
   }).optional(),
   chestRooms: z.array(z.object({
     id: z.string(),

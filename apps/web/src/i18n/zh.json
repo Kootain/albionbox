@@ -188,7 +188,23 @@
       "col": "列",
       "assign_player": "分配玩家至单元格 ({{row}} {{col}})",
       "current_players": "已绑定玩家",
-      "add_player": "添加玩家"
+      "add_player": "添加玩家",
+      "confirm_delete_room": "确定要删除这个补装房间吗？",
+      "confirm_delete_group": "确定要删除这个策略组吗？",
+      "policies": {
+        "title": "自动审核策略",
+        "desc": "为特定玩家或组配置特殊的补装策略。",
+        "default_level": "默认补装等级 (P-Level)",
+        "no_regear": "不参与补装",
+        "no_regear_desc": "此列表中的玩家将被自动排除。",
+        "level_groups": "自定义等级组",
+        "level_groups_desc": "如果玩家的装备满足该组的最大 P-Level 限制，将被自动通过审核。",
+        "add_group": "添加等级组",
+        "conflict_warning": "组等级小于或等于默认等级。这可能会与默认规则产生冲突。",
+        "conflict_short": "配置冲突",
+        "no_regear_add": "添加到不参与补装名单",
+        "level_group_add": "添加到等级组"
+      }
     },
     "attendance": {
       "title": "考勤记录",
@@ -356,17 +372,14 @@
         "all_records": "全部记录"
       },
       "auto_approval": {
-        "button": "自动审批",
-        "title": "自动审批规则",
-        "desc": "配置规则以自动审批待处理的死亡记录。",
-        "start": "开始审批",
+        "title": "自动审核规则",
+        "desc": "配置规则以自动审批待处理的阵亡记录。",
+        "need_default_plevel": "在开始自动审批前，您必须先配置一个默认的补装等级（P-Level）。",
+        "local_config_notice": "注意：在此处的修改仅对当前工单生效。如需修改全局默认配置，请前往「系统设置」页面。",
+        "button": "自动审核",
         "failed": "自动审批失败。",
-        "rule_not_found": "未找到规则 {{ruleId}}",
-        "max_plevel_title": "最大装备 P 级",
-        "max_plevel_desc": "当所有装备的 P 级均小于或等于 N 时自动通过审批。",
-        "max_plevel_not_configured": "未配置 maxPLevel",
-        "max_plevel_exceeded": "{{slot}} 槽位装备 P 级 ({{pLevel}}) 超过最大限制 {{maxAllowedPLevel}}",
-        "max_plevel_success": "根据最大 P 级规则自动通过：所有装备 P 级 <= {{maxAllowedPLevel}}"
+        "excluded_by_policy": "被不参与补装策略排除",
+        "start": "开始审核"
       }
     }
   }

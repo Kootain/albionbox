@@ -36,7 +36,14 @@ export const guildMembers = sqliteTable('guild_members', {
 
 export const guildSettings = sqliteTable('guild_settings', {
   guildId: text('guild_id').primaryKey().references(() => guilds.id),
-  regearConfig: text('regear_config', { mode: 'json' }).$type<{ allowedSlots: string[] }>(),
+  regearConfig: text('regear_config', { mode: 'json' }).$type<{ 
+    allowedSlots: string[];
+    defaultPLevel?: number;
+    policies?: {
+      noRegear: { players: { id: string; name: string }[] };
+      levelGroups: { id: string; name: string; maxPLevel: number; players: { id: string; name: string }[] }[];
+    }
+  }>(),
   chestRooms: text('chest_rooms', { mode: 'json' }).$type<{
     id: string;
     name: string;

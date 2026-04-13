@@ -4,6 +4,8 @@ import { RegearDetail } from './regear-components/RegearDetail';
 import { RegearOrderDetail, RegearRecord, RegearOrder } from './regear-components/types';
 import { cn, getAlbionItemUrl } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/Confirm';
 import { Modal } from '@/components/ui';
 import { api } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
@@ -17,6 +19,8 @@ interface RegearTabProps {
 
 export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: RegearTabProps) {
   const { t } = useTranslation();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [currentView, setCurrentView] = useState<'list' | 'detail'>('list');
   const [orders, setOrders] = useState<RegearOrder[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
@@ -178,7 +182,11 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
 
   const handleCreatePreview = async (overrideIds?: string[]) => {
     const ids = overrideIds || previewBattleIdsText.split(/[\s,]+/).filter(id => id.trim());
-    if (ids.length === 0 || !guildId) return;
+    if (!guildId) return;
+    if (ids.length === 0) {
+      toast.info(t('guild_dashboard.regear_tab.create_no_ids', { defaultValue: 'Please enter at least one Battle ID' }));
+      return;
+    }
     
     setIsPreviewLoading(true);
     setPreviewError('');
@@ -240,7 +248,25 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
       const regearRecords = generatedRecords.filter(r => r.guildId === guildId);
 
       if (regearRecords.length === 0) {
-        throw new Error('No death events found for the provided battles.');
+        throw new Error(t('guild_dashboard.regear_tab.create_no_deaths', { defaultValue: 'No deaths found for your guild in these battles.' }));
+      }
+
+      const settingsRes = await api.guilds[':id'].settings.$get({ param: { id: guildId } });
+      let defaultAllowedSlots = ['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Cape'];
+      let defaultPLevel = undefined;
+      let defaultPolicies = undefined;
+      
+      if (settingsRes.ok) {
+        const settings = await settingsRes.json();
+        if (settings.regearConfig?.allowedSlots) {
+          defaultAllowedSlots = settings.regearConfig.allowedSlots;
+        }
+        if (settings.regearConfig?.defaultPLevel) {
+          defaultPLevel = settings.regearConfig.defaultPLevel;
+        }
+        if (settings.regearConfig?.policies) {
+          defaultPolicies = settings.regearConfig.policies;
+        }
       }
 
       const newPreview: RegearOrderDetail = {
@@ -259,7 +285,9 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
           }
         },
         config: {
-          allowedSlots: ['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Cape']
+          allowedSlots: defaultAllowedSlots,
+          defaultPLevel,
+          policies: defaultPolicies
         },
         records: regearRecords
       };
@@ -336,13 +364,13 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
       
     } catch (err: any) {
       console.error('Failed to create order from preview', err);
-      alert(err.message || 'Failed to create order');
+      toast.error(err.message || 'Failed to create order');
     }
   };
 
   const handleDeleteOrder = async (orderId: string) => {
     if (!guildId) return;
-    if (!confirm(t('guild_dashboard.regear_tab.confirm_delete_order', { defaultValue: 'Are you sure you want to delete this order?' }))) return;
+    if (!(await confirm.confirm({ message: t('guild_dashboard.regear_tab.confirm_delete_order', { defaultValue: 'Are you sure you want to delete this order?' }), danger: true }))) return;
     
     try {
       const res = await api.guilds[':guildId'].regear.tickets[':ticketId'].$delete({ param: { guildId, ticketId: orderId } });
@@ -350,7 +378,7 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
       setOrders(prev => prev.filter(o => o.id !== orderId));
     } catch (err) {
       console.error(err);
-      alert('Failed to delete order');
+      toast.error('Failed to delete order');
     }
   };
 

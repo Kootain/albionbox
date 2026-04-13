@@ -13,6 +13,8 @@ import { getBaseItemId, calculatePLevel } from './utils';
 import { AutoApprovalModal } from './auto-approval/AutoApprovalModal';
 import { engine } from './auto-approval';
 import { KillDetailModal } from '../battle-report-components/KillDetailModal';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/Confirm';
 
 interface ChestRoom {
   id: string;
@@ -44,6 +46,8 @@ function getItemDisplayName(itemType: string): string {
 
 export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromPreview, onDelete, onDeleteRecord }: RegearDetailProps) {
   const { t, i18n } = useTranslation();
+  const toast = useToast();
+  const confirm = useConfirm();
   
   // Re-render when i18n language changes to update game-data text
   useMemo(() => {
@@ -295,7 +299,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
 
   const handleAction = (recordId: string, action: string) => {
     if (isPreview) {
-      alert(t('guild_dashboard.regear_tab.preview_action_warning', { defaultValue: 'This is a preview. Please create the order first to perform actions.' }));
+      toast.info(t('guild_dashboard.regear_tab.preview_action_warning', { defaultValue: 'This is a preview. Please create the order first to perform actions.' }));
       return;
     }
     
@@ -375,14 +379,66 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
     return sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-500" /> : <ArrowDown className="w-3 h-3 text-emerald-500" />;
   };
 
-  const handleStartAutoApproval = async (ruleId: string, options: Record<string, any>) => {
+  const handleStartAutoApproval = async (ruleId: string, options: Record<string, any>, updatedConfig: RegearConfig) => {
     setIsAutoApproving(true);
     try {
+      if (updatedConfig.defaultPLevel === undefined) {
+        throw new Error('Default P-Level is required');
+      }
+
+      // If config was changed, save it globally
+      if (JSON.stringify(detail.config) !== JSON.stringify(updatedConfig)) {
+        // Only update the order's config if it's a real order
+        if (!isPreview) {
+          await api.guilds[':guildId'].regear.tickets[':ticketId'].$put({
+            param: { guildId, ticketId: detail.order.id },
+            json: { config: updatedConfig }
+          });
+        }
+        
+        setConfig(updatedConfig);
+        detail.config = updatedConfig;
+      }
+
       const pendingRecords = records.filter(r => r.status === 'pending_review');
       const updatedRecords = [...records];
       
       for (const record of pendingRecords) {
-        const result = engine.evaluate(record, config, ruleId, options, t);
+        // --- 1. Check No Regear Policy ---
+        if (updatedConfig.policies?.noRegear?.players.some(p => p.id === record.playerId || p.name === record.playerName)) {
+          const comment = t('guild_dashboard.regear_tab.auto_approval.excluded_by_policy', { defaultValue: 'Excluded by No Regear policy' });
+          const res = await api.guilds[':guildId'].regear.records[':regearId'].status.$put({
+            param: { guildId, regearId: record.id },
+            json: { status: 'excluded', comment }
+          });
+          if (res.ok) {
+            const idx = updatedRecords.findIndex(r => r.id === record.id);
+            if (idx !== -1) updatedRecords[idx] = { ...updatedRecords[idx], status: 'excluded', reviewComment: comment };
+          }
+          continue;
+        }
+
+        // --- 2. Check Level Groups Policy ---
+        let groupMaxPLevel: number | null = null;
+        if (updatedConfig.policies?.levelGroups) {
+          for (const group of updatedConfig.policies.levelGroups) {
+            if (group.players.some(p => p.id === record.playerId || p.name === record.playerName)) {
+              groupMaxPLevel = group.maxPLevel;
+              break; // Found the user's specific group
+            }
+          }
+        }
+
+        // Use group's max P-Level if user is in a group, otherwise use defaultPLevel
+        let targetMaxPLevel = updatedConfig.defaultPLevel;
+        if (groupMaxPLevel !== null) {
+          targetMaxPLevel = groupMaxPLevel;
+        }
+        
+        const mergedOptions = { ...options, maxPLevel: targetMaxPLevel };
+
+        // --- 3. Evaluate Rule ---
+        const result = engine.evaluate(record, updatedConfig, ruleId, mergedOptions, t);
         if (result.approved) {
           const newStatus = 'pending_regear';
           const comment = result.reason;
@@ -407,7 +463,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
       setShowAutoApproveModal(false);
     } catch (err) {
       console.error('Auto approval failed', err);
-      alert(t('guild_dashboard.regear_tab.auto_approval.failed', { defaultValue: 'Auto approval failed.' }));
+      toast.error(t('guild_dashboard.regear_tab.auto_approval.failed', { defaultValue: 'Auto approval failed.' }));
     } finally {
       setIsAutoApproving(false);
     }
@@ -456,7 +512,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
       });
     } catch (err) {
       console.error(err);
-      alert('Failed to load kill details');
+      toast.error(t('common.load_failed', { defaultValue: 'Failed to load kill details' }));
     } finally {
       setIsDetailLoading(false);
     }
@@ -1052,9 +1108,17 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
       {/* Auto Approval Modal */}
       {showAutoApproveModal && (
         <AutoApprovalModal
-          onClose={() => !isAutoApproving && setShowAutoApproveModal(false)}
+          onClose={() => setShowAutoApproveModal(false)}
           onStartApproval={handleStartAutoApproval}
           isProcessing={isAutoApproving}
+          guildId={guildId}
+          currentConfig={config}
+          isPreview={!!isPreview}
+          ticketId={detail.order.id}
+          onConfigChange={(newConfig) => {
+            setConfig(newConfig);
+            detail.config = newConfig;
+          }}
         />
       )}
 

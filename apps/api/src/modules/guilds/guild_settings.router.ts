@@ -40,6 +40,10 @@ const updateSettingsHandler = factory.createHandlers(
     const db = drizzle(c.env.DB)
     const now = new Date().toISOString()
     
+    const setValues: any = { updatedAt: now }
+    if (data.regearConfig !== undefined) setValues.regearConfig = data.regearConfig
+    if (data.chestRooms !== undefined) setValues.chestRooms = data.chestRooms
+
     await db.insert(guildSettings).values({
       guildId,
       regearConfig: data.regearConfig || { allowedSlots: ['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Cape'] },
@@ -47,11 +51,7 @@ const updateSettingsHandler = factory.createHandlers(
       updatedAt: now,
     }).onConflictDoUpdate({
       target: guildSettings.guildId,
-      set: {
-        regearConfig: data.regearConfig,
-        chestRooms: data.chestRooms,
-        updatedAt: now,
-      }
+      set: setValues
     })
     
     return c.json({ success: true })

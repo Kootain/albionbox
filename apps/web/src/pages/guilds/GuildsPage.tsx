@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { Shield, Plus, Search, Globe, Users, CheckCircle, RefreshCw, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '@/components/ui/Toast';
 import { api } from '../../lib/api';
 
 interface Guild {
@@ -26,6 +27,7 @@ interface AlbionSearchResultGuild {
 export default function Guilds() {
   const { user, profile } = useAuth();
   const { t } = useTranslation();
+  const toast = useToast();
   const [guilds, setGuilds] = useState<Guild[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newGuild, setNewGuild] = useState<{ id: string, name: string, server: 'asia' | 'eu' | 'us' }>({ id: '', name: '', server: 'asia' });
@@ -114,7 +116,7 @@ export default function Guilds() {
     
     // Validate if a valid guild id has been selected from the suggestions
     if (!newGuild.id) {
-      alert(t('guilds.pleaseSelectGuildFromSuggestions'));
+      toast.error(t('guilds.pleaseSelectGuildFromSuggestions'));
       return;
     }
     

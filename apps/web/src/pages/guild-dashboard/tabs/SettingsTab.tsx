@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Settings, Save, Search, Loader2, Plus, Trash2, CheckCircle } from 'lucide-react';
+import { Settings, Search, Loader2, Plus, Trash2, CheckCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { AlbionSearchResultPlayer } from '@albionbox/shared';
+import { AutoApprovalPoliciesConfig } from '../components/AutoApprovalPoliciesConfig';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/Confirm';
 
 interface ChestRoom {
   id: string;
@@ -19,10 +22,17 @@ interface SettingsTabProps {
 
 export function SettingsTab({ guildId }: SettingsTabProps) {
   const { t } = useTranslation();
+  const toast = useToast();
+  const confirm = useConfirm();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
   const [allowedSlots, setAllowedSlots] = useState<string[]>(['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Cape']);
+  const [defaultPLevel, setDefaultPLevel] = useState<number>(8);
+  const [noRegearPlayers, setNoRegearPlayers] = useState<{id: string, name: string}[]>([]);
+  const [levelGroups, setLevelGroups] = useState<{id: string, name: string, maxPLevel: number, players: {id: string, name: string}[]}[]>([]);
+
   const [rooms, setRooms] = useState<ChestRoom[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
 
@@ -30,20 +40,12 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<AlbionSearchResultPlayer[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [activeCell, setActiveCell] = useState<{x: number, y: number} | null>(null);
+  const [activeSearchContext, setActiveSearchContext] = useState<{ type: 'cell', x: number, y: number } | null>(null);
 
   const allSlots = ['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Bag', 'Cape', 'Mount', 'Potion', 'Food'];
 
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [editingRoomName, setEditingRoomName] = useState('');
-  const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-
-  useEffect(() => {
-    if (toastMessage) {
-      const timer = setTimeout(() => setToastMessage(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [toastMessage]);
 
   useEffect(() => {
     if (!guildId) return;
@@ -53,7 +55,14 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
         const res = await api.guilds[':id'].settings.$get({ param: { id: guildId } });
         if (res.ok) {
           const data = await res.json();
-          if (data.regearConfig?.allowedSlots) setAllowedSlots(data.regearConfig.allowedSlots);
+          if (data.regearConfig) {
+            if (data.regearConfig.allowedSlots) setAllowedSlots(data.regearConfig.allowedSlots);
+            if (data.regearConfig.defaultPLevel) setDefaultPLevel(data.regearConfig.defaultPLevel);
+            if (data.regearConfig.policies) {
+              if (data.regearConfig.policies.noRegear?.players) setNoRegearPlayers(data.regearConfig.policies.noRegear.players);
+              if (data.regearConfig.policies.levelGroups) setLevelGroups(data.regearConfig.policies.levelGroups);
+            }
+          }
           if (data.chestRooms && data.chestRooms.length > 0) {
             setRooms(data.chestRooms);
             setActiveRoomId(data.chestRooms[0].id);
@@ -73,22 +82,35 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
     fetchSettings();
   }, [guildId]);
 
-  const handleSave = async (currentSlots = allowedSlots, currentRooms = rooms) => {
+  const handleSave = async (
+    currentSlots = allowedSlots, 
+    currentRooms = rooms,
+    currentPLevel = defaultPLevel,
+    currentNoRegear = noRegearPlayers,
+    currentLevelGroups = levelGroups
+  ) => {
     if (!guildId) return;
     setIsSaving(true);
     try {
       const res = await api.guilds[':id'].settings.$put({
         param: { id: guildId },
         json: {
-          regearConfig: { allowedSlots: currentSlots },
+          regearConfig: { 
+            allowedSlots: currentSlots,
+            defaultPLevel: currentPLevel,
+            policies: {
+              noRegear: { players: currentNoRegear },
+              levelGroups: currentLevelGroups
+            }
+          },
           chestRooms: currentRooms
         }
       });
       if (!res.ok) throw new Error('Failed to save settings');
-      setToastMessage({ type: 'success', text: t('common.saved', { defaultValue: 'Saved successfully!' }) });
+      toast.success(t('common.saved', { defaultValue: 'Saved successfully!' }));
     } catch (err) {
       console.error(err);
-      setToastMessage({ type: 'error', text: t('common.save_failed', { defaultValue: 'Failed to save settings' }) });
+      toast.error(t('common.save_failed', { defaultValue: 'Failed to save settings' }));
     } finally {
       setIsSaving(false);
     }
@@ -102,7 +124,7 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
       newSlots = [...allowedSlots, slot];
     }
     setAllowedSlots(newSlots);
-    handleSave(newSlots, rooms);
+    handleSave(newSlots, rooms, defaultPLevel, noRegearPlayers, levelGroups);
   };
 
   const handleAddRoom = () => {
@@ -123,25 +145,25 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
     const newRooms = [...rooms, newRoom];
     setRooms(newRooms);
     setActiveRoomId(newRoom.id);
-    handleSave(allowedSlots, newRooms);
+    handleSave(allowedSlots, newRooms, defaultPLevel, noRegearPlayers, levelGroups);
   };
 
-  const handleDeleteRoom = () => {
+  const handleDeleteRoom = async () => {
     if (rooms.length <= 1) {
-      alert('Cannot delete the last room.');
+      toast.error(t('guild_dashboard.settings.cannot_delete_last_room', { defaultValue: 'Cannot delete the last room.' }));
       return;
     }
-    if (!confirm('Are you sure you want to delete this room?')) return;
+    if (!(await confirm.confirm({ message: t('guild_dashboard.settings.confirm_delete_room', { defaultValue: 'Are you sure you want to delete this room?' }), danger: true }))) return;
     const newRooms = rooms.filter(r => r.id !== activeRoomId);
     setRooms(newRooms);
     setActiveRoomId(newRooms[0].id);
-    handleSave(allowedSlots, newRooms);
+    handleSave(allowedSlots, newRooms, defaultPLevel, noRegearPlayers, levelGroups);
   };
 
   const updateActiveRoom = (updates: Partial<ChestRoom>) => {
     const newRooms = rooms.map(r => r.id === activeRoomId ? { ...r, ...updates } : r);
     setRooms(newRooms);
-    handleSave(allowedSlots, newRooms);
+    handleSave(allowedSlots, newRooms, defaultPLevel, noRegearPlayers, levelGroups);
   };
 
   const handleRoomNameEditComplete = (roomId: string) => {
@@ -154,14 +176,14 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
     }
 
     if (rooms.some(r => r.id !== roomId && r.name === newName)) {
-      alert('Room name already exists.');
+      toast.error('Room name already exists.');
       return;
     }
 
     const newRooms = rooms.map(r => r.id === roomId ? { ...r, name: newName } : r);
     setRooms(newRooms);
     setEditingRoomId(null);
-    handleSave(allowedSlots, newRooms);
+    handleSave(allowedSlots, newRooms, defaultPLevel, noRegearPlayers, levelGroups);
   };
 
   const activeRoom = rooms.find(r => r.id === activeRoomId);
@@ -187,15 +209,16 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
   };
 
   const assignPlayer = (player: AlbionSearchResultPlayer) => {
-    if (!activeCell || !activeRoom) return;
+    if (!activeSearchContext || activeSearchContext.type !== 'cell') return;
     
+    if (!activeRoom) return;
     const newAssignments = [...activeRoom.assignments];
-    const isAlreadyInCell = newAssignments.some(a => a.x === activeCell.x && a.y === activeCell.y && a.playerId === player.Id);
+    const isAlreadyInCell = newAssignments.some(a => a.x === activeSearchContext.x && a.y === activeSearchContext.y && a.playerId === player.Id);
     
     if (!isAlreadyInCell) {
       newAssignments.push({
-        x: activeCell.x,
-        y: activeCell.y,
+        x: activeSearchContext.x,
+        y: activeSearchContext.y,
         playerId: player.Id,
         playerName: player.Name
       });
@@ -207,9 +230,9 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
   };
 
   const removePlayerFromCell = (playerId: string) => {
-    if (!activeRoom || !activeCell) return;
+    if (!activeRoom || !activeSearchContext || activeSearchContext.type !== 'cell') return;
     updateActiveRoom({
-      assignments: activeRoom.assignments.filter(a => !(a.x === activeCell.x && a.y === activeCell.y && a.playerId === playerId))
+      assignments: activeRoom.assignments.filter(a => !(a.x === activeSearchContext.x && a.y === activeSearchContext.y && a.playerId === playerId))
     });
   };
 
@@ -238,18 +261,6 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
             <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">{t('guild_dashboard.settings.desc', { defaultValue: 'Configure regear rules and chest allocations' })}</p>
           </div>
         </div>
-        
-        {toastMessage && (
-          <div className={cn(
-            "flex items-center gap-2 px-4 py-2 border text-xs font-bold rounded-lg shadow-lg",
-            toastMessage.type === 'success' 
-              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" 
-              : "bg-rose-500/10 border-rose-500/20 text-rose-500"
-          )}>
-            {toastMessage.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <div className="w-4 h-4 rounded-full border-2 border-current flex items-center justify-center font-black text-[10px]">!</div>}
-            {toastMessage.text}
-          </div>
-        )}
         
         {isSaving && (
           <div className="flex items-center gap-2 px-4 py-2 bg-black-bg border border-black-border text-slate-400 text-xs font-bold rounded-lg shadow-lg">
@@ -281,6 +292,41 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
               </button>
             ))}
           </div>
+        </section>
+
+        <hr className="border-black-border" />
+
+        {/* Auto Approval Policies Config */}
+        <section className="space-y-6">
+          <div>
+            <h3 className="text-lg font-bold text-white uppercase tracking-tight">{t('guild_dashboard.settings.policies.title', { defaultValue: 'Auto Approval Policies' })}</h3>
+            <p className="text-sm text-slate-400 mt-1">{t('guild_dashboard.settings.policies.desc', { defaultValue: 'Configure special regear policies for specific players or groups.' })}</p>
+          </div>
+
+          <AutoApprovalPoliciesConfig
+            guildId={guildId || ''}
+            config={{
+              allowedSlots,
+              defaultPLevel,
+              policies: {
+                noRegear: { players: noRegearPlayers },
+                levelGroups
+              }
+            }}
+            onChange={(newConfig) => {
+              if (newConfig.allowedSlots) setAllowedSlots(newConfig.allowedSlots);
+              if (newConfig.defaultPLevel !== undefined) setDefaultPLevel(newConfig.defaultPLevel);
+              if (newConfig.policies?.noRegear?.players) setNoRegearPlayers(newConfig.policies.noRegear.players);
+              if (newConfig.policies?.levelGroups) setLevelGroups(newConfig.policies.levelGroups);
+            }}
+            onSaveApi={async (newConfig) => {
+              const res = await api.guilds[':id'].settings.$put({
+                param: { id: guildId || '' },
+                json: { regearConfig: newConfig }
+              });
+              if (!res.ok) throw new Error('Failed to save settings');
+            }}
+          />
         </section>
 
         <hr className="border-black-border" />
@@ -373,12 +419,12 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
                     const displayY = y + 1;
                     const cellAssignments = activeRoom.assignments.filter(a => a.x === displayX && a.y === displayY);
                     const isDup = cellAssignments.some(a => isDuplicate(a.playerId));
-                    const isActive = activeCell?.x === displayX && activeCell?.y === displayY;
+                    const isActive = activeSearchContext?.type === 'cell' && activeSearchContext.x === displayX && activeSearchContext.y === displayY;
 
                     return (
                       <div 
                         key={`${displayX}-${displayY}`}
-                        onClick={() => setActiveCell({x: displayX, y: displayY})}
+                        onClick={() => setActiveSearchContext({ type: 'cell', x: displayX, y: displayY })}
                         className={cn(
                           "h-16 rounded-lg border flex flex-col items-center justify-center p-1 cursor-pointer relative group transition-colors",
                           isActive ? "border-gold bg-gold/5" :
@@ -413,23 +459,32 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
           )}
 
           {/* Search Popup Overlay */}
-          {activeCell && (
-            <div className="absolute top-0 left-0 w-full h-full bg-black/80 backdrop-blur-sm flex items-center justify-center z-10 p-4">
+          {activeSearchContext && (
+            <div className="absolute top-0 left-0 w-full h-full bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 fixed inset-0">
               <div className="bg-black-card border border-black-border rounded-xl p-4 w-full max-w-md shadow-2xl flex flex-col max-h-[90vh]">
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                   <h4 className="text-white font-bold text-sm uppercase tracking-widest">
-                    {t('guild_dashboard.settings.assign_player', { 
-                      row: `${t('guild_dashboard.settings.row', { defaultValue: 'Row' })}:${activeCell.y}`, 
-                      col: `${t('guild_dashboard.settings.col', { defaultValue: 'Col' })}:${activeCell.x}` 
-                    })}
+                    {activeSearchContext.type === 'cell' ? 
+                      t('guild_dashboard.settings.assign_player', { 
+                        row: `${t('guild_dashboard.settings.row', { defaultValue: 'Row' })}:${activeSearchContext.y}`, 
+                        col: `${t('guild_dashboard.settings.col', { defaultValue: 'Col' })}:${activeSearchContext.x}` 
+                      }) : ''
+                    }
                   </h4>
-                  <button onClick={() => { setActiveCell(null); setSearchQuery(''); setSearchResults([]); }} className="text-slate-400 hover:text-white">✕</button>
+                  <button onClick={() => { setActiveSearchContext(null); setSearchQuery(''); setSearchResults([]); }} className="text-slate-400 hover:text-white">✕</button>
                 </div>
                 
                 <div className="overflow-y-auto flex-1 pr-2 space-y-6">
                   {/* Current Players */}
                   {(() => {
-                    const currentPlayers = activeRoom?.assignments.filter(a => a.x === activeCell.x && a.y === activeCell.y) || [];
+                    let currentPlayers: { playerId: string, playerName: string }[] = [];
+                    let onRemove: (id: string) => void = () => {};
+
+                    if (activeSearchContext.type === 'cell') {
+                      currentPlayers = activeRoom?.assignments.filter(a => a.x === activeSearchContext.x && a.y === activeSearchContext.y) || [];
+                      onRemove = removePlayerFromCell;
+                    }
+
                     if (currentPlayers.length === 0) return null;
                     return (
                       <div>
@@ -439,7 +494,7 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
                             <div key={a.playerId} className="flex items-center justify-between p-2 bg-black-bg border border-black-border rounded-lg group/item">
                               <span className="text-sm font-bold text-white">{a.playerName}</span>
                               <button 
-                                onClick={() => removePlayerFromCell(a.playerId)} 
+                                onClick={() => onRemove(a.playerId)} 
                                 className="text-slate-500 hover:text-rose-500 p-1 opacity-50 group-hover/item:opacity-100 transition-opacity"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -469,7 +524,11 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
 
                     <div className="space-y-2">
                       {searchResults.map(player => {
-                        const isAssigned = activeRoom?.assignments.some(a => a.x === activeCell.x && a.y === activeCell.y && a.playerId === player.Id);
+                        let isAssigned = false;
+                        if (activeSearchContext.type === 'cell') {
+                          isAssigned = activeRoom?.assignments.some(a => a.x === activeSearchContext.x && a.y === activeSearchContext.y && a.playerId === player.Id) || false;
+                        }
+
                         return (
                           <div 
                             key={player.Id} 

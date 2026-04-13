@@ -188,7 +188,23 @@
       "col": "Col",
       "assign_player": "Assign Player to Cell ({{row}} {{col}})",
       "current_players": "Current Bound Players",
-      "add_player": "Add Player"
+      "add_player": "Add Player",
+      "confirm_delete_room": "Are you sure you want to delete this room?",
+      "confirm_delete_group": "Are you sure you want to delete this group?",
+      "policies": {
+        "title": "Auto Approval Policies",
+        "desc": "Configure special regear policies for specific players or groups.",
+        "default_level": "Default Regear Level (P-Level)",
+        "no_regear": "Excluded from Regear",
+        "no_regear_desc": "Players in this list will be automatically excluded.",
+        "level_groups": "Custom Level Groups",
+        "level_groups_desc": "Players in these groups will be automatically approved if their equipment meets the group's max P-Level.",
+        "add_group": "Add Group",
+        "conflict_warning": "Group level is <= default level. This may conflict with default rules.",
+        "conflict_short": "Conflict",
+        "no_regear_add": "Add to No Regear",
+        "level_group_add": "Add to Group"
+      }
     },
     "attendance": {
       "title": "Attendance",
@@ -267,12 +283,11 @@
       "desc": "Manage guild regearing sessions",
       "create_btn": "Create Ticket",
       "status": {
-        "active": "Active",
-        "completed": "Completed",
         "excluded": "Excluded",
         "pending_review": "Pending Review",
         "rejected": "Rejected",
-        "pending_regear": "Pending Regear"
+        "pending_regear": "Pending Regear",
+        "completed": "Completed"
       },
       "stats": {
         "total_deaths": "Total Deaths",
@@ -335,11 +350,10 @@
         "status": "Status",
         "player": "Player",
         "chest": "Chest",
-        "ip_fame": "IP / Fame",
-        "equipment": "Equipment Details",
-        "time": "Time",
-        "action": "Action",
-        "total": "Total"
+        "time": "Death Time",
+        "death_fame": "Death Fame",
+        "ip": "IP",
+        "equipment": "Equipment"
       },
       "view_details": "View Details",
       "unknown": "Unknown",
@@ -355,17 +369,14 @@
         "all_records": "All Records"
       },
       "auto_approval": {
-        "button": "Auto Approve",
         "title": "Auto Approval Rules",
         "desc": "Configure rules to automatically approve pending death records.",
-        "start": "Start Approval",
+        "need_default_plevel": "You must configure a Default Regear Level before starting auto approval.",
+        "local_config_notice": "Note: Changes made here only apply to this specific order. To change global defaults, please go to the Settings tab.",
+        "button": "Auto Approve",
         "failed": "Auto approval failed.",
-        "rule_not_found": "Rule {{ruleId}} not found",
-        "max_plevel_title": "Maximum Equipment P-Level",
-        "max_plevel_desc": "Automatically approve records where all equipment P-Levels are less than or equal to N.",
-        "max_plevel_not_configured": "maxPLevel not configured",
-        "max_plevel_exceeded": "Equipment in {{slot}} has P-Level {{pLevel}} > {{maxAllowedPLevel}}",
-        "max_plevel_success": "Auto-approved by max_plevel rule: all equipment P-Level <= {{maxAllowedPLevel}}"
+        "excluded_by_policy": "Excluded by No Regear policy",
+        "start": "Start Approval"
       }
     }
   }
