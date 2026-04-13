@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { X, Skull } from 'lucide-react';
+import { X, Skull, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn, formatFame } from '@/lib/utils';
 import { ItemSlot, EquipmentGrid } from './shared/EquipmentDisplay';
 import {AlbionOfficialEvent, AlbionEventPlayer} from '@albionbox/shared'
 
-export function KillDetailModal({ record, onClose }: { record: AlbionOfficialEvent, onClose: () => void }) {
+export function KillDetailModal({ record, onClose, isloading = false }: { record?: AlbionOfficialEvent, onClose: () => void, isloading?: boolean }) {
   const { t } = useTranslation();
   
   const PlayerBlock = ({ p }: { p: AlbionEventPlayer }) => (
@@ -31,9 +31,17 @@ export function KillDetailModal({ record, onClose }: { record: AlbionOfficialEve
           <X className="w-5 h-5" />
         </button>
 
-        <div className="p-8">
-          {/* Top Section */}
-          <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
+        {isloading ? (
+          <div className="flex flex-col items-center justify-center p-24">
+            <Loader2 className="w-12 h-12 text-gold animate-spin mb-4" />
+            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+              {t('common.loading', { defaultValue: 'Loading...' })}
+            </p>
+          </div>
+        ) : record ? (
+          <div className="p-8">
+            {/* Top Section */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
             <PlayerBlock p={record.Killer} />
             
             <div className="flex flex-col items-center justify-center flex-1 px-4 min-w-[200px]">
@@ -70,12 +78,13 @@ export function KillDetailModal({ record, onClose }: { record: AlbionOfficialEve
             <h4 className="text-center text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6">{t('guild_dashboard.battle_report.victims_inventory')}</h4>
             <div className="grid grid-cols-8 sm:grid-cols-8 gap-1.5 sm:gap-2 max-w-3xl mx-auto">
               {Array.from({ length: record.Victim.Inventory.filter(x=>x).length < 24 ? 24 : 48 }).map((_, i) => {
-                const item = record.Victim.Inventory[i];
+                const item = record.Victim.Inventory.filter(x=>x)[i];
                 return <ItemSlot data={item} large={false} key={i}/>;
               })}
             </div>
           </div>
         </div>
+        ) : null}
       </div>
     </div>
   );

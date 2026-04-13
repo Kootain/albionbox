@@ -800,7 +800,6 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
                         disabled={!record.eventId || isDetailLoading}
                         className="px-3 py-1.5 bg-black-card hover:bg-black-card/80 text-slate-400 border border-black-border hover:border-slate-500/50 hover:text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                       >
-                        {isDetailLoading && <Loader2 className="w-3 h-3 animate-spin" />}
                         {t('guild_dashboard.regear_tab.view_details', { defaultValue: 'Details' })}
                       </button>
                       {record.status === 'pending_review' && (
@@ -1089,10 +1088,11 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
       )}
 
       {/* Kill Detail Modal */}
-      {detailEventRecord && (
+      {(detailEventRecord || isDetailLoading) && (
         <KillDetailModal
-          record={detailEventRecord}
+          record={detailEventRecord || undefined}
           onClose={() => setDetailEventRecord(null)}
+          isloading={isDetailLoading}
         />
       )}
     </div>
