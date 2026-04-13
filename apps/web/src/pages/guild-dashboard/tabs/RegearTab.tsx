@@ -92,20 +92,25 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
       if (!res.ok) throw new Error('Failed to fetch ticket detail');
       const ticket = await res.json();
 
-      // Fetch events for each battle ID
+      // Fetch events for each battle ID concurrently
       const allEvents: AlbionOfficialEvent[] = [];
-      for (const id of ticket.battleIds) {
+      const fetchEventsForBattle = async (id: string) => {
+        const events: AlbionOfficialEvent[] = [];
         let offset = 0;
         const limit = 51;
         while (true) {
           const evRes = await api.guilds.test.albion.events.$get({ query: { battleId: id, limit: String(limit), offset: String(offset) } });
           if (!evRes.ok) break;
-          const events = await evRes.json() as AlbionOfficialEvent[];
-          allEvents.push(...events);
-          if (events.length < limit) break;
+          const chunk = await evRes.json() as AlbionOfficialEvent[];
+          events.push(...chunk);
+          if (chunk.length < limit) break;
           offset += limit;
         }
-      }
+        return events;
+      };
+
+      const battleEventsArray = await Promise.all(ticket.battleIds.map(fetchEventsForBattle));
+      battleEventsArray.forEach(events => allEvents.push(...events));
 
       // Map albion events against the ticket's regears array
       const dbRegearsMap = new Map<string, any>(ticket.regears.map((r: any) => [r.eventId, r]));
@@ -192,21 +197,26 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
     setPreviewError('');
     
     try {
+      // Fetch events for each battle ID concurrently
       const allEvents: AlbionOfficialEvent[] = [];
       
-      // Fetch events for each battle ID
-      for (const id of ids) {
+      const fetchEventsForBattle = async (id: string) => {
+        const events: AlbionOfficialEvent[] = [];
         let offset = 0;
         const limit = 51;
         while (true) {
           const res = await api.guilds.test.albion.events.$get({ query: { battleId: id, limit: String(limit), offset: String(offset) } });
           if (!res.ok) throw new Error(`Failed to fetch events for battle ${id}`);
-          const events = await res.json() as AlbionOfficialEvent[];
-          allEvents.push(...events);
-          if (events.length < limit) break;
+          const chunk = await res.json() as AlbionOfficialEvent[];
+          events.push(...chunk);
+          if (chunk.length < limit) break;
           offset += limit;
         }
-      }
+        return events;
+      };
+
+      const battleEventsArray = await Promise.all(ids.map(fetchEventsForBattle));
+      battleEventsArray.forEach(events => allEvents.push(...events));
 
       // Map events to RegearRecords
       const recordsMap = new Map<string, RegearRecord>();

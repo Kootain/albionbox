@@ -37,6 +37,17 @@ export class AlbionApiClient {
     return response.json() as Promise<AlbionOfficialEvent[]>;
   }
 
+  async getEvent(eventId: string): Promise<AlbionOfficialEvent> {
+    const url = `${this.baseUrl}/api/gameinfo/events/${eventId}`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Albion Event: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json() as Promise<AlbionOfficialEvent>;
+  }
+
   async search(query: string): Promise<AlbionSearchResult> {
     const url = `${this.baseUrl}/api/gameinfo/search?q=${encodeURIComponent(query)}`;
     const response = await fetch(url);

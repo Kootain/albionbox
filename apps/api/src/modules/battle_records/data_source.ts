@@ -27,6 +27,7 @@ export interface AlbionBattle {
 export interface BattleReportDataSource {
   getRecentGuildBattles(guildId: string, server: AlbionServer, offset?: number, limit?: number): Promise<AlbionOfficialBattle[]>
   getBattleEvents(battleId: string, server: AlbionServer, offset?: number, limit?: number): Promise<AlbionOfficialEvent[]>
+  getEvent(eventId: string, server: AlbionServer): Promise<AlbionOfficialEvent>
 }
 
 export class OfficialApiBattleDataSource implements BattleReportDataSource {
@@ -38,5 +39,10 @@ export class OfficialApiBattleDataSource implements BattleReportDataSource {
   async getBattleEvents(battleId: string, server: AlbionServer, offset = 0, limit = 51): Promise<AlbionOfficialEvent[]> {
     const client = new AlbionApiClient(server)
     return client.getBattleEvents(battleId, offset, limit)
+  }
+
+  async getEvent(eventId: string, server: AlbionServer): Promise<AlbionOfficialEvent> {
+    const client = new AlbionApiClient(server)
+    return client.getEvent(eventId)
   }
 }

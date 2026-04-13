@@ -74,11 +74,32 @@ const getAlbionBattleEventsDirectHandler = factory.createHandlers(
   }
 )
 
+const getAlbionEventDirectHandler = factory.createHandlers(
+  zValidator('param', z.object({
+    id: z.string().min(1)
+  })),
+  zValidator('query', z.object({
+    server: z.enum(['asia', 'us', 'eu']).optional().default('asia')
+  })),
+  async (c) => {
+    const { id } = c.req.valid('param')
+    const { server } = c.req.valid('query')
+    try {
+      const ds = new OfficialApiBattleDataSource()
+      const event = await ds.getEvent(id, server as any)
+      return c.json(event)
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500)
+    }
+  }
+)
+
 const routes = router
       // TEMPORARY DIRECT ALBION PROXY ROUTES (No auth for testing frontend integration)
       .get('/test/albion/search', ...searchAlbionHandler)
       .get('/test/albion/battles', ...getAlbionBattlesDirectHandler)
       .get('/test/albion/events', ...getAlbionBattleEventsDirectHandler)
+      .get('/test/albion/events/:id', ...getAlbionEventDirectHandler)
       .use('*', authMiddleware)
 
 
