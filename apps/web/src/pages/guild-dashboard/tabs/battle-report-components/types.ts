@@ -48,20 +48,3 @@ export interface PlayerStatRecord {
   deathFame: number;
 }
 
-export interface PlayerDeathInfo {
-  name: string;
-  guild: string;
-  alliance: string;
-  ip: number;
-  weapon: string; // icon url
-  equipment: { slot: string; url: string }[];
-  inventory: { url: string; count: number }[];
-}
-
-export interface DeathRecord {
-  id: string;
-  time: string;
-  killer: PlayerDeathInfo;
-  victim: PlayerDeathInfo;
-  fame: number;
-}

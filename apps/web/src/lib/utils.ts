@@ -67,3 +67,9 @@ export function getAlbionItemUrl(type: string | undefined | null, count = 1, qua
   }
   return url;
 }
+
+export function image(item: {Type: string, Count: number, Quality: number} | null): string {
+  if (!item) return '';
+  return getAlbionItemUrl(item.Type, item.Count, item.Quality);
+}
+

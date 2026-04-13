@@ -1,24 +1,24 @@
 import { useState } from 'react';
 import { X, Skull } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { DeathRecord, PlayerDeathInfo } from './types';
 import { cn, formatFame } from '@/lib/utils';
 import { ItemSlot, EquipmentGrid } from './shared/EquipmentDisplay';
+import {AlbionOfficialEvent, AlbionEventPlayer} from '@albionbox/shared'
 
-export function KillDetailModal({ record, onClose }: { record: DeathRecord, onClose: () => void }) {
+export function KillDetailModal({ record, onClose }: { record: AlbionOfficialEvent, onClose: () => void }) {
   const { t } = useTranslation();
   
-  const PlayerBlock = ({ p }: { p: PlayerDeathInfo }) => (
+  const PlayerBlock = ({ p }: { p: AlbionEventPlayer }) => (
     <div className="flex flex-col items-center">
-      <h3 className="text-xl font-bold text-white tracking-tight">{p.name}</h3>
+      <h3 className="text-xl font-bold text-white tracking-tight">{p.Name}</h3>
       <p className="text-xs font-bold text-slate-400 mb-4">
-        {p.alliance && p.alliance !== 'None' ? `[${p.alliance}] ` : ''}
-        {p.guild && p.guild !== 'None' ? p.guild : ''}
+        {p.AllianceName && p.AllianceName !== 'None' ? `[${p.AllianceName}] ` : ''}
+        {p.GuildName && p.GuildName !== 'None' ? p.GuildName : ''}
       </p>
-      <EquipmentGrid eq={p.equipment} />
+      <EquipmentGrid eq={p.Equipment} />
       <div className="mt-4 px-3 py-1 bg-black-bg border border-black-border rounded-lg">
         <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">IP: </span>
-        <span className="text-sm font-bold text-gold">{p.ip}</span>
+        <span className="text-sm font-bold text-gold">{p.AverageItemPower}</span>
       </div>
     </div>
   );
@@ -34,11 +34,11 @@ export function KillDetailModal({ record, onClose }: { record: DeathRecord, onCl
         <div className="p-8">
           {/* Top Section */}
           <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
-            <PlayerBlock p={record.killer} />
+            <PlayerBlock p={record.Killer} />
             
             <div className="flex flex-col items-center justify-center flex-1 px-4 min-w-[200px]">
               <div className="text-center mb-6">
-                <div className="text-4xl font-black text-gold tracking-tighter drop-shadow-[0_0_10px_rgba(234,179,8,0.3)]">{formatFame(record.fame)}</div>
+                <div className="text-4xl font-black text-gold tracking-tighter drop-shadow-[0_0_10px_rgba(234,179,8,0.3)]">{formatFame(record.TotalVictimKillFame)}</div>
                 <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Fame</div>
               </div>
               <div className="flex flex-col items-center gap-2 mb-6">
@@ -55,23 +55,23 @@ export function KillDetailModal({ record, onClose }: { record: DeathRecord, onCl
               </div>
               <p className="text-sm font-bold text-slate-400 mt-2">
                 {(() => {
-                  const d = new Date(record.time);
+                  const d = new Date(record.TimeStamp);
                   const pad = (n: number) => String(n).padStart(2, '0');
                   return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
                 })()}
               </p>
             </div>
 
-            <PlayerBlock p={record.victim} />
+            <PlayerBlock p={record.Victim} />
           </div>
 
           {/* Inventory Section */}
           <div className="border-t border-black-border pt-8">
             <h4 className="text-center text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6">{t('guild_dashboard.battle_report.victims_inventory')}</h4>
             <div className="grid grid-cols-8 sm:grid-cols-8 gap-1.5 sm:gap-2 max-w-3xl mx-auto">
-              {Array.from({ length: 32 }).map((_, i) => {
-                const item = record.victim.inventory[i];
-                return <ItemSlot key={i} url={item?.url} count={item?.count} empty={!item} large={false} />;
+              {Array.from({ length: record.Victim.Inventory.filter(x=>x).length < 24 ? 24 : 48 }).map((_, i) => {
+                const item = record.Victim.Inventory[i];
+                return <ItemSlot data={item} large={false} key={i}/>;
               })}
             </div>
           </div>

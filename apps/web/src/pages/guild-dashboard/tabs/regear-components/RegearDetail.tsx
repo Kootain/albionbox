@@ -1,8 +1,8 @@
-import { RegearOrderDetail, RegearRecord, RegearConfig } from './types';
+import { RegearOrderDetail, RegearRecord, RegearConfig, } from './types';
 import { format } from 'date-fns';
 import { ArrowLeft, Clock, ShieldAlert, CheckCircle, Package, Settings2, Sword, Loader2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, ArrowRight, Trash2 } from 'lucide-react';
-import { cn, formatFame } from '@/lib/utils';
-import { GameData } from '@albionbox/shared';
+import { cn, formatFame, getAlbionItemUrl } from '@/lib/utils';
+import { AlbionOfficialEvent, GameData } from '@albionbox/shared';
 import { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '@/components/ui';
@@ -63,7 +63,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
   const [showAutoApproveModal, setShowAutoApproveModal] = useState(false);
   const [isAutoApproving, setIsAutoApproving] = useState(false);
   const [equipmentGroupSize, setEquipmentGroupSize] = useState<number>(0);
-  const [detailEventRecord, setDetailEventRecord] = useState<any | null>(null);
+  const [detailEventRecord, setDetailEventRecord] = useState<AlbionOfficialEvent | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
 
   const [recordsPage, setRecordsPage] = useState(1);
@@ -474,42 +474,8 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
     try {
       const res = await (api.guilds.test.albion.events as any)[':eventId'].$get({ param: { eventId } });
       if (!res.ok) throw new Error('Failed to fetch event');
-      const ev = await res.json() as any;
-
-      const mapPlayer = (p: any) => {
-        const eq = p.Equipment || {};
-        const getEq = (slot: string) => eq[slot] ? { type: eq[slot].Type, count: eq[slot].Count, quality: eq[slot].Quality, url: `https://render.albiononline.com/v1/item/${eq[slot].Type}.png?count=${eq[slot].Count}&quality=${eq[slot].Quality}` } : null;
-        return {
-          id: p.Id,
-          name: p.Name,
-          guild: p.GuildName || 'None',
-          alliance: p.AllianceName || 'None',
-          ip: Math.round(p.AverageItemPower),
-          equipment: {
-            head: getEq('Head'),
-            armor: getEq('Armor'),
-            shoes: getEq('Shoes'),
-            mainHand: getEq('MainHand'),
-            offHand: getEq('OffHand'),
-            cape: getEq('Cape'),
-            bag: getEq('Bag'),
-            mount: getEq('Mount'),
-            potion: getEq('Potion'),
-            food: getEq('Food')
-          },
-          inventory: (p.Inventory || []).filter(Boolean).map((i: any) => ({
-            type: i.Type, count: i.Count, quality: i.Quality, url: `https://render.albiononline.com/v1/item/${i.Type}.png?count=${i.Count}&quality=${i.Quality}`
-          }))
-        };
-      };
-
-      setDetailEventRecord({
-        id: ev.EventId,
-        time: ev.TimeStamp,
-        fame: ev.TotalVictimKillFame,
-        killer: mapPlayer(ev.Killer),
-        victim: mapPlayer(ev.Victim)
-      });
+      const ev = await res.json();
+      setDetailEventRecord(ev);
     } catch (err) {
       console.error(err);
       toast.error(t('common.load_failed', { defaultValue: 'Failed to load kill details' }));

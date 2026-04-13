@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Crosshair } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { KillDetailModal } from './KillDetailModal';
-import { DeathRecord } from './types';
-import { formatFame } from '@/lib/utils';
+import { formatFame, getAlbionItemUrl, image } from '@/lib/utils';
+import { AlbionOfficialEvent } from '@albionbox/shared';
 
-export function DeathRecords({ data }: { data: DeathRecord[] }) {
+export function DeathRecords({ data }: { data: AlbionOfficialEvent[] }) {
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
-  const [selectedRecord, setSelectedRecord] = useState<DeathRecord | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<AlbionOfficialEvent | null>(null);
   const itemsPerPage = 10;
 
   const totalPages = Math.ceil(data.length / itemsPerPage);
@@ -34,34 +34,34 @@ export function DeathRecords({ data }: { data: DeathRecord[] }) {
             </thead>
             <tbody>
               {currentData.map(r => (
-                <tr key={r.id} className="border-b border-black-border/50 hover:bg-black-bg/50 transition-colors">
+                <tr key={r.EventId} className="border-b border-black-border/50 hover:bg-black-bg/50 transition-colors">
                   <td className="py-3 px-4 text-xs text-slate-400">
-                    {new Date(r.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(r.TimeStamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
-                      <img src={r.killer.weapon} alt="w" className="w-5 h-5 object-contain" />
+                      <img src={image(r.Killer.Equipment.MainHand)} alt="w" className="w-5 h-5 object-contain" />
                       <span className="text-xs text-slate-400">
-                        {r.killer.alliance && r.killer.alliance !== 'None' ? `[${r.killer.alliance}] ` : ''}
-                        {r.killer.guild && r.killer.guild !== 'None' ? r.killer.guild : ''}
+                        {r.Killer.AllianceName && r.Killer.AllianceName !== 'None' ? `[${r.Killer.AllianceName}] ` : ''}
+                        {r.Killer.GuildName && r.Killer.GuildName !== 'None' ? r.Killer.GuildName : ''}
                       </span>
-                      <span className="text-sm font-bold text-emerald-500">{r.killer.name}</span>
-                      <span className="text-[10px] text-slate-500 font-bold">({r.killer.ip})</span>
+                      <span className="text-sm font-bold text-emerald-500">{r.Killer.Name}</span>
+                      <span className="text-[10px] text-slate-500 font-bold">({r.Killer.AverageItemPower})</span>
                     </div>
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
-                      <img src={r.victim.weapon} alt="w" className="w-5 h-5 object-contain" />
+                      <img src={image(r.Victim.Equipment.MainHand)} alt="w" className="w-5 h-5 object-contain" />
                       <span className="text-xs text-slate-400">
-                        {r.victim.alliance && r.victim.alliance !== 'None' ? `[${r.victim.alliance}] ` : ''}
-                        {r.victim.guild && r.victim.guild !== 'None' ? r.victim.guild : ''}
+                        {r.Victim.AllianceName && r.Victim.AllianceName !== 'None' ? `[${r.Victim.AllianceName}] ` : ''}
+                        {r.Victim.GuildName && r.Victim.GuildName !== 'None' ? r.Victim.GuildName : ''}
                       </span>
-                      <span className="text-sm font-bold text-rose-500">{r.victim.name}</span>
-                      <span className="text-[10px] text-slate-500 font-bold">({r.victim.ip})</span>
+                      <span className="text-sm font-bold text-rose-500">{r.Victim.Name}</span>
+                      <span className="text-[10px] text-slate-500 font-bold">({r.Victim.AverageItemPower})</span>
                     </div>
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <span className="text-gold font-bold text-sm">{formatFame(r.fame)}</span>
+                    <span className="text-gold font-bold text-sm">{formatFame(r.TotalVictimKillFame)}</span>
                   </td>
                   <td className="py-3 px-4 text-right">
                     <button 

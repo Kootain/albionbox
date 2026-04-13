@@ -8,7 +8,9 @@ import { PlayerStats } from './PlayerStats';
 import { DeathRecords } from './DeathRecords';
 import { api } from '@/lib/api';
 import { getAlbionItemUrl } from '@/lib/utils';
-import { DeathRecord, PlayerStatRecord, StatsRecord } from './types';
+import { PlayerStatRecord, StatsRecord } from './types';
+import { AlbionOfficialEvent } from '@albionbox/shared'
+
 
 interface BattleDetailProps {
   battleIds: string[];
@@ -26,7 +28,7 @@ export function BattleDetail({ battleIds, onBack, isStandalone }: BattleDetailPr
   const [allianceStats, setAllianceStats] = useState<StatsRecord[]>([]);
   const [guildStats, setGuildStats] = useState<StatsRecord[]>([]);
   const [playerStats, setPlayerStats] = useState<PlayerStatRecord[]>([]);
-  const [deathRecords, setDeathRecords] = useState<DeathRecord[]>([]);
+  const [deathRecords, setDeathRecords] = useState<AlbionOfficialEvent[]>([]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -38,7 +40,7 @@ export function BattleDetail({ battleIds, onBack, isStandalone }: BattleDetailPr
         const guildMap = new Map<string, StatsRecord>();
         const allianceMap = new Map<string, StatsRecord>();
         const playerMap = new Map<string, PlayerStatRecord>();
-        const mappedDeaths: DeathRecord[] = [];
+        const mappedDeaths: AlbionOfficialEvent[] = [];
 
         // Track unique participants per guild/alliance to avoid overcounting
         const guildParticipants = new Map<string, Set<string>>();
@@ -88,7 +90,7 @@ export function BattleDetail({ battleIds, onBack, isStandalone }: BattleDetailPr
 
             while (hasMore && !isCancelled) {
               const cacheKey = `albion_battle_${battleId}_${offset}_${limit}`;
-              let eventsData: any[] = [];
+              let eventsData: AlbionOfficialEvent[] = [];
               const cachedData = sessionStorage.getItem(cacheKey);
 
               if (cachedData) {
@@ -97,9 +99,9 @@ export function BattleDetail({ battleIds, onBack, isStandalone }: BattleDetailPr
                 const eventsRes = await api.guilds.test.albion.events.$get({
                   query: { battleId, limit: String(limit), offset: String(offset) }
                 });
-
+                
                 if (!eventsRes.ok) throw new Error(`Failed to fetch events for battle ${battleId}`);
-                eventsData = (await eventsRes.json()) as any[];
+                eventsData = (await eventsRes.json());
 
                 if (eventsData && eventsData.length > 0) {
                   try {
@@ -255,34 +257,7 @@ export function BattleDetail({ battleIds, onBack, isStandalone }: BattleDetailPr
                 }
 
                 // Death Record
-                if (ev.Killer && ev.Victim) {
-                  mappedDeaths.push({
-                    id: String(ev.EventId),
-                    time: ev.TimeStamp,
-                    killer: {
-                      name: ev.Killer?.Name || 'Unknown',
-                      guild: ev.Killer?.GuildName || 'None',
-                      alliance: ev.Killer?.AllianceName || 'None',
-                      ip: Math.round(ev.Killer?.AverageItemPower || 0),
-                      weapon: ev.Killer?.Equipment?.MainHand?.Type ? getAlbionItemUrl(ev.Killer.Equipment.MainHand.Type, 1, ev.Killer.Equipment.MainHand.Quality) : '',
-                      equipment: mapEquipmentToArray(ev.Killer?.Equipment),
-                      inventory: []
-                    },
-                    victim: {
-                      name: ev.Victim.Name,
-                      guild: ev.Victim.GuildName || 'None',
-                      alliance: ev.Victim.AllianceName || 'None',
-                      ip: Math.round(ev.Victim.AverageItemPower || 0),
-                      weapon: ev.Victim.Equipment?.MainHand?.Type ? getAlbionItemUrl(ev.Victim.Equipment.MainHand.Type, 1, ev.Victim.Equipment.MainHand.Quality) : '',
-                      equipment: mapEquipmentToArray(ev.Victim.Equipment),
-                      inventory: ev.Victim.Inventory?.filter(Boolean).map((i: any) => ({
-                        url: getAlbionItemUrl(i.Type, i.Count, i.Quality),
-                        count: i.Count
-                      })) || []
-                    },
-                    fame: ev.TotalVictimKillFame || 0
-                  });
-                }
+                mappedDeaths.push(ev);
               }
 
               if (eventsData.length < limit) {
@@ -313,7 +288,7 @@ export function BattleDetail({ battleIds, onBack, isStandalone }: BattleDetailPr
         setPlayerStats(Array.from(playerMap.values()));
         
         // Sort death records by time descending
-        mappedDeaths.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+        mappedDeaths.sort((a, b) => new Date(b.TimeStamp).getTime() - new Date(a.TimeStamp).getTime());
         setDeathRecords(mappedDeaths);
 
       } catch (err: any) {
