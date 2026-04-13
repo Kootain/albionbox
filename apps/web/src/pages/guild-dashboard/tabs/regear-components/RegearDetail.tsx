@@ -51,7 +51,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
   
   // Re-render when i18n language changes to update game-data text
   useMemo(() => {
-    GameData.setLanguage(i18n.language === 'zh' ? 'ZH-CN' : 'EN-US');
+    GameData.setLanguage(i18n.language.startsWith('zh') ? 'ZH-CN' : 'EN-US');
   }, [i18n.language]);
 
   const { order, config: initialConfig, records: initialRecords } = detail;
