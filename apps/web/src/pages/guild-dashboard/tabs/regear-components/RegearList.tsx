@@ -69,6 +69,8 @@ export function RegearList({ orders, onSelectOrder, onCreatePreview, onDeleteOrd
               {/* Stats Section */}
               <div className="flex flex-wrap gap-4 flex-1 lg:justify-end">
                 <StatBadge label={t('guild_dashboard.regear_tab.stats.total_deaths')} value={order.stats.totalDeaths} color="slate" />
+                {/* <StatBadge label={t('guild_dashboard.regear_tab.stats.excluded')} value={order.stats.excludedRegear} color="slate" /> */}
+                {/* <StatBadge label={t('guild_dashboard.regear_tab.stats.rejected')} value={order.stats.rejectedRegear} color="rose" /> */}
                 <StatBadge label={t('guild_dashboard.regear_tab.stats.pending_review')} value={order.stats.pendingReview} color="amber" />
                 <StatBadge label={t('guild_dashboard.regear_tab.stats.pending_regear')} value={order.stats.pendingRegear} color="rose" />
                 <StatBadge label={t('guild_dashboard.regear_tab.stats.completed')} value={order.stats.completedRegear} color="emerald" />
@@ -98,11 +100,12 @@ export function RegearList({ orders, onSelectOrder, onCreatePreview, onDeleteOrd
   );
 }
 
-function StatBadge({ label, value, color }: { label: string; value: number; color: 'slate' | 'amber' | 'rose' | 'emerald' }) {
+function StatBadge({ label, value, color }: { label: string; value: number; color: 'slate' | 'amber' | 'rose' | 'emerald' | 'gray' }) {
   const colors = {
     slate: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
     amber: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
     rose: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+    gray: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
     emerald: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
   };
 

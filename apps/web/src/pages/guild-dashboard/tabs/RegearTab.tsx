@@ -155,6 +155,8 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
       const pendingReview = generatedRecords.filter(r => r.status === 'pending_review').length;
       const pendingRegear = generatedRecords.filter(r => r.status === 'pending_regear').length;
       const completedRegear = generatedRecords.filter(r => r.status === 'completed').length;
+      // const excludedRegear = generatedRecords.filter(r => r.status === 'excluded').length;
+      // const rejectedRegear = generatedRecords.filter(r => r.status === 'rejected').length;
 
       setRealDetail({
         order: {
@@ -168,7 +170,9 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
             reviewedDeaths: generatedRecords.length - pendingReview,
             pendingReview,
             pendingRegear,
-            completedRegear
+            completedRegear,
+            // excludedRegear,
+            // rejectedRegear
           }
         },
         config: ticket.config || { allowedSlots: ['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Cape'] },
@@ -291,7 +295,9 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
             reviewedDeaths: 0,
             pendingReview: generatedRecords.length,
             pendingRegear: 0,
-            completedRegear: 0
+            completedRegear: 0,
+            // excludedRegear: 0,
+            // rejectedRegear: 0,
           }
         },
         config: {

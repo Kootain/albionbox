@@ -669,32 +669,15 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
             {!isPreview && (
               <button
                 onClick={() => setShowAutoApproveModal(true)}
-                className="px-3 py-1.5 bg-gold/10 hover:bg-gold/20 text-gold border border-gold/20 hover:border-gold/50 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors mr-2"
+                className="px-3 py-1.5 bg-gold/10 hover:bg-gold/20 text-gold border border-gold/20 hover:border-gold/50 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors"
               >
                 {t('guild_dashboard.regear_tab.auto_approval.button', { defaultValue: 'Auto Approve' })}
               </button>
             )}
-            <button 
-              onClick={() => setRecordsPage(p => Math.max(1, p - 1))}
-              disabled={recordsPage === 1}
-              className="p-1.5 bg-black-card border border-black-border hover:border-emerald-500 text-slate-400 hover:text-emerald-500 disabled:opacity-50 disabled:hover:border-black-border disabled:hover:text-slate-400 rounded transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest min-w-[3rem] text-center">
-              {recordsPage} / {totalRecordsPages}
-            </span>
-            <button 
-              onClick={() => setRecordsPage(p => Math.min(totalRecordsPages, p + 1))}
-              disabled={recordsPage === totalRecordsPages}
-              className="p-1.5 bg-black-card border border-black-border hover:border-emerald-500 text-slate-400 hover:text-emerald-500 disabled:opacity-50 disabled:hover:border-black-border disabled:hover:text-slate-400 rounded transition-colors"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
+        <div >
+          <table className="w-full text-left border-collapse min-w-[800px] ">
             <thead>
               <tr className="border-b border-black-border bg-black-card">
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest w-24">{t('guild_dashboard.regear_tab.columns.status')}</th>
@@ -843,8 +826,40 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
                   </td>
                 </tr>
               )})}
+              {/* Pad empty rows to keep table height fixed */}
+              {Array.from({ length: Math.max(0, RECORDS_PER_PAGE - currentRecords.length) }).map((_, i) => (
+                <tr key={`empty-${i}`} className="h-[73px]">
+                  <td colSpan={7} className="py-4 px-4"></td>
+                </tr>
+              ))}
             </tbody>
           </table>
+        </div>
+        
+        {/* Pagination at the bottom */}
+        <div className="p-4 border-t border-black-border flex items-center justify-between bg-black-bg/50">
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+            {t('guild_dashboard.regear_tab.total_records', { defaultValue: 'Total: ' })} {filteredAndSortedRecords.length}
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setRecordsPage(p => Math.max(1, p - 1))}
+              disabled={recordsPage === 1}
+              className="p-1.5 bg-black-card border border-black-border hover:border-emerald-500 text-slate-400 hover:text-emerald-500 disabled:opacity-50 disabled:hover:border-black-border disabled:hover:text-slate-400 rounded transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest min-w-[3rem] text-center">
+              {recordsPage} / {totalRecordsPages}
+            </span>
+            <button 
+              onClick={() => setRecordsPage(p => Math.min(totalRecordsPages, p + 1))}
+              disabled={recordsPage === totalRecordsPages}
+              className="p-1.5 bg-black-card border border-black-border hover:border-emerald-500 text-slate-400 hover:text-emerald-500 disabled:opacity-50 disabled:hover:border-black-border disabled:hover:text-slate-400 rounded transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 

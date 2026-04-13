@@ -12,6 +12,8 @@ export interface RegearOrder {
     pendingReview: number;
     pendingRegear: number;
     completedRegear: number;
+    // excludedRegear: number;
+    // rejectedRegear: number;
   };
 }
 
