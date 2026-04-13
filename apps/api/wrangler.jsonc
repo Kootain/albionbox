@@ -7,11 +7,9 @@
 	//   "nodejs_compat"
 	// ],
 	"vars": {
-		"RESEND_API_KEY": "",
 		"APP_BASE_URL": "https://erp-test.albionbox.com",
 		"WEB_ORIGIN": "https://erp-test.albionbox.com",
 		"API_BASE_URL": "https://api.albionbox.com",
-		"ADMIN_EMAILS": "",
 		"KOOK_CLIENT_ID": "",
 		"KOOK_CLIENT_SECRET": ""
 	},
