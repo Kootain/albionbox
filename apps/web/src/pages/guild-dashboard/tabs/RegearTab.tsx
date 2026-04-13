@@ -11,11 +11,9 @@ import { AlbionOfficialEvent } from '@albionbox/shared';
 
 interface RegearTabProps {
   guildId?: string;
-  initialPreviewBattleIds?: string[] | null;
-  onPreviewClear?: () => void;
 }
 
-export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: RegearTabProps) {
+export function RegearTab({ guildId }: RegearTabProps) {
   const { t } = useTranslation();
   const [currentView, setCurrentView] = useState<'list' | 'detail'>('list');
   const [orders, setOrders] = useState<RegearOrder[]>([]);
@@ -118,7 +116,6 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
           id: dbRecord.id, // Internal DB regearId
           guildId: ev.Victim?.GuildId,
           eventId: evIdStr,
-          playerId: ev.Victim?.Id,
           status: dbRecord.status,
           reviewComment: dbRecord.comment,
           deathTime: ev.TimeStamp,
@@ -168,17 +165,12 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
 
   const handleCreatePreview = async () => {
     if (!previewBattleIdsText.trim() || !guildId) return;
-    const ids = previewBattleIdsText.split(/[\s,]+/).filter(id => id.trim());
-    await generatePreviewForIds(ids);
-  };
-
-  const generatePreviewForIds = async (ids: string[]) => {
-    if (ids.length === 0 || !guildId) return;
-    setShowCreateModal(true);
+    
     setIsPreviewLoading(true);
     setPreviewError('');
     
     try {
+      const ids = previewBattleIdsText.split(/[\s,]+/).filter(id => id.trim());
       const allEvents: AlbionOfficialEvent[] = [];
       
       // Fetch events for each battle ID
@@ -219,7 +211,6 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
         recordsMap.set(String(ev.EventId), {
           id: String(ev.EventId),
           eventId: String(ev.EventId),
-          playerId: ev.Victim?.Id,
           status: 'pending_review',
           deathTime: ev.TimeStamp,
           deathFame: victim.DeathFame,
@@ -239,15 +230,6 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
         throw new Error('No death events found for the provided battles.');
       }
 
-      const settingsRes = await api.guilds[':id'].settings.$get({ param: { id: guildId } });
-      let defaultAllowedSlots = ['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Cape'];
-      if (settingsRes.ok) {
-        const settings = await settingsRes.json();
-        if (settings.regearConfig?.allowedSlots) {
-          defaultAllowedSlots = settings.regearConfig.allowedSlots;
-        }
-      }
-
       const newPreview: RegearOrderDetail = {
         order: {
           id: 'PREVIEW-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
@@ -264,7 +246,7 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
           }
         },
         config: {
-          allowedSlots: defaultAllowedSlots
+          allowedSlots: ['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Cape']
         },
         records: regearRecords
       };
@@ -345,53 +327,7 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
     }
   };
 
-  const handleDeleteTicket = async (ticketId: string) => {
-    if (!guildId) return;
-    if (!confirm(t('guild_dashboard.regear_tab.delete_confirm', { defaultValue: 'Are you sure you want to delete this order?' }))) return;
-
-    try {
-      const res = await api.guilds[':guildId'].regear.tickets[':ticketId'].$delete({
-        param: { guildId, ticketId }
-      });
-      if (!res.ok) throw new Error('Failed to delete ticket');
-      
-      setOrders(prev => prev.filter(o => o.id !== ticketId));
-      setCurrentView('list');
-    } catch (err) {
-      console.error(err);
-      alert('Failed to delete order');
-    }
-  };
-
-  const handleDeleteRecord = async (recordId: string) => {
-    if (!guildId || !realDetail) return;
-    if (!confirm(t('guild_dashboard.regear_tab.delete_record_confirm', { defaultValue: 'Are you sure you want to permanently delete this record?' }))) return;
-
-    try {
-      const res = await api.guilds[':guildId'].regear.records[':regearId'].$delete({
-        param: { guildId, regearId: recordId }
-      });
-      if (!res.ok) throw new Error('Failed to delete record');
-      
-      setRealDetail({
-        ...realDetail,
-        records: realDetail.records.filter(r => r.id !== recordId)
-      });
-    } catch (err) {
-      console.error(err);
-      alert('Failed to delete record');
-    }
-  };
-
   const detailData = previewDetail ? previewDetail : realDetail;
-
-  useEffect(() => {
-    if (initialPreviewBattleIds && initialPreviewBattleIds.length > 0) {
-      setPreviewBattleIdsText(initialPreviewBattleIds.join(', '));
-      generatePreviewForIds(initialPreviewBattleIds);
-      if (onPreviewClear) onPreviewClear();
-    }
-  }, [initialPreviewBattleIds, guildId]);
 
   return (
     <div className="p-6 bg-black-card rounded-2xl border border-black-border mt-6">
@@ -401,12 +337,7 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
             <Loader2 className="w-8 h-8 text-gold animate-spin" />
           </div>
         ) : (
-          <RegearList 
-            orders={orders} 
-            onSelectOrder={handleSelectOrder} 
-            onCreatePreview={() => setShowCreateModal(true)} 
-            onDeleteOrder={handleDeleteTicket}
-          />
+          <RegearList orders={orders} onSelectOrder={handleSelectOrder} onCreatePreview={() => setShowCreateModal(true)} />
         )}
       </div>
 
@@ -422,8 +353,6 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
             guildId={guildId!} 
             isPreview={!!previewDetail}
             onCreateFromPreview={() => previewDetail && handleCreateOrderFromPreview(previewDetail)}
-            onDelete={handleDeleteTicket}
-            onDeleteRecord={handleDeleteRecord}
           />
         ) : (
           <div className="text-center p-8 text-rose-500">{t('guild_dashboard.regear_tab.order_not_found')}</div>

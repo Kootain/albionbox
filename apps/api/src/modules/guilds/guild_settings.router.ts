@@ -71,15 +71,18 @@ const getChestsHandler = factory.createHandlers(
 
 const searchAlbionPlayerHandler = factory.createHandlers(
   guildPermMiddleware(['guild:view']),
-  zValidator('query', z.object({ q: z.string().min(1) })),
+  zValidator('query', z.object({ q: z.string().min(1), server: z.enum(['asia', 'eu', 'us']).optional() })),
   async (c) => {
     const { id: guildId } = c.req.param() as Record<string, string>
-    const { q } = c.req.valid('query')
-    const db = drizzle(c.env.DB)
-    const guild = await db.select({ server: guilds.server }).from(guilds).where(eq(guilds.id, guildId)).get()
-    if (!guild) return c.json({ error: '工会不存在' }, 404)
+    let { q, server } = c.req.valid('query')
+    if (!server) {
+      const db = drizzle(c.env.DB)
+      const guild = await db.select({ server: guilds.server }).from(guilds).where(eq(guilds.id, guildId)).get()
+      if (!guild) return c.json({ error: '工会不存在' }, 404)
+      server = guild.server
+    }
     
-    const client = new AlbionApiClient(guild.server as AlbionServer)
+    const client = new AlbionApiClient(server as AlbionServer)
     const result = await client.search(q)
     return c.json(result)
   }

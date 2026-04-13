@@ -189,25 +189,27 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
   const assignPlayer = (player: AlbionSearchResultPlayer) => {
     if (!activeCell || !activeRoom) return;
     
-    const newAssignments = activeRoom.assignments.filter(a => !(a.x === activeCell.x && a.y === activeCell.y));
-    newAssignments.push({
-      x: activeCell.x,
-      y: activeCell.y,
-      playerId: player.Id,
-      playerName: player.Name
-    });
+    const newAssignments = [...activeRoom.assignments];
+    const isAlreadyInCell = newAssignments.some(a => a.x === activeCell.x && a.y === activeCell.y && a.playerId === player.Id);
     
-    updateActiveRoom({ assignments: newAssignments });
-    setActiveCell(null);
+    if (!isAlreadyInCell) {
+      newAssignments.push({
+        x: activeCell.x,
+        y: activeCell.y,
+        playerId: player.Id,
+        playerName: player.Name
+      });
+      updateActiveRoom({ assignments: newAssignments });
+    }
+    
     setSearchQuery('');
     setSearchResults([]);
   };
 
-  const removeAssignment = (x: number, y: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!activeRoom) return;
+  const removePlayerFromCell = (playerId: string) => {
+    if (!activeRoom || !activeCell) return;
     updateActiveRoom({
-      assignments: activeRoom.assignments.filter(a => !(a.x === x && a.y === y))
+      assignments: activeRoom.assignments.filter(a => !(a.x === activeCell.x && a.y === activeCell.y && a.playerId === playerId))
     });
   };
 
@@ -369,8 +371,8 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
                   Array.from({ length: activeRoom.width }).map((_, x) => {
                     const displayX = x + 1;
                     const displayY = y + 1;
-                    const assignment = activeRoom.assignments.find(a => a.x === displayX && a.y === displayY);
-                    const isDup = assignment ? isDuplicate(assignment.playerId) : false;
+                    const cellAssignments = activeRoom.assignments.filter(a => a.x === displayX && a.y === displayY);
+                    const isDup = cellAssignments.some(a => isDuplicate(a.playerId));
                     const isActive = activeCell?.x === displayX && activeCell?.y === displayY;
 
                     return (
@@ -380,7 +382,7 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
                         className={cn(
                           "h-16 rounded-lg border flex flex-col items-center justify-center p-1 cursor-pointer relative group transition-colors",
                           isActive ? "border-gold bg-gold/5" :
-                          assignment 
+                          cellAssignments.length > 0 
                             ? isDup ? "border-rose-500/50 bg-rose-500/10 text-rose-400" : "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
                             : "border-black-border bg-black-card hover:border-slate-700"
                         )}
@@ -388,18 +390,17 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
                         <span className="text-[10px] text-slate-600 absolute top-1 left-1 font-bold">
                           {t('guild_dashboard.settings.row', { defaultValue: 'Row' })}:{displayY} {t('guild_dashboard.settings.col', { defaultValue: 'Col' })}:{displayX}
                         </span>
-                        {assignment ? (
-                          <>
-                            <span className="text-xs font-bold text-center truncate w-full px-1 mt-2" title={assignment.playerName}>
-                              {assignment.playerName}
+                        {cellAssignments.length > 0 ? (
+                          <div className="flex flex-col items-center justify-center w-full px-1 mt-2">
+                            <span className="text-xs font-bold text-center truncate w-full" title={cellAssignments.map(a => a.playerName).join(', ')}>
+                              {cellAssignments[0].playerName}
                             </span>
-                            <button 
-                              onClick={(e) => removeAssignment(displayX, displayY, e)}
-                              className="absolute -top-2 -right-2 bg-black-card border border-black-border rounded-full w-5 h-5 flex items-center justify-center text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              ×
-                            </button>
-                          </>
+                            {cellAssignments.length > 1 && (
+                              <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-1 rounded mt-0.5">
+                                +{cellAssignments.length - 1}
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-xs text-slate-600 font-bold">+</span>
                         )}
@@ -414,8 +415,8 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
           {/* Search Popup Overlay */}
           {activeCell && (
             <div className="absolute top-0 left-0 w-full h-full bg-black/80 backdrop-blur-sm flex items-center justify-center z-10 p-4">
-              <div className="bg-black-card border border-black-border rounded-xl p-4 w-full max-w-md shadow-2xl">
-                <div className="flex justify-between items-center mb-4">
+              <div className="bg-black-card border border-black-border rounded-xl p-4 w-full max-w-md shadow-2xl flex flex-col max-h-[90vh]">
+                <div className="flex justify-between items-center mb-4 flex-shrink-0">
                   <h4 className="text-white font-bold text-sm uppercase tracking-widest">
                     {t('guild_dashboard.settings.assign_player', { 
                       row: `${t('guild_dashboard.settings.row', { defaultValue: 'Row' })}:${activeCell.y}`, 
@@ -425,36 +426,78 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
                   <button onClick={() => { setActiveCell(null); setSearchQuery(''); setSearchResults([]); }} className="text-slate-400 hover:text-white">✕</button>
                 </div>
                 
-                <div className="relative mb-4">
-                  <input
-                    type="text"
-                    autoFocus
-                    placeholder="Search player by name..."
-                    value={searchQuery}
-                    onChange={e => handleSearch(e.target.value)}
-                    className="w-full bg-black-bg border border-black-border rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-gold/50"
-                  />
-                  <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-                  {isSearching && <Loader2 className="w-4 h-4 text-gold animate-spin absolute right-3 top-3" />}
-                </div>
-
-                <div className="max-h-60 overflow-y-auto space-y-2">
-                  {searchResults.map(player => (
-                    <div 
-                      key={player.Id} 
-                      onClick={() => assignPlayer(player)}
-                      className="flex items-center justify-between p-2 rounded-lg hover:bg-black-bg cursor-pointer group"
-                    >
+                <div className="overflow-y-auto flex-1 pr-2 space-y-6">
+                  {/* Current Players */}
+                  {(() => {
+                    const currentPlayers = activeRoom?.assignments.filter(a => a.x === activeCell.x && a.y === activeCell.y) || [];
+                    if (currentPlayers.length === 0) return null;
+                    return (
                       <div>
-                        <div className="text-sm font-bold text-white">{player.Name}</div>
-                        <div className="text-xs text-slate-500 font-bold">{player.GuildName || 'No Guild'}</div>
+                        <h5 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{t('guild_dashboard.settings.current_players', { defaultValue: 'Current Bound Players' })}</h5>
+                        <div className="flex flex-col gap-2">
+                          {currentPlayers.map(a => (
+                            <div key={a.playerId} className="flex items-center justify-between p-2 bg-black-bg border border-black-border rounded-lg group/item">
+                              <span className="text-sm font-bold text-white">{a.playerName}</span>
+                              <button 
+                                onClick={() => removePlayerFromCell(a.playerId)} 
+                                className="text-slate-500 hover:text-rose-500 p-1 opacity-50 group-hover/item:opacity-100 transition-opacity"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <button className="text-xs font-bold text-gold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Select</button>
+                    );
+                  })()}
+
+                  {/* Add Player */}
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{t('guild_dashboard.settings.add_player', { defaultValue: 'Add Player' })}</h5>
+                    <div className="relative mb-4">
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder={t('guild_dashboard.settings.search', { defaultValue: 'Search player by name...' })}
+                        value={searchQuery}
+                        onChange={e => handleSearch(e.target.value)}
+                        className="w-full bg-black-bg border border-black-border rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-gold/50"
+                      />
+                      <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                      {isSearching && <Loader2 className="w-4 h-4 text-gold animate-spin absolute right-3 top-3" />}
                     </div>
-                  ))}
-                  {searchQuery && !isSearching && searchResults.length === 0 && (
-                    <div className="text-center text-sm font-bold uppercase tracking-widest text-slate-500 py-4">No players found</div>
-                  )}
+
+                    <div className="space-y-2">
+                      {searchResults.map(player => {
+                        const isAssigned = activeRoom?.assignments.some(a => a.x === activeCell.x && a.y === activeCell.y && a.playerId === player.Id);
+                        return (
+                          <div 
+                            key={player.Id} 
+                            onClick={() => !isAssigned && assignPlayer(player)}
+                            className={cn(
+                              "flex items-center justify-between p-2 rounded-lg transition-colors",
+                              isAssigned 
+                                ? "bg-emerald-500/10 border border-emerald-500/20 cursor-default" 
+                                : "hover:bg-black-bg border border-transparent cursor-pointer group"
+                            )}
+                          >
+                            <div>
+                              <div className={cn("text-sm font-bold", isAssigned ? "text-emerald-500" : "text-white")}>{player.Name}</div>
+                              <div className="text-xs text-slate-500 font-bold">{player.GuildName || 'No Guild'}</div>
+                            </div>
+                            {isAssigned ? (
+                              <CheckCircle className="w-4 h-4 text-emerald-500" />
+                            ) : (
+                              <button className="text-xs font-bold text-gold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Select</button>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {searchQuery && !isSearching && searchResults.length === 0 && (
+                        <div className="text-center text-sm font-bold uppercase tracking-widest text-slate-500 py-4">No players found</div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

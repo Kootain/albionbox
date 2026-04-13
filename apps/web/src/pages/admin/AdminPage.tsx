@@ -87,14 +87,13 @@ export default function Admin() {
   const handleApproveBinding = async (binding: PendingBindingWithEmail) => {
     const processId = `${binding.userId}-${binding.username}`;
     const promptText = t('admin.prompt_approve_binding', { username: binding.username });
-    const albionPlayerId = window.prompt(promptText);
-    if (!albionPlayerId) return;
+    const token = window.prompt(promptText);
 
     setIsProcessing(processId);
     try {
       const updateRes = await api.admin.binding_reviews[':id'].approve.$post({
         param: { id: binding.id },
-        json: { albionPlayerId }
+        json: { token }
       });
       
       if (updateRes.ok) await fetchData();

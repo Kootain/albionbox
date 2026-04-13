@@ -186,7 +186,9 @@
       "chest_config_desc": "Configure your NxM chest grid and assign players to cells.",
       "row": "Row",
       "col": "Col",
-      "assign_player": "Assign Player to Cell ({{row}} {{col}})"
+      "assign_player": "Assign Player to Cell ({{row}} {{col}})",
+      "current_players": "Current Bound Players",
+      "add_player": "Add Player"
     },
     "attendance": {
       "title": "Attendance",

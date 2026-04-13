@@ -186,7 +186,9 @@
       "chest_config_desc": "配置 NxM 大小的补装箱，并为每个格子分配玩家。",
       "row": "行",
       "col": "列",
-      "assign_player": "分配玩家至单元格 ({{row}} {{col}})"
+      "assign_player": "分配玩家至单元格 ({{row}} {{col}})",
+      "current_players": "已绑定玩家",
+      "add_player": "添加玩家"
     },
     "attendance": {
       "title": "考勤记录",
