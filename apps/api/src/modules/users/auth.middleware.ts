@@ -2,13 +2,14 @@ import type { MiddlewareHandler } from 'hono'
 import { drizzle } from 'drizzle-orm/d1'
 import { eq } from 'drizzle-orm'
 import { users } from '@albionbox/db'
+import type { AppContext } from '../../context'
 
 export interface SessionPayload {
   userId: string
   sessionsVersion: number
 }
 
-export const authMiddleware: MiddlewareHandler<{ Bindings: Env }> = async (c, next) => {
+export const authMiddleware: MiddlewareHandler<AppContext> = async (c, next) => {
   const authHeader = c.req.header('Authorization')
   if (!authHeader?.startsWith('Bearer ')) {
     return c.json({ error: 'Unauthorized' }, 401)
@@ -28,13 +29,14 @@ export const authMiddleware: MiddlewareHandler<{ Bindings: Env }> = async (c, ne
     return c.json({ error: 'Session expired, please login again' }, 401)
   }
 
-  c.set('user' as never, {
+  c.set('user', {
     id: user.id,
     email: user.email,
+    emailVerified: user.emailVerified,
     sessionsVersion: user.sessionsVersion,
     activeGameAccountId: user.activeGameAccountId,
   })
-  c.set('token' as never, token)
+  c.set('token', token)
 
   await next()
 }

@@ -1,50 +1,55 @@
-import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, index, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import { guilds } from './guilds'
-import { battleRecords } from './battles'
-import { battleDeaths } from './battles'
 import { users } from './users'
 
-export const regearSessions = sqliteTable('regear_sessions', {
+export const regearTickets = sqliteTable('regear_tickets', {
   id: text('id').primaryKey(),
   guildId: text('guild_id').notNull().references(() => guilds.id),
-  status: text('status', { enum: ['active', 'completed'] }).notNull().default('active'),
-  createdBy: text('created_by').notNull().references(() => users.id),
+  config: text('config').notNull(), // JSON string
+  server: text('server', { enum: ['asia', 'eu', 'us'] }).notNull(),
+  deletedAt: text('deleted_at'), // Soft delete timestamp
   createdAt: text('created_at').notNull(),
-})
+  updatedAt: text('updated_at').notNull(),
+}, (table) => ([
+  index('regear_tickets_guild_id_idx').on(table.guildId),
+]))
 
-export const regearSessionBattles = sqliteTable('regear_session_battles', {
-  sessionId: text('session_id').notNull().references(() => regearSessions.id),
-  battleRecordId: text('battle_record_id').notNull().references(() => battleRecords.id),
-}, (t) => [
-  primaryKey({ columns: [t.sessionId, t.battleRecordId] }),
-])
-
-export const regearRecords = sqliteTable('regear_records', {
+export const regearTicketBattles = sqliteTable('regear_ticket_battles', {
   id: text('id').primaryKey(),
-  sessionId: text('session_id').notNull().references(() => regearSessions.id),
-  battleDeathId: text('battle_death_id').notNull().references(() => battleDeaths.id),
-  status: text('status', { enum: ['draft', 'pending', 'approved', 'rejected', 'done'] }).notNull().default('draft'),
-  createdAt: text('created_at').notNull(),
-})
-
-export const regearApprovalLogs = sqliteTable('regear_approval_logs', {
-  id: text('id').primaryKey(),
-  regearRecordId: text('regear_record_id').notNull().references(() => regearRecords.id),
-  fromStatus: text('from_status').notNull(),
-  toStatus: text('to_status').notNull(),
-  operatorId: text('operator_id'),
-  isSystem: integer('is_system', { mode: 'boolean' }).notNull().default(false),
-  note: text('note'),
-  createdAt: text('created_at').notNull(),
-})
-
-export const regearApprovalRules = sqliteTable('regear_approval_rules', {
-  id: text('id').primaryKey(),
+  ticketId: text('ticket_id').notNull().references(() => regearTickets.id),
   guildId: text('guild_id').notNull().references(() => guilds.id),
-  name: text('name').notNull(),
-  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
-  priority: integer('priority').notNull().default(0),
-  condition: text('condition').notNull(),
-  action: text('action', { enum: ['approve', 'reject'] }).notNull(),
+  battleId: text('battle_id').notNull(),
   createdAt: text('created_at').notNull(),
-})
+}, (table) => ([
+  index('regear_ticket_battles_ticket_id_idx').on(table.ticketId),
+  index('regear_ticket_battles_guild_id_idx').on(table.guildId),
+  index('regear_ticket_battles_battle_id_idx').on(table.battleId),
+  uniqueIndex('regear_ticket_battles_ticket_battle_idx').on(table.ticketId, table.battleId),
+]))
+
+export const regears = sqliteTable('regears', {
+  id: text('id').primaryKey(),
+  ticketId: text('ticket_id').notNull().references(() => regearTickets.id),
+  eventId: text('event_id').notNull(),
+  status: text('status', { enum: ['pending_review', 'excluded', 'rejected', 'pending_regear', 'completed'] }).notNull().default('pending_review'),
+  comment: text('comment'),
+  server: text('server', { enum: ['asia', 'eu', 'us'] }).notNull(),
+  playerName: text('player_name').notNull().default(''),
+  deletedAt: text('deleted_at'), // Soft delete timestamp
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => ([
+  index('regears_ticket_id_idx').on(table.ticketId),
+  index('regears_player_server_idx').on(table.playerName, table.server),
+]))
+
+export const regearLogs = sqliteTable('regear_logs', {
+  id: text('id').primaryKey(),
+  regearId: text('regear_id').notNull().references(() => regears.id),
+  action: text('action').notNull(),
+  operatorId: text('operator_id').notNull().references(() => users.id),
+  comment: text('comment'),
+  createdAt: text('created_at').notNull(),
+}, (table) => ([
+  index('regear_logs_regear_id_idx').on(table.regearId),
+]))

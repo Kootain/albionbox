@@ -6,6 +6,7 @@ const BUILT_IN_PERMISSIONS = [
   { key: 'platform:admin', module: 'platform', action: 'admin', identityType: 'platform' as const, description: '平台管理员权限' },
   { key: 'guild:manage', module: 'guild', action: 'manage', identityType: 'game' as const, description: '管理工会（设置、成员管理）' },
   { key: 'guild:view', module: 'guild', action: 'view', identityType: 'game' as const, description: '查看工会信息' },
+  { key: 'guild:regear', module: 'guild', action: 'regear', identityType: 'game' as const, description: '管理/审批工会补装' },
   { key: 'regear:manage', module: 'regear', action: 'manage', identityType: 'game' as const, description: '创建/管理补装 Session' },
   { key: 'regear:approve', module: 'regear', action: 'approve', identityType: 'game' as const, description: '审批/拒绝补装记录' },
   { key: 'regear:configure', module: 'regear', action: 'configure', identityType: 'game' as const, description: '配置补装自动审批规则' },

@@ -1,0 +1,467 @@
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Settings, Save, Search, Loader2, Plus, Trash2, CheckCircle } from 'lucide-react';
+import { api } from '@/lib/api';
+import { cn } from '@/lib/utils';
+import { AlbionSearchResultPlayer } from '@albionbox/shared';
+
+interface ChestRoom {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  assignments: {x: number, y: number, playerId: string, playerName: string}[];
+}
+
+interface SettingsTabProps {
+  guildId?: string;
+}
+
+export function SettingsTab({ guildId }: SettingsTabProps) {
+  const { t } = useTranslation();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const [allowedSlots, setAllowedSlots] = useState<string[]>(['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Cape']);
+  const [rooms, setRooms] = useState<ChestRoom[]>([]);
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<AlbionSearchResultPlayer[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [activeCell, setActiveCell] = useState<{x: number, y: number} | null>(null);
+
+  const allSlots = ['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Bag', 'Cape', 'Mount', 'Potion', 'Food'];
+
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  const [editingRoomName, setEditingRoomName] = useState('');
+  const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
+  useEffect(() => {
+    if (!guildId) return;
+    const fetchSettings = async () => {
+      setIsLoading(true);
+      try {
+        const res = await api.guilds[':id'].settings.$get({ param: { id: guildId } });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.regearConfig?.allowedSlots) setAllowedSlots(data.regearConfig.allowedSlots);
+          if (data.chestRooms && data.chestRooms.length > 0) {
+            setRooms(data.chestRooms);
+            setActiveRoomId(data.chestRooms[0].id);
+          } else {
+            // Default room
+            const defaultRoom = { id: 'default', name: 'Main Room', width: 10, height: 10, assignments: [] };
+            setRooms([defaultRoom]);
+            setActiveRoomId('default');
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchSettings();
+  }, [guildId]);
+
+  const handleSave = async (currentSlots = allowedSlots, currentRooms = rooms) => {
+    if (!guildId) return;
+    setIsSaving(true);
+    try {
+      const res = await api.guilds[':id'].settings.$put({
+        param: { id: guildId },
+        json: {
+          regearConfig: { allowedSlots: currentSlots },
+          chestRooms: currentRooms
+        }
+      });
+      if (!res.ok) throw new Error('Failed to save settings');
+      setToastMessage({ type: 'success', text: t('common.saved', { defaultValue: 'Saved successfully!' }) });
+    } catch (err) {
+      console.error(err);
+      setToastMessage({ type: 'error', text: t('common.save_failed', { defaultValue: 'Failed to save settings' }) });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSlotToggle = (slot: string) => {
+    let newSlots;
+    if (allowedSlots.includes(slot)) {
+      newSlots = allowedSlots.filter(s => s !== slot);
+    } else {
+      newSlots = [...allowedSlots, slot];
+    }
+    setAllowedSlots(newSlots);
+    handleSave(newSlots, rooms);
+  };
+
+  const handleAddRoom = () => {
+    let nameNum = rooms.length + 1;
+    let baseName = `Room${nameNum}`;
+    while (rooms.some(r => r.name === baseName)) {
+      nameNum++;
+      baseName = `Room${nameNum}`;
+    }
+    
+    const newRoom: ChestRoom = {
+      id: Math.random().toString(36).substring(2, 9),
+      name: baseName,
+      width: 10,
+      height: 10,
+      assignments: []
+    };
+    const newRooms = [...rooms, newRoom];
+    setRooms(newRooms);
+    setActiveRoomId(newRoom.id);
+    handleSave(allowedSlots, newRooms);
+  };
+
+  const handleDeleteRoom = () => {
+    if (rooms.length <= 1) {
+      alert('Cannot delete the last room.');
+      return;
+    }
+    if (!confirm('Are you sure you want to delete this room?')) return;
+    const newRooms = rooms.filter(r => r.id !== activeRoomId);
+    setRooms(newRooms);
+    setActiveRoomId(newRooms[0].id);
+    handleSave(allowedSlots, newRooms);
+  };
+
+  const updateActiveRoom = (updates: Partial<ChestRoom>) => {
+    const newRooms = rooms.map(r => r.id === activeRoomId ? { ...r, ...updates } : r);
+    setRooms(newRooms);
+    handleSave(allowedSlots, newRooms);
+  };
+
+  const handleRoomNameEditComplete = (roomId: string) => {
+    if (!editingRoomId) return;
+    
+    const newName = editingRoomName.trim();
+    if (!newName) {
+      setEditingRoomId(null);
+      return;
+    }
+
+    if (rooms.some(r => r.id !== roomId && r.name === newName)) {
+      alert('Room name already exists.');
+      return;
+    }
+
+    const newRooms = rooms.map(r => r.id === roomId ? { ...r, name: newName } : r);
+    setRooms(newRooms);
+    setEditingRoomId(null);
+    handleSave(allowedSlots, newRooms);
+  };
+
+  const activeRoom = rooms.find(r => r.id === activeRoomId);
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim() || !guildId) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const res = await api.guilds[':id'].albion.search.$get({ param: { id: guildId }, query: { q: query } });
+      if (res.ok) {
+        const data = await res.json() as any;
+        setSearchResults(data.players || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const assignPlayer = (player: AlbionSearchResultPlayer) => {
+    if (!activeCell || !activeRoom) return;
+    
+    const newAssignments = activeRoom.assignments.filter(a => !(a.x === activeCell.x && a.y === activeCell.y));
+    newAssignments.push({
+      x: activeCell.x,
+      y: activeCell.y,
+      playerId: player.Id,
+      playerName: player.Name
+    });
+    
+    updateActiveRoom({ assignments: newAssignments });
+    setActiveCell(null);
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  const removeAssignment = (x: number, y: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!activeRoom) return;
+    updateActiveRoom({
+      assignments: activeRoom.assignments.filter(a => !(a.x === x && a.y === y))
+    });
+  };
+
+  const isDuplicate = (playerId: string) => {
+    if (!activeRoom) return false;
+    return activeRoom.assignments.filter(a => a.playerId === playerId).length > 1;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="w-8 h-8 text-gold animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 sm:p-6 bg-black-card rounded-2xl border border-black-border mt-6">
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-slate-500/10 text-slate-400 rounded-xl">
+            <Settings className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white uppercase tracking-tight">{t('guild_dashboard.settings.title', { defaultValue: 'Guild Settings' })}</h2>
+            <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">{t('guild_dashboard.settings.desc', { defaultValue: 'Configure regear rules and chest allocations' })}</p>
+          </div>
+        </div>
+        
+        {toastMessage && (
+          <div className={cn(
+            "flex items-center gap-2 px-4 py-2 border text-xs font-bold rounded-lg shadow-lg",
+            toastMessage.type === 'success' 
+              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" 
+              : "bg-rose-500/10 border-rose-500/20 text-rose-500"
+          )}>
+            {toastMessage.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <div className="w-4 h-4 rounded-full border-2 border-current flex items-center justify-center font-black text-[10px]">!</div>}
+            {toastMessage.text}
+          </div>
+        )}
+        
+        {isSaving && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-black-bg border border-black-border text-slate-400 text-xs font-bold rounded-lg shadow-lg">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Saving...
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-10">
+        {/* Regear Rules Config */}
+        <section className="space-y-4">
+          <h3 className="text-lg font-bold text-white uppercase tracking-tight">{t('guild_dashboard.settings.regear_rules', { defaultValue: 'Default Regear Slots' })}</h3>
+          <p className="text-sm text-slate-400">{t('guild_dashboard.settings.regear_rules_desc', { defaultValue: 'Select the equipment slots that are eligible for regear by default.' })}</p>
+          
+          <div className="flex flex-wrap gap-3">
+            {allSlots.map(slot => (
+              <button
+                key={slot}
+                onClick={() => handleSlotToggle(slot)}
+                className={cn(
+                  "px-4 py-2 rounded-lg border text-sm font-bold transition-colors cursor-pointer",
+                  allowedSlots.includes(slot) 
+                    ? "bg-gold/10 border-gold text-gold" 
+                    : "bg-black-bg border-black-border text-slate-500 hover:border-slate-700"
+                )}
+              >
+                {slot}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <hr className="border-black-border" />
+
+        {/* Chest Config */}
+        <section className="space-y-4 relative">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-bold text-white uppercase tracking-tight">{t('guild_dashboard.settings.chest_config', { defaultValue: 'Chest Grid Configuration' })}</h3>
+              <p className="text-sm text-slate-400">{t('guild_dashboard.settings.chest_config_desc', { defaultValue: 'Configure your NxM chest grid and assign players to cells.' })}</p>
+            </div>
+            {activeRoom && (
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 text-sm text-slate-400 font-bold uppercase tracking-widest">
+                  {t('guild_dashboard.settings.col', { defaultValue: 'Cols' })}: <input type="number" min="1" max="20" value={activeRoom.width} onChange={e => updateActiveRoom({ width: Number(e.target.value) })} className="w-16 px-2 py-1 bg-black-bg border border-black-border rounded text-white" />
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-400 font-bold uppercase tracking-widest">
+                  {t('guild_dashboard.settings.row', { defaultValue: 'Rows' })}: <input type="number" min="1" max="20" value={activeRoom.height} onChange={e => updateActiveRoom({ height: Number(e.target.value) })} className="w-16 px-2 py-1 bg-black-bg border border-black-border rounded text-white" />
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Rooms Tab Bar */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-black-border">
+            {rooms.map(room => (
+              <div key={room.id} className={cn(
+                "rounded-t-lg transition-colors border-b border-black-border -mb-[1px]",
+                activeRoomId === room.id 
+                  ? "bg-black-bg border-t border-l border-r border-black-border border-b-transparent" 
+                  : "hover:bg-black-bg/50"
+              )}>
+                {editingRoomId === room.id ? (
+                  <input
+                    type="text"
+                    autoFocus
+                    value={editingRoomName}
+                    onChange={e => setEditingRoomName(e.target.value)}
+                    onBlur={() => handleRoomNameEditComplete(room.id)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleRoomNameEditComplete(room.id);
+                      if (e.key === 'Escape') setEditingRoomId(null);
+                    }}
+                    className="px-4 py-2 text-sm font-bold bg-transparent text-white focus:outline-none w-32"
+                  />
+                ) : (
+                  <button
+                    onClick={() => setActiveRoomId(room.id)}
+                    onDoubleClick={() => {
+                      setEditingRoomId(room.id);
+                      setEditingRoomName(room.name);
+                    }}
+                    className={cn(
+                      "px-4 py-2 text-sm font-bold whitespace-nowrap",
+                      activeRoomId === room.id ? "text-white" : "text-slate-500 hover:text-slate-300"
+                    )}
+                  >
+                    {room.name}
+                  </button>
+                )}
+              </div>
+            ))}
+            <button 
+              onClick={handleAddRoom}
+              className="p-2 text-slate-400 hover:text-white hover:bg-black-bg rounded-lg transition-colors ml-2"
+              title="Add new room"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+            {rooms.length > 1 && (
+              <button 
+                onClick={handleDeleteRoom}
+                className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors ml-auto"
+                title="Delete current room"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {activeRoom && (
+            <div className="overflow-x-auto pb-4 bg-black-bg p-4 rounded-b-lg border-x border-b border-black-border -mt-4">
+              <div 
+                className="grid gap-2 min-w-max" 
+                style={{ gridTemplateColumns: `repeat(${activeRoom.width}, minmax(80px, 1fr))` }}
+              >
+                {Array.from({ length: activeRoom.height }).map((_, y) => (
+                  Array.from({ length: activeRoom.width }).map((_, x) => {
+                    const displayX = x + 1;
+                    const displayY = y + 1;
+                    const assignment = activeRoom.assignments.find(a => a.x === displayX && a.y === displayY);
+                    const isDup = assignment ? isDuplicate(assignment.playerId) : false;
+                    const isActive = activeCell?.x === displayX && activeCell?.y === displayY;
+
+                    return (
+                      <div 
+                        key={`${displayX}-${displayY}`}
+                        onClick={() => setActiveCell({x: displayX, y: displayY})}
+                        className={cn(
+                          "h-16 rounded-lg border flex flex-col items-center justify-center p-1 cursor-pointer relative group transition-colors",
+                          isActive ? "border-gold bg-gold/5" :
+                          assignment 
+                            ? isDup ? "border-rose-500/50 bg-rose-500/10 text-rose-400" : "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
+                            : "border-black-border bg-black-card hover:border-slate-700"
+                        )}
+                      >
+                        <span className="text-[10px] text-slate-600 absolute top-1 left-1 font-bold">
+                          {t('guild_dashboard.settings.row', { defaultValue: 'Row' })}:{displayY} {t('guild_dashboard.settings.col', { defaultValue: 'Col' })}:{displayX}
+                        </span>
+                        {assignment ? (
+                          <>
+                            <span className="text-xs font-bold text-center truncate w-full px-1 mt-2" title={assignment.playerName}>
+                              {assignment.playerName}
+                            </span>
+                            <button 
+                              onClick={(e) => removeAssignment(displayX, displayY, e)}
+                              className="absolute -top-2 -right-2 bg-black-card border border-black-border rounded-full w-5 h-5 flex items-center justify-center text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              ×
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-xs text-slate-600 font-bold">+</span>
+                        )}
+                      </div>
+                    );
+                  })
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Search Popup Overlay */}
+          {activeCell && (
+            <div className="absolute top-0 left-0 w-full h-full bg-black/80 backdrop-blur-sm flex items-center justify-center z-10 p-4">
+              <div className="bg-black-card border border-black-border rounded-xl p-4 w-full max-w-md shadow-2xl">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-white font-bold text-sm uppercase tracking-widest">
+                    {t('guild_dashboard.settings.assign_player', { 
+                      row: `${t('guild_dashboard.settings.row', { defaultValue: 'Row' })}:${activeCell.y}`, 
+                      col: `${t('guild_dashboard.settings.col', { defaultValue: 'Col' })}:${activeCell.x}` 
+                    })}
+                  </h4>
+                  <button onClick={() => { setActiveCell(null); setSearchQuery(''); setSearchResults([]); }} className="text-slate-400 hover:text-white">✕</button>
+                </div>
+                
+                <div className="relative mb-4">
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Search player by name..."
+                    value={searchQuery}
+                    onChange={e => handleSearch(e.target.value)}
+                    className="w-full bg-black-bg border border-black-border rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-gold/50"
+                  />
+                  <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  {isSearching && <Loader2 className="w-4 h-4 text-gold animate-spin absolute right-3 top-3" />}
+                </div>
+
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                  {searchResults.map(player => (
+                    <div 
+                      key={player.Id} 
+                      onClick={() => assignPlayer(player)}
+                      className="flex items-center justify-between p-2 rounded-lg hover:bg-black-bg cursor-pointer group"
+                    >
+                      <div>
+                        <div className="text-sm font-bold text-white">{player.Name}</div>
+                        <div className="text-xs text-slate-500 font-bold">{player.GuildName || 'No Guild'}</div>
+                      </div>
+                      <button className="text-xs font-bold text-gold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Select</button>
+                    </div>
+                  ))}
+                  {searchQuery && !isSearching && searchResults.length === 0 && (
+                    <div className="text-center text-sm font-bold uppercase tracking-widest text-slate-500 py-4">No players found</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+        </section>
+      </div>
+    </div>
+  );
+}

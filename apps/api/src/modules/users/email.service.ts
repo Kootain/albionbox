@@ -28,7 +28,7 @@ export async function sendEmail(
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: 'noreply@albionbox.app', to, subject, html }),
+    body: JSON.stringify({ from: 'noreply@unibook.me', to, subject, html }),
   })
   if (!res.ok) {
     const text = await res.text()
@@ -37,11 +37,11 @@ export async function sendEmail(
 }
 
 export function sendVerificationEmail(apiKey: string, baseUrl: string, to: string, token: string) {
-  const link = `${baseUrl}/auth/verify_email?token=${token}`
+  const link = `${baseUrl}/users/verify_email?token=${token}`
   return sendEmail(apiKey, to, '激活你的 AlbionBox 账号', `<p>点击链接激活账号：<a href="${link}">${link}</a></p>`)
 }
 
 export function sendPasswordResetEmail(apiKey: string, baseUrl: string, to: string, token: string) {
-  const link = `${baseUrl}/auth/reset_password?token=${token}`
+  const link = `${baseUrl}/users/reset_password?token=${token}`
   return sendEmail(apiKey, to, '重置 AlbionBox 密码', `<p>点击链接重置密码：<a href="${link}">${link}</a></p>`)
 }

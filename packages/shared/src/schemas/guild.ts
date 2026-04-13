@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 export const CreateGuildSchema = z.object({
+  id: z.string().min(1),
   name: z.string().min(1),
   server: z.enum(['asia', 'eu', 'us']),
 })
@@ -26,3 +27,23 @@ export const ChestPositionSchema = z.object({
   x: z.number().int(),
   y: z.number().int(),
 })
+
+export const UpdateGuildSettingsSchema = z.object({
+  regearConfig: z.object({
+    allowedSlots: z.array(z.string()),
+  }).optional(),
+  chestRooms: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    width: z.number().int().min(1),
+    height: z.number().int().min(1),
+    assignments: z.array(z.object({
+      x: z.number().int(),
+      y: z.number().int(),
+      playerId: z.string(),
+      playerName: z.string(),
+    })),
+  })).optional(),
+})
+
+export type { Guild, GuildMember, Role, Permission, GuildMemberRole } from '@albionbox/db'

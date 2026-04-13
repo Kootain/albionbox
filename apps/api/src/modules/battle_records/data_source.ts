@@ -1,3 +1,8 @@
+import { AlbionOfficialBattle, AlbionOfficialEvent, AlbionServer } from '@albionbox/shared'
+import { AlbionApiClient } from '../../lib/albion-sdk'
+
+
+
 export interface AlbionBattleVictim {
   Id: string
   Name: string
@@ -18,17 +23,20 @@ export interface AlbionBattle {
   events: AlbionBattleEvent[]
 }
 
-export interface BattleDataSource {
-  fetchGuildBattles(albionGuildId: string, dbUrl: string, dbToken: string): Promise<AlbionBattle[]>
+// New unified battle report data source interface
+export interface BattleReportDataSource {
+  getRecentGuildBattles(guildId: string, server: AlbionServer, offset?: number, limit?: number): Promise<AlbionOfficialBattle[]>
+  getBattleEvents(battleId: string, server: AlbionServer, offset?: number, limit?: number): Promise<AlbionOfficialEvent[]>
 }
 
-export class HttpBattleDataSource implements BattleDataSource {
-  async fetchGuildBattles(albionGuildId: string, dbUrl: string, dbToken: string): Promise<AlbionBattle[]> {
-    const url = `${dbUrl}/guildbattles?guildId=${encodeURIComponent(albionGuildId)}`
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${dbToken}` },
-    })
-    if (!res.ok) throw new Error(`Battle DB fetch failed: ${res.status}`)
-    return res.json() as Promise<AlbionBattle[]>
+export class OfficialApiBattleDataSource implements BattleReportDataSource {
+  async getRecentGuildBattles(guildId: string, server: AlbionServer, offset = 0, limit = 51): Promise<AlbionOfficialBattle[]> {
+    const client = new AlbionApiClient(server)
+    return client.getGuildBattles(guildId, offset, limit)
+  }
+
+  async getBattleEvents(battleId: string, server: AlbionServer, offset = 0, limit = 51): Promise<AlbionOfficialEvent[]> {
+    const client = new AlbionApiClient(server)
+    return client.getBattleEvents(battleId, offset, limit)
   }
 }

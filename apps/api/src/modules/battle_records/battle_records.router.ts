@@ -1,50 +1,85 @@
 import { Hono } from 'hono'
+import { createFactory } from 'hono/factory'
 import { zValidator } from '@hono/zod-validator'
 import { drizzle } from 'drizzle-orm/d1'
 import { eq } from 'drizzle-orm'
-import { BattleRecordPageSchema } from '@albionbox/shared'
-import { battleRecords } from '@albionbox/db'
+import { z } from 'zod'
 import { authMiddleware } from '../users'
 import { guildPermMiddleware } from '../permissions'
-import { HttpBattleDataSource } from './data_source'
-import { syncBattleRecords, getBattleDetail } from './battle_records.service'
+import { OfficialApiBattleDataSource } from './data_source'
+import type { AppContext } from '../../context'
+import { AlbionApiClient } from '../../lib/albion-sdk'
+import {AlbionServer} from '@albionbox/shared'
 
-const router = new Hono<{ Bindings: Env }>()
-const dataSource = new HttpBattleDataSource()
+const factory = createFactory<AppContext>();
+const router = new Hono<AppContext>()
 
-router.use('*', authMiddleware)
+const albionSdkMap = new Map([
+  ['asia', new AlbionApiClient(AlbionServer.ASIA)],
+  ['us', new AlbionApiClient(AlbionServer.US)],
+  ['eu', new AlbionApiClient(AlbionServer.EU)]
+]);
 
-router.get('/:id/battle_records', guildPermMiddleware(['battle:view']), zValidator('query', BattleRecordPageSchema), async (c) => {
-  const guildId = c.req.param('id')
-  const { page, limit } = c.req.valid('query')
-  const db = drizzle(c.env.DB)
-
-  const records = await db.select()
-    .from(battleRecords)
-    .where(eq(battleRecords.guildId, guildId))
-    .limit(limit)
-    .offset((page - 1) * limit)
-    .all()
-
-  return c.json({ page, limit, data: records })
-})
-
-router.post('/:id/battle_records/sync', guildPermMiddleware(['battle:view']), async (c) => {
-  const guildId = c.req.param('id')
-  try {
-    const result = await syncBattleRecords(c.env.DB, guildId, dataSource, c.env.BATTLE_DB_URL, c.env.BATTLE_DB_TOKEN)
-    return c.json(result)
-  } catch (e: unknown) {
-    const err = e as { status?: number; message?: string }
-    return c.json({ error: err.message ?? '同步失败' }, (err.status ?? 500) as 400 | 404 | 500)
+const searchAlbionHandler = factory.createHandlers(
+  zValidator('query', z.object({
+    q: z.string().min(1),
+    server: z.enum(['asia', 'us', 'eu']).optional().default('asia')
+  })),
+  async (c) => {
+    const { q, server } = c.req.valid('query')
+    try {
+      const res = await albionSdkMap.get(server)?.search(q)
+      return c.json(res)
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500)
+    }
   }
-})
+)
 
-router.get('/:id/battle_records/:battleId', guildPermMiddleware(['battle:view']), async (c) => {
-  const { id: guildId, battleId } = c.req.param()
-  const detail = await getBattleDetail(c.env.DB, guildId, battleId)
-  if (!detail) return c.json({ error: '战斗记录不存在' }, 404)
-  return c.json(detail)
-})
+const getAlbionBattlesDirectHandler = factory.createHandlers(
+  zValidator('query', z.object({
+    guildId: z.string().min(1),
+    server: z.enum(['asia', 'us', 'eu']).optional().default('asia'),
+    offset: z.coerce.number().min(0).optional().default(0),
+    limit: z.coerce.number().min(1).max(51).optional().default(51)
+  })),
+  async (c) => {
+    const { guildId, server, offset, limit } = c.req.valid('query')
+    try {
+      const ds = new OfficialApiBattleDataSource()
+      const battles = await ds.getRecentGuildBattles(guildId, server as any, offset, limit)
+      return c.json(battles)
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500)
+    }
+  }
+)
 
-export { router as battleRecordsRouter }
+const getAlbionBattleEventsDirectHandler = factory.createHandlers(
+  zValidator('query', z.object({
+    battleId: z.string().min(1),
+    server: z.enum(['asia', 'us', 'eu']).optional().default('asia'),
+    offset: z.coerce.number().min(0).optional().default(0),
+    limit: z.coerce.number().min(1).max(51).optional().default(51)
+  })),
+  async (c) => {
+    const { battleId, server, offset, limit } = c.req.valid('query')
+    try {
+      const ds = new OfficialApiBattleDataSource()
+      const events = await ds.getBattleEvents(battleId, server as any, offset, limit)
+      return c.json(events)
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500)
+    }
+  }
+)
+
+const routes = router
+      // TEMPORARY DIRECT ALBION PROXY ROUTES (No auth for testing frontend integration)
+      .get('/test/albion/search', ...searchAlbionHandler)
+      .get('/test/albion/battles', ...getAlbionBattlesDirectHandler)
+      .get('/test/albion/events', ...getAlbionBattleEventsDirectHandler)
+      .use('*', authMiddleware)
+
+
+export { routes as battleRecordsRouter }

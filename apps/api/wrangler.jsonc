@@ -8,14 +8,19 @@
   // ],
   "vars": {
     "RESEND_API_KEY": "",
-    "APP_BASE_URL": "http://localhost:5173",
-    "BATTLE_DB_URL": "",
-    "BATTLE_DB_TOKEN": ""
+    "APP_BASE_URL": "http://localhost:5174",
+    "WEB_ORIGIN": "http://localhost:5174",
+    "API_BASE_URL": "http://127.0.0.1:8787",
+    "BATTLE_DB_URL": "http://localhost:9002",
+    "BATTLE_DB_TOKEN": "",
+    "ADMIN_EMAILS": "",
+    "KOOK_CLIENT_ID": "",
+    "KOOK_CLIENT_SECRET": ""
   },
     "kv_namespaces": [
       {
         "binding": "KV",
-        "id": "765bcd7c71e6494b9696769c291d6bc0"
+        "id": "785676a9ef7b4b8abd91c4c0fd0399c6"
       }
     ],
   // "r2_buckets": [
@@ -28,7 +33,7 @@
     {
       "binding": "DB",
       "database_name": "albion-box-db",
-      "database_id": "xxx",
+      "database_id": "cf44ea0d-f03f-45f9-83a4-f03ee59df79a",
       "migrations_dir": "../../packages/db/migrations"
     }
   ],
@@ -39,4 +44,17 @@
   //   "enabled": true,
   //   "head_sampling_rate": 1
   // }
+  "observability": {
+    "enabled": false,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": true,
+    }
+  }
 }

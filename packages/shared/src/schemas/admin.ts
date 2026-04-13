@@ -10,6 +10,8 @@ export const RejectGuildSchema = z.object({
 })
 
 export const ApproveBindingSchema = z.object({
+  id: z.uuid(),
+  token: z.string().optional().nullable(),
   albionPlayerId: z.string().min(1),
   note: z.string().optional(),
 })

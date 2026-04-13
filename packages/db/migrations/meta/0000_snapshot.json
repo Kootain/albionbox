@@ -1,141 +1,9 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "b5df1dfa-5cca-4b06-82f2-bc362e5b7ff0",
+  "id": "0063a270-5273-46cc-b16e-3c819e0b0796",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
-    "battle_deaths": {
-      "name": "battle_deaths",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "battle_record_id": {
-          "name": "battle_record_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "albion_player_id": {
-          "name": "albion_player_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "player_name": {
-          "name": "player_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "equipment": {
-          "name": "equipment",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "killed_at": {
-          "name": "killed_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "battle_deaths_battle_record_id_battle_records_id_fk": {
-          "name": "battle_deaths_battle_record_id_battle_records_id_fk",
-          "tableFrom": "battle_deaths",
-          "tableTo": "battle_records",
-          "columnsFrom": [
-            "battle_record_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "battle_records": {
-      "name": "battle_records",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "guild_id": {
-          "name": "guild_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "external_id": {
-          "name": "external_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "battle_at": {
-          "name": "battle_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "participants": {
-          "name": "participants",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "battle_records_guild_id_guilds_id_fk": {
-          "name": "battle_records_guild_id_guilds_id_fk",
-          "tableFrom": "battle_records",
-          "tableTo": "guilds",
-          "columnsFrom": [
-            "guild_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "guild_binding_tokens": {
       "name": "guild_binding_tokens",
       "columns": {
@@ -346,6 +214,13 @@
           "autoincrement": false,
           "default": "'pending'"
         },
+        "review_note": {
+          "name": "review_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "owner_id": {
           "name": "owner_id",
           "type": "text",
@@ -391,8 +266,22 @@
           "notNull": true,
           "autoincrement": false
         },
-        "game_account_id": {
-          "name": "game_account_id",
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "server": {
+          "name": "server",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -418,6 +307,21 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "review_note": {
+          "name": "review_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -427,15 +331,31 @@
             "token"
           ],
           "isUnique": true
+        },
+        "binding_tokens_user_id_idx": {
+          "name": "binding_tokens_user_id_idx",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        },
+        "binding_tokens_username_server_userId_idx": {
+          "name": "binding_tokens_username_server_userId_idx",
+          "columns": [
+            "username",
+            "server",
+            "user_id"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {
-        "binding_tokens_game_account_id_game_accounts_id_fk": {
-          "name": "binding_tokens_game_account_id_game_accounts_id_fk",
+        "binding_tokens_user_id_users_id_fk": {
+          "name": "binding_tokens_user_id_users_id_fk",
           "tableFrom": "binding_tokens",
-          "tableTo": "game_accounts",
+          "tableTo": "users",
           "columnsFrom": [
-            "game_account_id"
+            "user_id"
           ],
           "columnsTo": [
             "id"
@@ -529,11 +449,11 @@
           "name": "user_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
-        "game_id": {
-          "name": "game_id",
+        "username": {
+          "name": "username",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -544,7 +464,8 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "''"
         },
         "server": {
           "name": "server",
@@ -559,7 +480,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'pending'"
+          "default": "'idle'"
         },
         "created_at": {
           "name": "created_at",
@@ -569,7 +490,23 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "game_accounts_user_id_idx": {
+          "name": "game_accounts_user_id_idx",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        },
+        "game_accounts_username_server_idx": {
+          "name": "game_accounts_username_server_idx",
+          "columns": [
+            "username",
+            "server"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "game_accounts_user_id_users_id_fk": {
           "name": "game_accounts_user_id_users_id_fk",
@@ -656,6 +593,124 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "third_party_accounts": {
+      "name": "third_party_accounts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "provider_account_id": {
+          "name": "provider_account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "provider_username": {
+          "name": "provider_username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "provider_avatar": {
+          "name": "provider_avatar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "third_party_provider_account_id_idx": {
+          "name": "third_party_provider_account_id_idx",
+          "columns": [
+            "provider",
+            "provider_account_id"
+          ],
+          "isUnique": true
+        },
+        "third_party_user_provider_idx": {
+          "name": "third_party_user_provider_idx",
+          "columns": [
+            "user_id",
+            "provider"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "third_party_accounts_user_id_users_id_fk": {
+          "name": "third_party_accounts_user_id_users_id_fk",
+          "tableFrom": "third_party_accounts",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "users": {
       "name": "users",
       "columns": {
@@ -670,21 +725,29 @@
           "name": "email",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
+        },
+        "email_verified": {
+          "name": "email_verified",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
         },
         "password_hash": {
           "name": "password_hash",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "password_salt": {
           "name": "password_salt",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "active_game_account_id": {
@@ -744,6 +807,19 @@
       },
       "indexes": {},
       "foreignKeys": {
+        "guild_member_roles_guild_member_id_guild_members_id_fk": {
+          "name": "guild_member_roles_guild_member_id_guild_members_id_fk",
+          "tableFrom": "guild_member_roles",
+          "tableTo": "guild_members",
+          "columnsFrom": [
+            "guild_member_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "guild_member_roles_role_id_roles_id_fk": {
           "name": "guild_member_roles_role_id_roles_id_fk",
           "tableFrom": "guild_member_roles",
@@ -977,8 +1053,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "regear_approval_logs": {
-      "name": "regear_approval_logs",
+    "regear_logs": {
+      "name": "regear_logs",
       "columns": {
         "id": {
           "name": "id",
@@ -987,119 +1063,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "regear_record_id": {
-          "name": "regear_record_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "from_status": {
-          "name": "from_status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "to_status": {
-          "name": "to_status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "operator_id": {
-          "name": "operator_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "is_system": {
-          "name": "is_system",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "regear_approval_logs_regear_record_id_regear_records_id_fk": {
-          "name": "regear_approval_logs_regear_record_id_regear_records_id_fk",
-          "tableFrom": "regear_approval_logs",
-          "tableTo": "regear_records",
-          "columnsFrom": [
-            "regear_record_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "regear_approval_rules": {
-      "name": "regear_approval_rules",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "guild_id": {
-          "name": "guild_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "enabled": {
-          "name": "enabled",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": true
-        },
-        "priority": {
-          "name": "priority",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "condition": {
-          "name": "condition",
+        "regear_id": {
+          "name": "regear_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -1112,6 +1077,20 @@
           "notNull": true,
           "autoincrement": false
         },
+        "operator_id": {
+          "name": "operator_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "comment": {
+          "name": "comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "text",
@@ -1120,11 +1099,134 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "regear_logs_regear_id_idx": {
+          "name": "regear_logs_regear_id_idx",
+          "columns": [
+            "regear_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
-        "regear_approval_rules_guild_id_guilds_id_fk": {
-          "name": "regear_approval_rules_guild_id_guilds_id_fk",
-          "tableFrom": "regear_approval_rules",
+        "regear_logs_regear_id_regears_id_fk": {
+          "name": "regear_logs_regear_id_regears_id_fk",
+          "tableFrom": "regear_logs",
+          "tableTo": "regears",
+          "columnsFrom": [
+            "regear_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "regear_logs_operator_id_users_id_fk": {
+          "name": "regear_logs_operator_id_users_id_fk",
+          "tableFrom": "regear_logs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "operator_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "regear_ticket_battles": {
+      "name": "regear_ticket_battles",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ticket_id": {
+          "name": "ticket_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "guild_id": {
+          "name": "guild_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "battle_id": {
+          "name": "battle_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "regear_ticket_battles_ticket_id_idx": {
+          "name": "regear_ticket_battles_ticket_id_idx",
+          "columns": [
+            "ticket_id"
+          ],
+          "isUnique": false
+        },
+        "regear_ticket_battles_guild_id_idx": {
+          "name": "regear_ticket_battles_guild_id_idx",
+          "columns": [
+            "guild_id"
+          ],
+          "isUnique": false
+        },
+        "regear_ticket_battles_battle_id_idx": {
+          "name": "regear_ticket_battles_battle_id_idx",
+          "columns": [
+            "battle_id"
+          ],
+          "isUnique": false
+        },
+        "regear_ticket_battles_ticket_battle_idx": {
+          "name": "regear_ticket_battles_ticket_battle_idx",
+          "columns": [
+            "ticket_id",
+            "battle_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "regear_ticket_battles_ticket_id_regear_tickets_id_fk": {
+          "name": "regear_ticket_battles_ticket_id_regear_tickets_id_fk",
+          "tableFrom": "regear_ticket_battles",
+          "tableTo": "regear_tickets",
+          "columnsFrom": [
+            "ticket_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "regear_ticket_battles_guild_id_guilds_id_fk": {
+          "name": "regear_ticket_battles_guild_id_guilds_id_fk",
+          "tableFrom": "regear_ticket_battles",
           "tableTo": "guilds",
           "columnsFrom": [
             "guild_id"
@@ -1140,132 +1242,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "regear_records": {
-      "name": "regear_records",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "session_id": {
-          "name": "session_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "battle_death_id": {
-          "name": "battle_death_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'draft'"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "regear_records_session_id_regear_sessions_id_fk": {
-          "name": "regear_records_session_id_regear_sessions_id_fk",
-          "tableFrom": "regear_records",
-          "tableTo": "regear_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "regear_records_battle_death_id_battle_deaths_id_fk": {
-          "name": "regear_records_battle_death_id_battle_deaths_id_fk",
-          "tableFrom": "regear_records",
-          "tableTo": "battle_deaths",
-          "columnsFrom": [
-            "battle_death_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "regear_session_battles": {
-      "name": "regear_session_battles",
-      "columns": {
-        "session_id": {
-          "name": "session_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "battle_record_id": {
-          "name": "battle_record_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "regear_session_battles_session_id_regear_sessions_id_fk": {
-          "name": "regear_session_battles_session_id_regear_sessions_id_fk",
-          "tableFrom": "regear_session_battles",
-          "tableTo": "regear_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "regear_session_battles_battle_record_id_battle_records_id_fk": {
-          "name": "regear_session_battles_battle_record_id_battle_records_id_fk",
-          "tableFrom": "regear_session_battles",
-          "tableTo": "battle_records",
-          "columnsFrom": [
-            "battle_record_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "regear_sessions": {
-      "name": "regear_sessions",
+    "regear_tickets": {
+      "name": "regear_tickets",
       "columns": {
         "id": {
           "name": "id",
@@ -1281,16 +1259,15 @@
           "notNull": true,
           "autoincrement": false
         },
-        "status": {
-          "name": "status",
+        "config": {
+          "name": "config",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "'active'"
+          "autoincrement": false
         },
-        "created_by": {
-          "name": "created_by",
+        "server": {
+          "name": "server",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -1302,13 +1279,28 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "regear_tickets_guild_id_idx": {
+          "name": "regear_tickets_guild_id_idx",
+          "columns": [
+            "guild_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
-        "regear_sessions_guild_id_guilds_id_fk": {
-          "name": "regear_sessions_guild_id_guilds_id_fk",
-          "tableFrom": "regear_sessions",
+        "regear_tickets_guild_id_guilds_id_fk": {
+          "name": "regear_tickets_guild_id_guilds_id_fk",
+          "tableFrom": "regear_tickets",
           "tableTo": "guilds",
           "columnsFrom": [
             "guild_id"
@@ -1318,13 +1310,105 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "regears": {
+      "name": "regears",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
         },
-        "regear_sessions_created_by_users_id_fk": {
-          "name": "regear_sessions_created_by_users_id_fk",
-          "tableFrom": "regear_sessions",
-          "tableTo": "users",
+        "ticket_id": {
+          "name": "ticket_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "event_id": {
+          "name": "event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending_review'"
+        },
+        "comment": {
+          "name": "comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "server": {
+          "name": "server",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "player_name": {
+          "name": "player_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "regears_ticket_id_idx": {
+          "name": "regears_ticket_id_idx",
+          "columns": [
+            "ticket_id"
+          ],
+          "isUnique": false
+        },
+        "regears_player_server_idx": {
+          "name": "regears_player_server_idx",
+          "columns": [
+            "player_name",
+            "server"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "regears_ticket_id_regear_tickets_id_fk": {
+          "name": "regears_ticket_id_regear_tickets_id_fk",
+          "tableFrom": "regears",
+          "tableTo": "regear_tickets",
           "columnsFrom": [
-            "created_by"
+            "ticket_id"
           ],
           "columnsTo": [
             "id"

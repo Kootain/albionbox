@@ -22,6 +22,7 @@ const GAME_PERMISSION_KEYS = [
 export async function createGuildWithAdmin(
   db: D1Database,
   params: {
+    id: string,
     name: string
     server: 'asia' | 'eu' | 'us'
     ownerId: string
@@ -31,9 +32,9 @@ export async function createGuildWithAdmin(
   const d = drizzle(db)
   const now = new Date().toISOString()
 
-  const guildId = crypto.randomUUID()
   await d.insert(guilds).values({
-    id: guildId,
+    id: params.id,
+    albionGuildId: params.id,
     name: params.name,
     server: params.server,
     status: 'pending',
@@ -44,7 +45,7 @@ export async function createGuildWithAdmin(
   const bindingToken = crypto.randomUUID()
   await d.insert(guildBindingTokens).values({
     id: crypto.randomUUID(),
-    guildId,
+    guildId: params.id,
     token: bindingToken,
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   }).execute()
@@ -53,7 +54,7 @@ export async function createGuildWithAdmin(
   await d.insert(roles).values({
     id: adminRoleId,
     scope: 'guild',
-    guildId,
+    guildId: params.id,
     name: 'guild_admin',
     isSystem: true,
     createdAt: now,
@@ -76,12 +77,12 @@ export async function createGuildWithAdmin(
   const memberId = crypto.randomUUID()
   await d.insert(guildMembers).values({
     id: memberId,
-    guildId,
+    guildId: params.id,
     gameAccountId: params.activeGameAccountId,
     joinedAt: now,
   }).execute()
 
   await d.insert(guildMemberRoles).values({ guildMemberId: memberId, roleId: adminRoleId }).execute()
 
-  return { guildId, bindingToken }
+  return { guildId: params.id, bindingToken }
 }

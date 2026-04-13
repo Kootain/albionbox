@@ -1,2 +1,3 @@
 export { gameAccountsRouter } from './router'
-export { BindingVerifier, ManualVerifier } from './binding_verifier'
+export type { BindingVerifier } from './binding_verifier'
+export { ManualVerifier } from './binding_verifier'

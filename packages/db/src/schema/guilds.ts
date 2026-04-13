@@ -6,9 +6,9 @@ import { gameAccounts } from './users'
 export const guilds = sqliteTable('guilds', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
-  albionGuildId: text('albion_guild_id'),
   server: text('server', { enum: ['asia', 'eu', 'us'] }).notNull(),
   status: text('status', { enum: ['pending', 'active', 'rejected'] }).notNull().default('pending'),
+  albionGuildId: text('albion_guild_id'),
   reviewNote: text('review_note'),
   ownerId: text('owner_id').notNull().references(() => users.id),
   createdAt: text('created_at').notNull(),
@@ -33,3 +33,21 @@ export const guildMembers = sqliteTable('guild_members', {
 }, (t) => [
   check('guild_members_at_least_one_identity', sql`${t.userId} IS NOT NULL OR ${t.gameAccountId} IS NOT NULL`),
 ])
+
+export const guildSettings = sqliteTable('guild_settings', {
+  guildId: text('guild_id').primaryKey().references(() => guilds.id),
+  regearConfig: text('regear_config', { mode: 'json' }).$type<{ allowedSlots: string[] }>(),
+  chestRooms: text('chest_rooms', { mode: 'json' }).$type<{
+    id: string;
+    name: string;
+    width: number;
+    height: number;
+    assignments: {
+      x: number;
+      y: number;
+      playerId: string;
+      playerName: string;
+    }[];
+  }[]>(),
+  updatedAt: text('updated_at').notNull(),
+})

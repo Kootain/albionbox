@@ -9,12 +9,26 @@ import {
   guildMembers,
   guildMemberRoles,
 } from '@albionbox/db'
+import type { AppContext } from '../../context'
 
-export function platformPermMiddleware(permKey: string): MiddlewareHandler {
+function parseEmailAllowlist(value: string | undefined | null): Set<string> {
+  if (!value) return new Set()
+  const emails = value
+    .split(/[,\s]+/g)
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean)
+  return new Set(emails)
+}
+
+export function platformPermMiddleware(permKey: string): MiddlewareHandler<AppContext> {
   return async (c, next) => {
-    const user = c.get('user' as never) as { id: string } | undefined
-    if (!user) return c.json({ error: 'Unauthorized' }, 401)
+    const user = c.get('user')
 
+    const adminEmails = parseEmailAllowlist(c.env.ADMIN_EMAILS)
+    if (user.email && adminEmails.has(user.email.toLowerCase())) {
+      await next()
+      return
+    }
     const db = drizzle(c.env.DB)
 
     const result = await db
@@ -40,13 +54,17 @@ export function platformPermMiddleware(permKey: string): MiddlewareHandler {
 export function guildPermMiddleware(
   permKeys: string[],
   mode: 'ALL' | 'ANY' = 'ALL'
-): MiddlewareHandler {
+): MiddlewareHandler<AppContext> {
   return async (c, next) => {
-    const user = c.get('user' as never) as {
-      id: string
-      activeGameAccountId: string | null
-    } | undefined
-    if (!user) return c.json({ error: 'Unauthorized' }, 401)
+    const user = c.get('user')
+
+    if (!user) return c.json({ error: '请先登录后再执行此操作' }, 403)
+    
+    const adminEmails = parseEmailAllowlist(c.env.ADMIN_EMAILS)
+    if (user.email && adminEmails.has(user.email.toLowerCase())) {
+      await next()
+      return
+    }
 
     if (!user.activeGameAccountId) {
       return c.json({ error: '请先切换游戏角色后再执行此操作' }, 403)

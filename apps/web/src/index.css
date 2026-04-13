@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gold: #ff9900;
+  --color-gold-hover: #e68a00;
+  --color-black-bg: #0a0a0a;
+  --color-black-sidebar: #121212;
+  --color-black-card: #1a1a1a;
+  --color-black-border: #2a2a2a;
+}
+
+@layer base {
+  body {
+    @apply bg-black-bg text-slate-200;
+  }
+}
