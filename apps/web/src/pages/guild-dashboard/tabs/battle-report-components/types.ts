@@ -10,6 +10,7 @@ export interface GuildSummary {
 export interface BattleReportSummary {
   id: string;
   startTime: string; // ISO string
+  endTime: string; // ISO string
   aggregatedCount: number; // 0 if single
   guilds: GuildSummary[];
   totalParticipants: number;
@@ -18,6 +19,7 @@ export interface BattleReportSummary {
   ourParticipants: number;
   ourKills: number;
   ourDeaths: number;
+  ourPlayers: { id: string; name: string }[];
   regearTicketId?: string | null;
 }
 

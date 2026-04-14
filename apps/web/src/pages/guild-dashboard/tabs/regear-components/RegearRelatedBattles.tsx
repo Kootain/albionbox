@@ -87,6 +87,7 @@ export function RegearRelatedBattles({ battleIds, guildId }: RegearRelatedBattle
           return {
             id: String(b.id),
             startTime: b.startTime,
+            endTime: b.endTime,
             aggregatedCount: 0,
             guilds: b.guilds.sort((a: any, b: any) => b.participants - a.participants),
             totalParticipants: b.totalParticipants,
@@ -95,6 +96,7 @@ export function RegearRelatedBattles({ battleIds, guildId }: RegearRelatedBattle
             ourParticipants: ourGuild ? ourGuild.participants : 0,
             ourKills: ourGuild?.kills || 0,
             ourDeaths: ourGuild?.deaths || 0,
+            ourPlayers: [], // We don't have this data readily available here, but it's required by the interface
           };
         });
 

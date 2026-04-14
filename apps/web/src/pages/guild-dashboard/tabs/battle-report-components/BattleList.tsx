@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link as LinkIcon, Search, CheckSquare, Clock, ExternalLink, Loader2, ShieldAlert } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link as LinkIcon, Search, CheckSquare, Clock, ExternalLink, Loader2, ShieldAlert, Users } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -17,10 +17,13 @@ interface BattleListProps {
 export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villains', defaultGuildId, onRegearPreview }: BattleListProps) {
   const { t } = useTranslation();
   const [timeFormat, setTimeFormat] = useState<'UTC' | 'Local'>('UTC');
-  const [minPlayers, setMinPlayers] = useState<number>(10);
+  const [minPlayers, setMinPlayers] = useState<number>(0);
+  const [splitMinutes, setSplitMinutes] = useState<number>(60);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [expandedOverlapId, setExpandedOverlapId] = useState<string | null>(null);
   const { confirm } = useConfirm();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [battles, setBattles] = useState<BattleReportSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -93,10 +96,12 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
       const mappedBattles: BattleReportSummary[] = battlesData.map((b: any) => {
         const guildsArray = Object.values(b.guilds || {}) as any[];
         const ourGuild = guildsArray.find((g: any) => g.id === guildId);
+        const ourPlayers = Object.values(b.players || {}).filter((p: any) => p.guildId === guildId).map((p: any) => ({ id: p.id, name: p.name }));
         
         return {
           id: String(b.id),
           startTime: b.startTime,
+          endTime: b.endTime,
           aggregatedCount: 0,
           guilds: guildsArray.map((g: any) => ({
             id: g.id,
@@ -108,9 +113,10 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
           })).sort((a, b) => b.participants - a.participants),
           totalParticipants: Object.keys(b.players || {}).length,
           totalDeaths: b.totalDeaths || Object.values(b.guilds || {}).reduce((sum: number, g: any) => sum + (g.deaths || 0), 0),
-          ourParticipants: ourGuild ? Object.values(b.players || {}).filter((p: any) => p.guildId === ourGuild.id).length : 0,
+          ourParticipants: ourPlayers.length,
           ourKills: ourGuild?.kills || 0,
           ourDeaths: ourGuild?.deaths || 0,
+          ourPlayers: ourPlayers,
           regearTicketId: null
         };
       });
@@ -265,6 +271,17 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
               className="w-12 bg-transparent text-sm text-white focus:outline-none text-right" 
             />
           </div>
+          <div className="flex items-center gap-2 bg-black-bg border border-black-border rounded-lg px-3 py-2">
+            <span className="text-xs text-slate-500 font-bold uppercase" title={t('guild_dashboard.battle_report.split_minutes_tooltip', { defaultValue: 'Split list when time gap exceeds this value' })}>
+              {t('guild_dashboard.battle_report.split_minutes', { defaultValue: 'Split (min)' })}
+            </span>
+            <input 
+              type="number" 
+              value={splitMinutes} 
+              onChange={(e) => setSplitMinutes(Math.max(0, parseInt(e.target.value) || 0))}
+              className="w-12 bg-transparent text-sm text-white focus:outline-none text-right" 
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -353,8 +370,85 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
                   <span>{t('guild_dashboard.battle_report.no_data', { defaultValue: 'No battles found' })}</span>
                 </td>
               </tr>
-            ) : filteredBattles.map((battle) => (
-              <tr key={battle.id} className="border-b border-black-border/50 hover:bg-black-bg/50 transition-colors">
+            ) : filteredBattles.map((battle, index) => {
+              const isHovered = hoveredIndex === index;
+              const prevBattle = index > 0 ? filteredBattles[index - 1] : null;
+              const nextBattle = index < filteredBattles.length - 1 ? filteredBattles[index + 1] : null;
+
+              const getOverlapPlayers = (b1: BattleReportSummary, b2: BattleReportSummary) => {
+                if (!b1.ourPlayers || !b2.ourPlayers) return [];
+                const set1 = new Set(b1.ourPlayers.map(p => p.id));
+                return b2.ourPlayers.filter(p => set1.has(p.id));
+              };
+
+              const overlapPrevPlayers = prevBattle ? getOverlapPlayers(battle, prevBattle) : null;
+              const overlapNextPlayers = nextBattle ? getOverlapPlayers(battle, nextBattle) : null;
+
+              const renderOverlapTooltip = (players: {id: string, name: string}[], isPrev: boolean) => {
+                if (!players.length) return null;
+                const isExpanded = expandedOverlapId === `${battle.id}-${isPrev ? 'prev' : 'next'}`;
+                const displayPlayers = isExpanded ? players : players.slice(0, 20);
+                const hasMore = players.length > 20;
+                
+                return (
+                  <div className={cn(
+                    "absolute left-1/2 -translate-x-1/2 hidden group-hover:block w-72 p-3 bg-black text-[10px] text-slate-300 rounded-lg z-[60] border border-black-border shadow-2xl",
+                    isPrev ? "bottom-full mb-2" : "top-full mt-2"
+                  )}>
+                    <div className="font-bold text-gold mb-2 border-b border-black-border pb-1 flex justify-between items-center">
+                      <span>{isPrev ? 'Overlap with Previous' : 'Overlap with Next'} ({players.length})</span>
+                      {hasMore && (
+                        <span className="text-[9px] text-slate-500 font-normal">
+                          {isExpanded ? '(Click bubble to collapse)' : '(Click bubble to expand)'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 max-h-48 overflow-y-auto custom-scrollbar text-left">
+                      {displayPlayers.map(p => (
+                        <div key={p.id} className="truncate" title={p.name}>{p.name}</div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              };
+
+              let showSplitter = false;
+              if (prevBattle) {
+                const currTime = new Date(battle.endTime).getTime();
+                const prevTime = new Date(prevBattle.startTime).getTime();
+                // Since battles are sorted descending by time (newest first), prevBattle is newer.
+                // The gap is prevTime - currTime.
+                const diffMinutes = Math.abs(prevTime - currTime) / (1000 * 60);
+                if (diffMinutes > splitMinutes) {
+                  showSplitter = true;
+                }
+              }
+
+              return (
+              <React.Fragment key={battle.id}>
+                {showSplitter && (
+                  <tr>
+                    <td colSpan={8} className="py-2 px-0 relative">
+                      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-rose-500/50" />
+                      <div className="relative flex justify-center">
+                        <span className="bg-black-bg px-4 text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] border border-rose-500/20 rounded-full">
+                          {t('guild_dashboard.battle_report.time_gap', { defaultValue: '> {{min}} min gap', min: splitMinutes })}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              <tr 
+                onMouseEnter={() => setHoveredIndex(index)}
+                onMouseLeave={() => {
+                  setHoveredIndex(null);
+                  setExpandedOverlapId(null);
+                }}
+                className={cn(
+                  "border-b border-black-border/50 hover:bg-black-bg/50 transition-colors relative",
+                  isHovered ? "z-10" : ""
+                )}
+              >
                 <td className="py-4 px-4">
                   <input 
                     type="checkbox" 
@@ -423,14 +517,48 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
                     <span className="text-rose-500 font-bold">💀 {battle.totalDeaths}</span>
                   </div>
                 </td>
-                <td className="py-4 px-4 text-center">
-                  <div className="flex flex-col text-xs">
-                    <span className="text-gold font-bold">👥 {battle.ourParticipants}</span>
-                    <div className="flex items-center justify-center gap-1 mt-0.5">
+                <td className="py-4 px-4 text-center relative">
+                  <div className="flex flex-col items-center justify-center text-xs">
+                    {isHovered && overlapPrevPlayers !== null && overlapPrevPlayers.length > 0 && (
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 group cursor-pointer z-50">
+                        <div 
+                          className="bg-gold text-black text-[10px] font-black px-2 rounded-full shadow-[0_0_10px_rgba(234,179,8,0.3)] flex items-center gap-1 relative z-10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const targetId = `${battle.id}-prev`;
+                            setExpandedOverlapId(expandedOverlapId === targetId ? null : targetId);
+                          }}
+                        >
+                          <Users className="w-3 h-3" />
+                          {overlapPrevPlayers.length}
+                        </div>
+                        {renderOverlapTooltip(overlapPrevPlayers, true)}
+                      </div>
+                    )}
+                    
+                    <span className="text-gold font-bold my-1">👥 {battle.ourParticipants}</span>
+                    <div className="flex items-center justify-center gap-1">
                       <span className="text-emerald-500 font-bold">{battle.ourKills}</span>
                       <span className="text-slate-600">/</span>
                       <span className="text-rose-500 font-bold">{battle.ourDeaths}</span>
                     </div>
+
+                    {isHovered && overlapNextPlayers !== null && overlapNextPlayers.length > 0 && (
+                      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 group cursor-pointer z-50">
+                        <div 
+                          className="bg-gold text-black text-[10px] font-black px-2 rounded-full shadow-[0_0_10px_rgba(234,179,8,0.3)] flex items-center gap-1 relative z-10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const targetId = `${battle.id}-next`;
+                            setExpandedOverlapId(expandedOverlapId === targetId ? null : targetId);
+                          }}
+                        >
+                          <Users className="w-3 h-3" />
+                          {overlapNextPlayers.length}
+                        </div>
+                        {renderOverlapTooltip(overlapNextPlayers, false)}
+                      </div>
+                    )}
                   </div>
                 </td>
                 <td className="py-4 px-4 text-right">
@@ -452,7 +580,9 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
                   </div>
                 </td>
               </tr>
-            ))}
+              </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
         

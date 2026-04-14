@@ -1,15 +1,13 @@
 import { Hono } from 'hono'
 import { createFactory } from 'hono/factory'
 import { zValidator } from '@hono/zod-validator'
-import { drizzle } from 'drizzle-orm/d1'
-import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { authMiddleware } from '../users'
 import { guildPermMiddleware } from '../permissions'
 import { OfficialApiBattleDataSource } from './data_source'
 import type { AppContext } from '../../context'
 import { AlbionApiClient } from '../../lib/albion-sdk'
-import {AlbionServer} from '@albionbox/shared'
+import { AlbionServer } from '@albionbox/shared'
 
 const factory = createFactory<AppContext>();
 const router = new Hono<AppContext>()
@@ -101,6 +99,5 @@ const routes = router
       .get('/test/albion/events', ...getAlbionBattleEventsDirectHandler)
       .get('/test/albion/events/:id', ...getAlbionEventDirectHandler)
       .use('*', authMiddleware)
-
 
 export { routes as battleRecordsRouter }
