@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { GuildSelector, GuildInfo } from './components/GuildSelector';
 import { GuildStats } from './components/GuildStats';
@@ -24,8 +24,8 @@ const mockStats = {
 
 export default function GuildDashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const initialTab = (searchParams.get('tab') as TabType) || 'battle-report';
-  const initialTicketId = searchParams.get('ticketId') || null;
 
   const [currentGuild, setCurrentGuild] = useState<GuildInfo>({
     id: 'FSLSXN3LR5y_ENtf5KIcjw',
@@ -34,7 +34,6 @@ export default function GuildDashboardPage() {
   });
   
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
-  const [pendingRegearBattleIds, setPendingRegearBattleIds] = useState<string[] | null>(null);
 
   useEffect(() => {
     GameData.loadGameData().catch(console.error);
@@ -53,34 +52,22 @@ export default function GuildDashboardPage() {
       prev.set('tab', tab);
       if (tab !== 'regear') {
         prev.delete('ticketId');
+        prev.delete('action');
       }
       return prev;
     }, { replace: true });
   };
 
   const handleRegearPreview = (ids: string[]) => {
-    setPendingRegearBattleIds(ids);
-    handleTabChange('regear');
-  };
-
-  const handleTicketIdClear = () => {
-    setSearchParams(prev => {
-      prev.delete('ticketId');
-      return prev;
-    }, { replace: true });
+    setActiveTab('regear');
+    navigate('/guild-dashboard?tab=regear&action=preview', { state: { battleIds: ids } });
   };
 
   const renderTabContent = () => {
     switch (activeTab) {
       case 'battle-report': return <BattleReportTab guildName={currentGuild.name} guildId={currentGuild.id} onRegearPreview={handleRegearPreview} />;
       case 'members': return <MembersTab />;
-      case 'regear': return <RegearTab 
-        guildId={currentGuild.id} 
-        initialPreviewBattleIds={pendingRegearBattleIds} 
-        onPreviewClear={() => setPendingRegearBattleIds(null)} 
-        initialTicketId={initialTicketId}
-        onTicketIdClear={handleTicketIdClear}
-      />;
+      case 'regear': return <RegearTab guildId={currentGuild.id} />;
       case 'orders': return <OrdersTab />;
       case 'activities': return <ActivitiesTab />;
       case 'attendance': return <AttendanceTab />;

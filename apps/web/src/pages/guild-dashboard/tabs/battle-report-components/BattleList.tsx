@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link as LinkIcon, Search, CheckSquare, Clock, ExternalLink, Loader2, ShieldAlert } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +29,12 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
   // Pagination state
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [loadCount, setLoadCount] = useState(0);
+  const [isFetching, setIsFetching] = useState(false); // Hard lock for network requests
+  const isFetchingRef = useRef(false);
+  const bottomBoundaryRef = useRef<HTMLDivElement>(null);
   const LIMIT = 10;
+  const MAX_AUTO_LOAD_PAGES = 10;
 
   // Active guild being viewed
   const [activeGuildId, setActiveGuildId] = useState<string | null>(defaultGuildId || null);
@@ -62,10 +67,16 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
     setBattles([]);
     setOffset(0);
     setHasMore(true);
+    setLoadCount(0);
     fetchBattles(activeGuildId, 0, true);
   }, [activeGuildId]);
 
   const fetchBattles = async (guildId: string, currentOffset: number, isInitial: boolean) => {
+    // Prevent fetching if another request is already in flight for the exact same offset
+    if (isFetchingRef.current) return;
+    
+    setIsFetching(true);
+    isFetchingRef.current = true;
     if (isInitial) setLoading(true);
     else setLoadingMore(true);
     setError('');
@@ -123,20 +134,72 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
         }
       }
 
-      setBattles(prev => isInitial ? mappedBattles : [...prev, ...mappedBattles]);
+      // Auto-load next page if filtering removed all new results
+      if (!isInitial && mappedBattles.length > 0 && loadCount < MAX_AUTO_LOAD_PAGES) {
+        setBattles(prev => {
+          const newTotal = [...prev, ...mappedBattles];
+          const newFiltered = newTotal.filter(b => b.ourParticipants >= minPlayers);
+          
+          if (newFiltered.length === 0 && battlesData.length >= LIMIT) {
+            // Fire and forget next fetch if still no filtered results
+            setLoadCount(c => c + 1);
+            setTimeout(() => fetchBattles(guildId, currentOffset + LIMIT, false), 0);
+          }
+          return newTotal;
+        });
+      } else {
+        setBattles(prev => isInitial ? mappedBattles : [...prev, ...mappedBattles]);
+      }
       setOffset(currentOffset + LIMIT);
     } catch (err: any) {
       setError(err.message);
     } finally {
       if (isInitial) setLoading(false);
       else setLoadingMore(false);
+      setIsFetching(false);
+      isFetchingRef.current = false;
     }
   };
 
   const handleLoadMore = () => {
-    if (!activeGuildId || loadingMore || !hasMore) return;
+    if (!activeGuildId || isFetchingRef.current || !hasMore) return;
+    setLoadCount(prev => prev + 1);
     fetchBattles(activeGuildId, offset, false);
   };
+
+  // IntersectionObserver for auto-load
+  useEffect(() => {
+    if (battles.length === 0 && !hasMore) return;
+    if (!hasMore || !activeGuildId) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting) {
+          if (!isFetchingRef.current && loadCount < MAX_AUTO_LOAD_PAGES) {
+            setLoadCount(prev => prev + 1);
+            fetchBattles(activeGuildId, offset, false);
+          }
+        }
+      },
+      {
+        root: null,
+        rootMargin: '100px',
+        threshold: 0
+      }
+    );
+
+    const currentBoundary = bottomBoundaryRef.current;
+    if (currentBoundary) {
+      observer.observe(currentBoundary);
+    }
+
+    return () => {
+      if (currentBoundary) {
+        observer.unobserve(currentBoundary);
+      }
+    };
+  }, [hasMore, activeGuildId, offset, loadCount, battles.length]);
 
   const formatDate = (isoString: string, isUtc: boolean) => {
     const d = new Date(isoString);
@@ -286,18 +349,8 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
               </tr>
             ) : filteredBattles.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-slate-500 flex flex-col items-center justify-center gap-2">
+                <td colSpan={8} className="py-8 text-center text-slate-500">
                   <span>{t('guild_dashboard.battle_report.no_data', { defaultValue: 'No battles found' })}</span>
-                  {battles.length > 0 && hasMore && (
-                    <button
-                      onClick={handleLoadMore}
-                      disabled={loadingMore}
-                      className="px-4 py-2 bg-black-bg border border-black-border hover:border-gold/50 text-gold disabled:opacity-50 rounded-lg text-xs font-bold uppercase tracking-widest transition-all mt-2"
-                    >
-                      {loadingMore ? <Loader2 className="w-4 h-4 animate-spin inline mr-2" /> : null}
-                      {t('guild_dashboard.battle_report.load_more', { defaultValue: 'Load More' })}
-                    </button>
-                  )}
                 </td>
               </tr>
             ) : filteredBattles.map((battle) => (
@@ -403,23 +456,36 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
           </tbody>
         </table>
         
+        {/* Intersection Observer Sentinel */}
+        <div ref={bottomBoundaryRef} style={{ height: '1px' }}></div>
+
         {/* Load More Section */}
-        {!loading && filteredBattles.length > 0 && hasMore && (
+        {!loading && hasMore && (
           <div className="p-4 border-t border-black-border flex justify-center bg-black-bg/30">
-            <button
-              onClick={handleLoadMore}
-              disabled={loadingMore}
-              className="flex items-center gap-2 px-6 py-2 bg-black-card border border-black-border hover:border-gold/50 text-gold disabled:opacity-50 disabled:hover:border-black-border rounded-lg text-xs font-bold uppercase tracking-widest transition-all"
-            >
-              {loadingMore ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {t('guild_dashboard.battle_report.loading')}
-                </>
-              ) : (
-                t('guild_dashboard.battle_report.load_more')
-              )}
-            </button>
+            {loadCount >= MAX_AUTO_LOAD_PAGES || isFetching ? (
+              <button
+                onClick={handleLoadMore}
+                disabled={isFetching}
+                className="flex items-center gap-2 px-6 py-2 bg-black-card border border-black-border hover:border-gold/50 text-gold disabled:opacity-50 disabled:hover:border-black-border rounded-lg text-xs font-bold uppercase tracking-widest transition-all"
+              >
+                {isFetching ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {t('guild_dashboard.battle_report.loading', { defaultValue: 'Loading...' })}
+                  </>
+                ) : (
+                  t('guild_dashboard.battle_report.load_more', { defaultValue: 'Load More' })
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={handleLoadMore}
+                disabled={false}
+                className="flex items-center gap-2 px-6 py-2 bg-black-card border border-black-border hover:border-gold/50 text-gold rounded-lg text-xs font-bold uppercase tracking-widest transition-all"
+              >
+                {t('guild_dashboard.battle_report.load_more', { defaultValue: 'Load More' })}
+              </button>
+            )}
           </div>
         )}
         

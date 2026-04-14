@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { RegearList } from './regear-components/RegearList';
 import { RegearDetail } from './regear-components/RegearDetail';
 import { RegearOrderDetail, RegearRecord, RegearOrder } from './regear-components/types';
@@ -13,21 +14,32 @@ import { AlbionOfficialEvent } from '@albionbox/shared';
 
 interface RegearTabProps {
   guildId?: string;
-  initialPreviewBattleIds?: string[] | null;
-  onPreviewClear?: () => void;
-  initialTicketId?: string | null;
-  onTicketIdClear?: () => void;
 }
 
-export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear, initialTicketId, onTicketIdClear }: RegearTabProps) {
+export function RegearTab({ guildId }: RegearTabProps) {
   const { t } = useTranslation();
   const toast = useToast();
   const confirm = useConfirm();
-  const [currentView, setCurrentView] = useState<'list' | 'detail'>('list');
+  
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const ticketId = searchParams.get('ticketId');
+  const action = searchParams.get('action');
+  const isDetailView = !!ticketId || action === 'preview';
+
   const [orders, setOrders] = useState<RegearOrder[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [realDetail, setRealDetail] = useState<RegearOrderDetail | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [previewDetail, setPreviewDetail] = useState<RegearOrderDetail | null>(null);
+  
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [previewBattleIdsText, setPreviewBattleIdsText] = useState('');
+  const [previewError, setPreviewError] = useState('');
+  const lastFetchedTicketId = useRef<string | null>(null);
+  const lastFetchedPreviewIds = useRef<string | null>(null);
 
   useEffect(() => {
     if (!guildId) return;
@@ -64,47 +76,57 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear, in
     };
     fetchOrders();
     return () => { mounted = false; };
-  }, [guildId, currentView]); // Refresh when view changes (e.g. back from detail)
-  const [previewDetail, setPreviewDetail] = useState<RegearOrderDetail | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [previewBattleIdsText, setPreviewBattleIdsText] = useState('');
-  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState('');
+  }, [guildId, isDetailView]); // Refresh when view changes (e.g. back from detail)
 
   useEffect(() => {
-    if (initialPreviewBattleIds && initialPreviewBattleIds.length > 0) {
-      setPreviewBattleIdsText(initialPreviewBattleIds.join(', '));
-      setShowCreateModal(true);
-      
-      setTimeout(() => {
-        handleCreatePreview(initialPreviewBattleIds);
-        if (onPreviewClear) {
-          onPreviewClear();
-        }
-      }, 100);
-    }
-  }, [initialPreviewBattleIds]);
+    if (!guildId) return;
 
-  useEffect(() => {
-    if (initialTicketId && guildId) {
-      if (currentView !== 'detail' || (realDetail && realDetail.order.id !== initialTicketId)) {
-        setTimeout(() => {
-          handleSelectOrder(initialTicketId);
-        }, 0);
+    if (ticketId) {
+      if (lastFetchedTicketId.current !== ticketId) {
+        lastFetchedTicketId.current = ticketId;
+        lastFetchedPreviewIds.current = null;
+        fetchTicketData(ticketId);
       }
+    } else if (action === 'preview') {
+      const battleIds = (location.state as any)?.battleIds as string[];
+      const battleIdsKey = battleIds?.join(',');
+      
+      if (battleIds && battleIds.length > 0) {
+        if (lastFetchedPreviewIds.current !== battleIdsKey) {
+          lastFetchedPreviewIds.current = battleIdsKey;
+          lastFetchedTicketId.current = null;
+          fetchPreviewData(battleIds);
+        }
+      } else {
+        // No battle IDs provided for preview, revert to list
+        setSearchParams(prev => {
+          prev.delete('action');
+          return prev;
+        }, { replace: true });
+      }
+    } else {
+      // Not in detail view
+      lastFetchedTicketId.current = null;
+      lastFetchedPreviewIds.current = null;
+      setPreviewDetail(null);
+      setRealDetail(null);
     }
-  }, [initialTicketId, guildId, currentView, realDetail]);
+  }, [ticketId, action, guildId, location.state]);
 
   const handleSelectOrder = async (orderId: string) => {
+    setSearchParams(prev => {
+      prev.set('tab', 'regear');
+      prev.set('ticketId', orderId);
+      prev.delete('action');
+      return prev;
+    });
+  };
+
+  const fetchTicketData = async (orderId: string) => {
     if (!guildId) return;
     setPreviewDetail(null);
     setRealDetail(null);
     setIsDetailLoading(true);
-    setCurrentView('detail');
-
-    if (onTicketIdClear) {
-      onTicketIdClear();
-    }
 
     try {
       const res = await api.guilds[':guildId'].regear.tickets[':ticketId'].$get({ param: { guildId, ticketId: orderId } });
@@ -205,19 +227,19 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear, in
   };
 
   const handleBack = () => {
-    setCurrentView('list');
+    setSearchParams(prev => {
+      prev.set('tab', 'regear');
+      prev.delete('ticketId');
+      prev.delete('action');
+      return prev;
+    });
   };
 
-  const handleCreatePreview = async (overrideIds?: string[]) => {
-    const ids = overrideIds || previewBattleIdsText.split(/[\s,]+/).filter(id => id.trim());
+  const fetchPreviewData = async (ids: string[]) => {
     if (!guildId) return;
-    if (ids.length === 0) {
-      toast.info(t('guild_dashboard.regear_tab.create_no_ids', { defaultValue: 'Please enter at least one Battle ID' }));
-      return;
-    }
-    
-    setIsPreviewLoading(true);
-    setPreviewError('');
+    setPreviewDetail(null);
+    setRealDetail(null);
+    setIsDetailLoading(true);
     
     try {
       // Fetch events for each battle ID concurrently
@@ -329,15 +351,25 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear, in
 
       setPreviewDetail(newPreview);
       setRealDetail(null);
-      setShowCreateModal(false);
-      setPreviewBattleIdsText('');
-      setCurrentView('detail');
       
     } catch (err: any) {
-      setPreviewError(err.message || 'Failed to generate preview');
+      toast.error(err.message || 'Failed to generate preview');
+      handleBack(); // Revert back to list on error
     } finally {
-      setIsPreviewLoading(false);
+      setIsDetailLoading(false);
     }
+  };
+
+  const handleManualCreatePreview = async () => {
+    const ids = previewBattleIdsText.split(/[\s,]+/).filter(id => id.trim());
+    if (ids.length === 0) {
+      setPreviewError(t('guild_dashboard.regear_tab.create_no_ids', { defaultValue: 'Please enter at least one Battle ID' }));
+      return;
+    }
+    
+    setShowCreateModal(false);
+    setPreviewBattleIdsText('');
+    navigate('?tab=regear&action=preview', { state: { battleIds: ids } });
   };
 
   const handleCreateOrderFromPreview = async (preview: RegearOrderDetail) => {
@@ -421,7 +453,7 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear, in
 
   return (
     <div className="p-6 bg-black-card rounded-2xl border border-black-border mt-6">
-      <div className={cn(currentView === 'list' ? 'block' : 'hidden')}>
+      <div className={cn(!isDetailView ? 'block' : 'hidden')}>
         {isLoadingOrders ? (
           <div className="flex items-center justify-center p-12">
             <Loader2 className="w-8 h-8 text-gold animate-spin" />
@@ -431,7 +463,7 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear, in
         )}
       </div>
 
-      <div className={cn(currentView === 'detail' ? 'block' : 'hidden')}>
+      <div className={cn(isDetailView ? 'block' : 'hidden')}>
         {isDetailLoading ? (
           <div className="flex items-center justify-center p-12">
             <Loader2 className="w-8 h-8 text-gold animate-spin" />
@@ -451,7 +483,7 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear, in
 
       {/* Create Preview Modal */}
       {showCreateModal && (
-        <Modal title={t('guild_dashboard.regear_tab.create_preview_title', { defaultValue: 'Preview Regear Order' })} onClose={() => !isPreviewLoading && setShowCreateModal(false)}>
+        <Modal title={t('guild_dashboard.regear_tab.create_preview_title', { defaultValue: 'Preview Regear Order' })} onClose={() => setShowCreateModal(false)}>
           <div className="space-y-4">
             <p className="text-sm text-slate-400">
               {t('guild_dashboard.regear_tab.create_preview_desc', { defaultValue: 'Enter Battle IDs to fetch events and generate a preview regear order.' })}
@@ -462,23 +494,20 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear, in
               onChange={(e) => setPreviewBattleIdsText(e.target.value)}
               placeholder="e.g. BR-1001, BR-1002"
               className="w-full h-32 p-3 bg-black-bg border border-black-border rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 resize-none"
-              disabled={isPreviewLoading}
             />
             {previewError && <p className="text-xs font-bold text-rose-500">{previewError}</p>}
             <div className="pt-4 border-t border-black-border flex justify-end gap-3">
               <button 
                 onClick={() => setShowCreateModal(false)}
-                disabled={isPreviewLoading}
                 className="px-6 py-2 bg-black-bg hover:bg-black-card border border-black-border text-slate-400 text-xs font-black uppercase tracking-widest rounded-lg transition-colors disabled:opacity-50"
               >
                 {t('common.cancel', { defaultValue: 'Cancel' })}
               </button>
               <button 
-                onClick={() => handleCreatePreview()}
-                disabled={isPreviewLoading || !previewBattleIdsText.trim()}
+                onClick={handleManualCreatePreview}
+                disabled={!previewBattleIdsText.trim()}
                 className="flex items-center gap-2 px-6 py-2 bg-gold hover:bg-gold-hover text-black text-xs font-black uppercase tracking-widest rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isPreviewLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 {t('common.preview', { defaultValue: 'Preview' })}
               </button>
             </div>

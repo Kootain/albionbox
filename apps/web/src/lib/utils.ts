@@ -61,6 +61,10 @@ export function getAlbionItemUrl(type: string | undefined | null, count = 1, qua
   const params = [];
   if (count > 1) params.push(`count=${count}`);
   if (quality > 1) params.push(`quality=${quality}`);
+  if (type.includes('TRASH')) {
+    params.push(`count=1`);
+    params.push(`quality=${quality}`);
+  }
   
   if (params.length > 0) {
     url += `?${params.join('&')}`;
