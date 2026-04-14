@@ -35,7 +35,8 @@
     "na": "暂无",
     "guild": "所属公会",
     "admin": "管理后台",
-    "members": "成员"
+    "members": "成员",
+    "continue": "继续"
   },
   "auth": {
     "title": "Albion ERP",
@@ -276,7 +277,9 @@
       "death": "击杀详情",
       "load_more": "加载更多",
       "loading": "加载中...",
-      "no_more_battles": "没有更多战报了"
+      "no_more_battles": "没有更多战报了",
+      "regear_conflict_title": "存在工单冲突",
+      "regear_conflict_warning": "部分选中的战报已经关联了补装工单。如果继续创建预览，将忽略已存在的工单。是否继续？"
     },
     "regear_tab": {
       "title": "补装工单",

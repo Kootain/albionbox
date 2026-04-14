@@ -18,6 +18,7 @@ export interface BattleReportSummary {
   ourParticipants: number;
   ourKills: number;
   ourDeaths: number;
+  regearTicketId?: string | null;
 }
 
 export interface AggregationGroup {

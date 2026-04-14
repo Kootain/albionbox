@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link as LinkIcon, Search, CheckSquare, Clock, ExternalLink, Loader2, ShieldAlert } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { BattleReportSummary } from './types';
 import { api } from '@/lib/api';
+import { useConfirm } from '@/components/ui/Confirm';
 
 interface BattleListProps {
   onSelectDetail: (ids: string[]) => void;
@@ -16,7 +17,9 @@ interface BattleListProps {
 export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villains', defaultGuildId, onRegearPreview }: BattleListProps) {
   const { t } = useTranslation();
   const [timeFormat, setTimeFormat] = useState<'UTC' | 'Local'>('UTC');
-  const [minPlayers, setMinPlayers] = useState(10);
+  const [minPlayers, setMinPlayers] = useState<number>(10);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { confirm } = useConfirm();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [battles, setBattles] = useState<BattleReportSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -97,8 +100,28 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
           ourParticipants: ourGuild ? Object.values(b.players || {}).filter((p: any) => p.guildId === ourGuild.id).length : 0,
           ourKills: ourGuild?.kills || 0,
           ourDeaths: ourGuild?.deaths || 0,
+          regearTicketId: null
         };
       });
+
+      if (mappedBattles.length > 0) {
+        try {
+          const ticketCheckRes = await api.guilds[':guildId'].regear.battles['check-tickets'].$post({
+            param: { guildId },
+            json: { battleIds: mappedBattles.map(b => b.id) }
+          });
+          if (ticketCheckRes.ok) {
+            const ticketMap = await ticketCheckRes.json() as Record<string, string>;
+            mappedBattles.forEach(b => {
+              if (ticketMap[b.id]) {
+                b.regearTicketId = ticketMap[b.id];
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Failed to check tickets for battles', e);
+        }
+      }
 
       setBattles(prev => isInitial ? mappedBattles : [...prev, ...mappedBattles]);
       setOffset(currentOffset + LIMIT);
@@ -137,6 +160,32 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
     }
   };
 
+  const handleRegearClick = async () => {
+    if (!onRegearPreview) return;
+    
+    // Check if any selected battle already has a regear ticket
+    const battlesWithTickets = selectedIds
+      .map(id => battles.find(b => b.id === id))
+      .filter(b => b && b.regearTicketId);
+      
+    if (battlesWithTickets.length > 0) {
+      const isConfirmed = await confirm({
+        title: t('guild_dashboard.battle_report.regear_conflict_title', { defaultValue: 'Ticket Conflict' }),
+        message: t('guild_dashboard.battle_report.regear_conflict_warning', { 
+          defaultValue: 'Some selected battles already have an associated regear ticket. Creating a new preview will ignore existing tickets. Do you want to proceed?' 
+        }),
+        confirmText: t('common.continue', { defaultValue: 'Continue' }),
+        danger: true
+      });
+      
+      if (!isConfirmed) {
+        return;
+      }
+    }
+    
+    onRegearPreview(selectedIds);
+  };
+
   const filteredBattles = battles.filter(b => b.ourParticipants >= minPlayers);
 
   return (
@@ -165,7 +214,7 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
           </button>
           
           <button 
-            onClick={() => onRegearPreview && onRegearPreview(selectedIds)}
+            onClick={handleRegearClick}
             disabled={selectedIds.length === 0}
             className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-colors",
@@ -208,6 +257,11 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
               <th className="py-3 px-4 w-10">
                 <CheckSquare className="w-4 h-4 text-slate-500" />
               </th>
+              <th className="py-3 px-4 w-10 text-center">
+                <div title={t('guild_dashboard.battle_report.columns.regear', { defaultValue: 'Regear Ticket' })}>
+                  <ShieldAlert className="w-4 h-4 text-slate-500 mx-auto" />
+                </div>
+              </th>
               <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.battle_report.columns.time')}</th>
               <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.battle_report.columns.type')}</th>
               <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.battle_report.columns.participating_guilds')}</th>
@@ -219,20 +273,20 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-slate-500">
+                <td colSpan={8} className="py-8 text-center text-slate-500">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                   Loading battles...
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-rose-500">
+                <td colSpan={8} className="py-8 text-center text-rose-500">
                   {error}
                 </td>
               </tr>
             ) : filteredBattles.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-slate-500 flex flex-col items-center justify-center gap-2">
+                <td colSpan={8} className="py-8 text-center text-slate-500 flex flex-col items-center justify-center gap-2">
                   <span>{t('guild_dashboard.battle_report.no_data', { defaultValue: 'No battles found' })}</span>
                   {battles.length > 0 && hasMore && (
                     <button
@@ -255,6 +309,25 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
                     onChange={() => toggleSelection(battle.id)}
                     className="accent-gold w-4 h-4 bg-black-bg border-black-border rounded cursor-pointer"
                   />
+                </td>
+                <td className="py-4 px-4 text-center">
+                  {battle.regearTicketId ? (
+                    <button
+                      onClick={() => {
+                        setSearchParams(prev => {
+                          prev.set('tab', 'regear');
+                          prev.set('ticketId', battle.regearTicketId!);
+                          return prev;
+                        });
+                      }}
+                      className="inline-flex items-center justify-center p-1.5 bg-gold/10 text-gold hover:bg-gold hover:text-black border border-gold/30 hover:border-gold rounded-lg transition-all"
+                      title={t('guild_dashboard.battle_report.regear_ticket_tooltip', { defaultValue: 'View Regear Ticket' })}
+                    >
+                      <ShieldAlert className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <span className="text-slate-600">-</span>
+                  )}
                 </td>
                 <td className="py-4 px-4 text-sm text-slate-300">
                   {formatDate(battle.startTime, timeFormat === 'UTC')}

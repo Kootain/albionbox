@@ -35,7 +35,8 @@
     "na": "N/A",
     "guild": "Guild",
     "admin": "Admin",
-    "members": "Members"
+    "members": "Members",
+    "continue": "Continue"
   },
   "auth": {
     "title": "Albion ERP",
@@ -276,7 +277,9 @@
       "death": "Death",
       "load_more": "Load More",
       "loading": "Loading...",
-      "no_more_battles": "No more battles"
+      "no_more_battles": "No more battles",
+      "regear_conflict_title": "Ticket Conflict",
+      "regear_conflict_warning": "Some selected battles already have an associated regear ticket. Creating a new preview will ignore existing tickets. Do you want to proceed?"
     },
     "regear_tab": {
       "title": "Regear Tickets",

@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { createFactory } from 'hono/factory'
 import { zValidator } from '@hono/zod-validator'
+import { z } from 'zod'
 import { drizzle } from 'drizzle-orm/d1'
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { 
@@ -323,10 +324,43 @@ const deleteRecordHandler = factory.createHandlers(
   }
 )
 
+const checkBattlesTicketsHandler = factory.createHandlers(
+  guildPermMiddleware(['guild:view']),
+  zValidator('json', z.object({
+    battleIds: z.array(z.string()).min(1)
+  })),
+  async (c) => {
+    const guildId = c.req.param('guildId') as string
+    const { battleIds } = c.req.valid('json')
+    const db = drizzle(c.env.DB)
+
+    const records = await db.select({
+      battleId: regearTicketBattles.battleId,
+      ticketId: regearTickets.id,
+    })
+    .from(regearTicketBattles)
+    .innerJoin(regearTickets, eq(regearTickets.id, regearTicketBattles.ticketId))
+    .where(and(
+      eq(regearTicketBattles.guildId, guildId),
+      inArray(regearTicketBattles.battleId, battleIds),
+      isNull(regearTickets.deletedAt)
+    ))
+    .all()
+
+    const mapping = records.reduce((acc, curr) => {
+      acc[curr.battleId] = curr.ticketId
+      return acc
+    }, {} as Record<string, string>)
+
+    return c.json(mapping)
+  }
+)
+
 const routes = router
   .use('*', authMiddleware)
   .post('/:guildId/regear/tickets', ...createTicketHandler)
   .get('/:guildId/regear/tickets', ...listTicketsHandler)
+  .post('/:guildId/regear/battles/check-tickets', ...checkBattlesTicketsHandler)
   .get('/:guildId/regear/tickets/:ticketId', ...getTicketHandler)
   .put('/:guildId/regear/tickets/:ticketId', ...updateTicketHandler)
   .delete('/:guildId/regear/tickets/:ticketId', ...deleteTicketHandler)

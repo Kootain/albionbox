@@ -15,9 +15,11 @@ interface RegearTabProps {
   guildId?: string;
   initialPreviewBattleIds?: string[] | null;
   onPreviewClear?: () => void;
+  initialTicketId?: string | null;
+  onTicketIdClear?: () => void;
 }
 
-export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: RegearTabProps) {
+export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear, initialTicketId, onTicketIdClear }: RegearTabProps) {
   const { t } = useTranslation();
   const toast = useToast();
   const confirm = useConfirm();
@@ -73,12 +75,25 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
     if (initialPreviewBattleIds && initialPreviewBattleIds.length > 0) {
       setPreviewBattleIdsText(initialPreviewBattleIds.join(', '));
       setShowCreateModal(true);
-      handleCreatePreview(initialPreviewBattleIds);
-      if (onPreviewClear) {
-        onPreviewClear();
-      }
+      
+      setTimeout(() => {
+        handleCreatePreview(initialPreviewBattleIds);
+        if (onPreviewClear) {
+          onPreviewClear();
+        }
+      }, 100);
     }
   }, [initialPreviewBattleIds]);
+
+  useEffect(() => {
+    if (initialTicketId && guildId) {
+      if (currentView !== 'detail' || (realDetail && realDetail.order.id !== initialTicketId)) {
+        setTimeout(() => {
+          handleSelectOrder(initialTicketId);
+        }, 0);
+      }
+    }
+  }, [initialTicketId, guildId, currentView, realDetail]);
 
   const handleSelectOrder = async (orderId: string) => {
     if (!guildId) return;
@@ -86,6 +101,10 @@ export function RegearTab({ guildId, initialPreviewBattleIds, onPreviewClear }: 
     setRealDetail(null);
     setIsDetailLoading(true);
     setCurrentView('detail');
+
+    if (onTicketIdClear) {
+      onTicketIdClear();
+    }
 
     try {
       const res = await api.guilds[':guildId'].regear.tickets[':ticketId'].$get({ param: { guildId, ticketId: orderId } });
