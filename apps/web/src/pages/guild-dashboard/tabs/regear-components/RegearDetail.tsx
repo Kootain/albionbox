@@ -9,7 +9,7 @@ import { Modal } from '@/components/ui';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { RegearRelatedBattles } from './RegearRelatedBattles';
 import { api } from '@/lib/api';
-import { getBaseItemId, calculatePLevel } from './utils';
+import { getBaseItemId, calculatePLevel, getTierAndEnchant } from './utils';
 import { AutoApprovalModal } from './auto-approval/AutoApprovalModal';
 import { engine } from './auto-approval';
 import { KillDetailModal } from '../battle-report-components/KillDetailModal';
@@ -760,12 +760,18 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
                     </div>
                   </td>
                   <td className="py-4 px-4">
-                    <div className="flex gap-1">
+                    <div className="flex gap-2 w-full max-w-[280px] xl:max-w-[320px] justify-start">
                       {['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Cape'].map(slot => {
                         const eq = record.equipment.find(e => e.slot === slot);
+                        const tierEnchant = eq ? getTierAndEnchant(eq.type) : '';
                         return (
-                          <div key={slot} className="w-8 h-8 bg-black-bg border border-black-border rounded flex items-center justify-center" title={eq ? getItemDisplayName(eq.type) : t('guild_dashboard.regear_tab.empty')}>
-                            {eq ? <img src={eq.url} alt={slot} className="w-6 h-6 object-contain" /> : null}
+                          <div key={slot} className="flex flex-col items-center">
+                            <div className="w-10 h-10 bg-black-bg border border-black-border rounded-lg flex items-center justify-center p-0.5" title={eq ? getItemDisplayName(eq.type) : t('guild_dashboard.regear_tab.empty')}>
+                              {eq ? <img src={eq.url} alt={slot} className="w-full h-full object-contain" /> : null}
+                            </div>
+                            <span className={cn("text-xs font-bold mt-1", tierEnchant ? "text-slate-300" : "text-transparent")}>
+                              {tierEnchant || '-'}
+                            </span>
                           </div>
                         );
                       })}
@@ -828,7 +834,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
               )})}
               {/* Pad empty rows to keep table height fixed */}
               {Array.from({ length: Math.max(0, RECORDS_PER_PAGE - currentRecords.length) }).map((_, i) => (
-                <tr key={`empty-${i}`} className="h-[73px]">
+                <tr key={`empty-${i}`} className="h-[102px]">
                   <td colSpan={7} className="py-4 px-4"></td>
                 </tr>
               ))}
