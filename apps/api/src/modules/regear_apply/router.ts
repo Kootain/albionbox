@@ -95,6 +95,8 @@ const listAppliesHandler = factory.createHandlers(
       msgGuild: r.msgGuild ?? undefined,
       msgChannel: r.msgChannel ?? undefined,
       regearId: r.regearId ?? undefined,
+      eventId: r.eventId ?? undefined,
+      battleId: r.battleId ?? undefined,
       applyMeta: r.applyMeta ?? undefined,
       victimName: r.victimName ?? undefined,
       victimGuild: r.victimGuild ?? undefined,

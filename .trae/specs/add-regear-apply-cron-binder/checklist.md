@@ -1,0 +1,7 @@
+- [x] `regear_applies` 表新增 `event_id`、`battle_id` 列，并且对应 Drizzle schema 已更新且可正常生成类型与迁移。
+- [x] `@albionbox/shared` 的 `RegearApplySchema` 已包含 `eventId`、`battleId`（可选），且 API 返回结构与之对齐。
+- [x] `GET /regear_applies` 的 items 输出包含 `eventId`、`battleId`（当数据库为空时按现有风格返回 undefined/nullable）。
+- [x] Cron job 能拉取 `status=binding` 且未绑定 event/battle 的 apply，并能在匹配成功时写回 `event_id/battle_id`、推进 `status=pending_audit`。
+- [x] Cron job 在 apply 关键字段缺失时会将状态置为 `bind_failed`，并更新 `last_status_time`。
+- [x] `apps/api` 已配置 Cloudflare Cron Trigger（`*/1 * * * *`），并在 scheduled handler 中调用 cron 模块。
+- [x] TypeScript 检查与迁移生成命令通过（使用仓库既有命令）。

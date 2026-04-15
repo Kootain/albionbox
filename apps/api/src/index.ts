@@ -9,6 +9,7 @@ import { battleRecordsRouter } from './modules/battle_records'
 import { regearRouter } from './modules/regear'
 import { regearApplyRouter } from './modules/regear_apply/router'
 import { kookRouter } from './modules/kook'
+import { runRegearApplyAutoBinder } from './modules/cron_regear_apply_binder'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -81,4 +82,10 @@ const routes = app
 
 export type AppType = typeof routes
 
-export default app
+export const fetch = app.fetch
+
+export const scheduled = (_event: ScheduledEvent, env: Env, ctx: ExecutionContext) => {
+  ctx.waitUntil(runRegearApplyAutoBinder(env).catch(() => undefined))
+}
+
+export default { fetch, scheduled }

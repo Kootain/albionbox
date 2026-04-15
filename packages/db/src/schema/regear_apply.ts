@@ -10,6 +10,8 @@ export const regearApplies = sqliteTable('regear_applies', {
   createTime: text('create_time').notNull(),
   lastStatusTime: text('last_status_time').notNull(),
   regearId: text('regear_id'),
+  eventId: text('event_id'),
+  battleId: text('battle_id'),
   applyMeta: text('apply_meta'), // JSON string
   status: text('status', { enum: ['binding', 'bind_failed', 'pending_audit', 'pending_regear', 'reject', 'done'] }).notNull().default('binding'),
   victimName: text('victim_name'),
