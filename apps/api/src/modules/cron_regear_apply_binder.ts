@@ -19,9 +19,19 @@ export async function runRegearApplyAutoBinder(
 ) {
   const db = drizzle(env.DB)
   const limit = options?.limit ?? 25
+  const windowMinutes = options?.windowMinutes ?? 5
   const windowMs = (options?.windowMinutes ?? 5) * 60 * 1000
   const battleFetchLimit = options?.battleFetchLimit ?? 51
   const eventFetchLimit = options?.eventFetchLimit ?? 51
+
+  const jobStartedAt = Date.now()
+  console.log(JSON.stringify({
+    msg: 'regear_apply_binder_job_start',
+    limit,
+    windowMinutes,
+    battleFetchLimit,
+    eventFetchLimit,
+  }))
 
   const applies = await db
     .select()
@@ -39,6 +49,7 @@ export async function runRegearApplyAutoBinder(
     .all()
 
   if (applies.length === 0) {
+    console.log(JSON.stringify({ msg: 'regear_apply_binder_job_no_work', durationMs: Date.now() - jobStartedAt }))
     return { scanned: 0, updated: 0, bound: 0, bindFailed: 0 }
   }
 
@@ -47,11 +58,26 @@ export async function runRegearApplyAutoBinder(
   const guildIdToBattlesCache = new Map<string, AlbionOfficialBattle[] | null>()
   const kook = env.KOOK_BOT_TOKEN ? createKookRestClient({ token: env.KOOK_BOT_TOKEN }) : null
 
+  console.log(JSON.stringify({
+    msg: 'regear_apply_binder_job_loaded',
+    scanned: applies.length,
+    kookEnabled: Boolean(kook),
+  }))
+
   let updated = 0
   let bound = 0
   let bindFailed = 0
 
   for (const apply of applies) {
+    console.log(JSON.stringify({
+      msg: 'regear_apply_binder_apply_start',
+      applyId: apply.id,
+      msgId: apply.msgId,
+      status: apply.status,
+      victimName: apply.victimName ?? undefined,
+      victimGuild: apply.victimGuild ?? undefined,
+    }))
+
     const result = await tryBindOneApply({
       apply,
       client,
@@ -68,6 +94,7 @@ export async function runRegearApplyAutoBinder(
         .set({ status: ApplyStatus.BIND_FAILED, lastStatusTime: now })
         .where(eq(regearApplies.id, apply.id))
         .execute()
+      console.log(JSON.stringify({ msg: 'regear_apply_binder_apply_failed_missing_fields', applyId: apply.id }))
       updated += 1
       bindFailed += 1
       continue
@@ -87,15 +114,35 @@ export async function runRegearApplyAutoBinder(
       if (apply.msgId && kook) {
         try {
           await addKookMessageReaction({ client: kook, msgId: apply.msgId, emoji: '🔗' })
-        } catch {}
+          console.log(JSON.stringify({ msg: 'regear_apply_binder_kook_reaction_ok', applyId: apply.id, msgId: apply.msgId, emoji: '🔗' }))
+        } catch (e) {
+          const err = e as any
+          console.error(JSON.stringify({
+            msg: 'regear_apply_binder_kook_reaction_failed',
+            applyId: apply.id,
+            msgId: apply.msgId,
+            emoji: '🔗',
+            error: { name: err?.name, message: err?.message ?? String(e) },
+          }))
+        }
       }
+      console.log(JSON.stringify({
+        msg: 'regear_apply_binder_apply_bound',
+        applyId: apply.id,
+        eventId: result.eventId,
+        battleId: result.battleId,
+      }))
       updated += 1
       bound += 1
       continue
     }
+
+    console.log(JSON.stringify({ msg: 'regear_apply_binder_apply_noop', applyId: apply.id, result: result.type }))
   }
 
-  return { scanned: applies.length, updated, bound, bindFailed }
+  const summary = { scanned: applies.length, updated, bound, bindFailed }
+  console.log(JSON.stringify({ msg: 'regear_apply_binder_job_done', ...summary, durationMs: Date.now() - jobStartedAt }))
+  return summary
 }
 
 async function tryBindOneApply(params: {
@@ -120,13 +167,28 @@ async function tryBindOneApply(params: {
   const guildName = guildNameRaw?.trim()
   const applyTime = timestampRaw ? parseUtcTimestamp(timestampRaw) : null
 
-  if (!victimName || !guildName || !applyTime) return { type: 'missing_fields' }
+  if (!victimName || !guildName || !applyTime) {
+    console.log(JSON.stringify({
+      msg: 'regear_apply_binder_apply_missing_fields',
+      applyId: apply.id,
+      hasVictimName: Boolean(victimName),
+      hasVictimGuild: Boolean(guildName),
+      hasTimestamp: Boolean(applyTime),
+    }))
+    return { type: 'missing_fields' }
+  }
 
   const guildId = await getGuildIdFromName(client, guildName, params.guildNameToIdCache)
-  if (!guildId) return { type: 'no_match' }
+  if (!guildId) {
+    console.log(JSON.stringify({ msg: 'regear_apply_binder_guild_not_found', applyId: apply.id, victimGuild: guildName }))
+    return { type: 'no_match' }
+  }
 
   const battles = await getGuildBattles(client, guildId, battleFetchLimit, params.guildIdToBattlesCache)
-  if (!battles || battles.length === 0) return { type: 'no_match' }
+  if (!battles || battles.length === 0) {
+    console.log(JSON.stringify({ msg: 'regear_apply_binder_no_battles', applyId: apply.id, guildId }))
+    return { type: 'no_match' }
+  }
 
   const applyTimeMs = applyTime.getTime()
   const candidateBattles = battles.filter((b) => {
@@ -137,6 +199,14 @@ async function tryBindOneApply(params: {
   })
 
   const battlesToScan = candidateBattles.length > 0 ? candidateBattles : battles.slice(0, 10)
+  console.log(JSON.stringify({
+    msg: 'regear_apply_binder_battle_candidates',
+    applyId: apply.id,
+    guildId,
+    totalBattles: battles.length,
+    candidateBattles: candidateBattles.length,
+    battlesToScan: battlesToScan.length,
+  }))
 
   const battleIds = battlesToScan.map((b) => String(b.id))
   const settled = await mapAllSettledBatched(battleIds, 5, (battleId) =>
@@ -147,7 +217,18 @@ async function tryBindOneApply(params: {
 
   for (let i = 0; i < settled.length; i += 1) {
     const res = settled[i]
-    if (res.status !== 'fulfilled') continue
+    if (res.status !== 'fulfilled') {
+      const battleId = battleIds[i]
+      const reason = (res as PromiseRejectedResult)?.reason
+      const err = reason as any
+      console.error(JSON.stringify({
+        msg: 'regear_apply_binder_battle_events_failed',
+        applyId: apply.id,
+        battleId,
+        error: { name: err?.name, message: err?.message ?? String(reason) },
+      }))
+      continue
+    }
     const candidate = pickBestMatchFromEvents(res.value, victimName, applyTimeMs)
     if (!candidate) continue
     if (!best || candidate.diffMs < best.diffMs) {
@@ -155,7 +236,10 @@ async function tryBindOneApply(params: {
     }
   }
 
-  if (!best) return { type: 'no_match' }
+  if (!best) {
+    console.log(JSON.stringify({ msg: 'regear_apply_binder_no_event_match', applyId: apply.id, victimName, guildId }))
+    return { type: 'no_match' }
+  }
   return { type: 'bound', eventId: best.eventId, battleId: best.battleId }
 }
 
