@@ -16,10 +16,7 @@
     "save_failed": "保存失败，请重试",
     "search": "搜索",
     "loading": "加载中...",
-    "load_failed": "加载失败",
     "active": "激活",
-    "preview": "预览",
-    "delete": "删除",
     "select": "选择",
     "pending": "待处理",
     "verified": "已验证",
@@ -312,7 +309,6 @@
       "config_modal_title": "工单补装配置",
       "config_modal_desc": "选择当前补装工单允许补偿的装备栏位。未勾选栏位的装备将被忽略。",
       "related_battles": "关联战报",
-      "related_battles_list": "关联战报列表",
       "duration": "战斗时长",
       "hours": "小时",
       "total_deaths": "总死亡",
@@ -324,17 +320,8 @@
       "equipment_stats_title": "补装物品统计",
       "create_preview_title": "生成补装预览",
       "create_preview_desc": "输入战报 ID，自动拉取相关战斗事件，生成包含所有公会死亡记录的预览补装工单。支持通过逗号或空格分隔多个 ID。",
-      "create_preview_placeholder": "例如 BR-1001, BR-1002",
       "preview_action_warning": "当前工单预览状态，尚未生成工单",
       "create_from_preview": "创建补装工单",
-      "create_no_deaths": "选中的战报中未找到死亡记录",
-      "create_no_ids": "请至少输入一个战报 ID",
-      "confirm_delete_order": "确定要删除这个补装工单吗？",
-      "generate_preview_failed": "生成预览失败",
-      "create_order_failed": "创建工单失败",
-      "delete_order_failed": "删除工单失败",
-      "preview_prefix": "预览：",
-      "total_records": "总记录数：{{count}}",
       "no_items": "没有需要补装的物品",
       "slots": {
         "MainHand": "主武器",
@@ -395,11 +382,7 @@
         "button": "自动审核",
         "failed": "自动审批失败。",
         "excluded_by_policy": "被不参与补装策略排除",
-        "start": "开始审核",
-        "rule_not_found": "未找到规则：{{rule}}",
-        "max_plevel_not_configured": "未配置最大补装等级（Max P-Level）",
-        "max_plevel_exceeded": "{{slot}} 装备的补装等级（P-Level）为 {{pLevel}}，超过最大值 {{maxAllowedPLevel}}",
-        "max_plevel_success": "最大补装等级规则通过（≤ {{maxAllowedPLevel}}）"
+        "start": "开始审核"
       }
     }
   }

@@ -353,7 +353,7 @@ export function RegearTab({ guildId }: RegearTabProps) {
       setRealDetail(null);
       
     } catch (err: any) {
-      toast.error(err.message || t('guild_dashboard.regear_tab.generate_preview_failed'));
+      toast.error(err.message || 'Failed to generate preview');
       handleBack(); // Revert back to list on error
     } finally {
       setIsDetailLoading(false);
@@ -399,7 +399,7 @@ export function RegearTab({ guildId }: RegearTabProps) {
 
       if (!res.ok) {
         const err = await res.json() as any;
-        throw new Error(err.error || t('guild_dashboard.regear_tab.create_order_failed'));
+        throw new Error(err.error || 'Failed to create order');
       }
 
       const data = await res.json() as any;
@@ -431,21 +431,21 @@ export function RegearTab({ guildId }: RegearTabProps) {
       
     } catch (err: any) {
       console.error('Failed to create order from preview', err);
-      toast.error(err.message || t('guild_dashboard.regear_tab.create_order_failed'));
+      toast.error(err.message || 'Failed to create order');
     }
   };
 
   const handleDeleteOrder = async (orderId: string) => {
     if (!guildId) return;
-    if (!(await confirm.confirm({ message: t('guild_dashboard.regear_tab.confirm_delete_order'), danger: true }))) return;
+    if (!(await confirm.confirm({ message: t('guild_dashboard.regear_tab.confirm_delete_order', { defaultValue: 'Are you sure you want to delete this order?' }), danger: true }))) return;
     
     try {
       const res = await api.guilds[':guildId'].regear.tickets[':ticketId'].$delete({ param: { guildId, ticketId: orderId } });
-      if (!res.ok) throw new Error(t('guild_dashboard.regear_tab.delete_order_failed'));
+      if (!res.ok) throw new Error('Failed to delete order');
       setOrders(prev => prev.filter(o => o.id !== orderId));
     } catch (err) {
       console.error(err);
-      toast.error(t('guild_dashboard.regear_tab.delete_order_failed'));
+      toast.error('Failed to delete order');
     }
   };
 
@@ -492,7 +492,7 @@ export function RegearTab({ guildId }: RegearTabProps) {
               autoFocus
               value={previewBattleIdsText}
               onChange={(e) => setPreviewBattleIdsText(e.target.value)}
-              placeholder={t('guild_dashboard.regear_tab.create_preview_placeholder', { defaultValue: 'e.g. BR-1001, BR-1002' })}
+              placeholder="e.g. BR-1001, BR-1002"
               className="w-full h-32 p-3 bg-black-bg border border-black-border rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 resize-none"
             />
             {previewError && <p className="text-xs font-bold text-rose-500">{previewError}</p>}

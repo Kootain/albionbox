@@ -160,7 +160,7 @@ export function RegearRelatedBattles({ battleIds, guildId }: RegearRelatedBattle
               <tr>
                 <td colSpan={5} className="py-8 text-center text-slate-500">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                  {t('common.loading')}
+                  Loading...
                 </td>
               </tr>
             ) : error ? (
@@ -222,7 +222,7 @@ export function RegearRelatedBattles({ battleIds, guildId }: RegearRelatedBattle
                       className="px-3 py-1.5 bg-black-bg border border-black-border hover:border-gold/30 text-slate-400 hover:text-gold text-xs font-bold uppercase rounded-lg transition-colors flex items-center gap-1.5"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
-                      {t('guild_dashboard.battle_report.details_btn')}
+                      Details
                     </a>
                   </div>
                 </td>

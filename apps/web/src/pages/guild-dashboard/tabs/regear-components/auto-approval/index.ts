@@ -39,7 +39,7 @@ export class AutoApprovalEngine {
   evaluate(record: RegearRecord, config: RegearConfig, ruleId: string, options: Record<string, any>, t: (key: string, options?: any) => string): ApprovalResult {
     const rule = this.rules.get(ruleId);
     if (!rule) {
-      return { approved: false, reason: t('guild_dashboard.regear_tab.auto_approval.rule_not_found', { defaultValue: `Rule ${ruleId} not found`, rule: ruleId }) };
+      return { approved: false, reason: t('guild_dashboard.regear_tab.auto_approval.rule_not_found', { defaultValue: `Rule ${ruleId} not found` }) };
     }
     return rule.evaluate({ record, config, options, t });
   }
