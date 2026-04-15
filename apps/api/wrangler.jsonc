@@ -61,8 +61,14 @@
   ],
   "workers_dev": true,
   "preview_urls": true,
+  "triggers": {
+    "crons": ["*/1 * * * *"]
+  },
   "env": {
     "local": {
+      "triggers": {
+        "crons": ["*/1 * * * *"]
+      },
       "vars": {
         "API_BASE_URL": "http://127.0.0.1:8787",
         "APP_BASE_URL": "http://127.0.0.1:5174",

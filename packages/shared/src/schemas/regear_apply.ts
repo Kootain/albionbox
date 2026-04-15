@@ -32,6 +32,8 @@ export const RegearApplySchema = z.object({
   createTime: z.string(),
   lastStatusTime: z.string(),
   regearId: z.string().optional(),
+  eventId: z.string().optional(),
+  battleId: z.string().optional(),
   applyMeta: z.string().optional(), // Expected JSON string or object depending on parsing, keeping as string
   status: z.nativeEnum(ApplyStatus),
   victimName: z.string().optional(),
