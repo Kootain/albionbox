@@ -23,6 +23,11 @@ type KookMessage = {
   content: string
   create_at?: number
   author?: { id: string; username: string; nickname?: string }
+  reactions?: Array<{
+    emoji: { id: string; name: string }
+    count: number
+    me?: boolean
+  }>
 }
 
 const KOOK_KMD_WASM_EXTERNAL = 'https://cdn.jsdelivr.net/npm/@kookapp/kook-message-preview@0.0.3/dist/markdown-parse.0.0.10.js'
@@ -36,6 +41,30 @@ function formatTs(ts?: number) {
   const d = new Date(ts * 1000)
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+function toKookEmojiId(input: string) {
+  const v = (input ?? '').trim()
+  if (!v) return ''
+  if (v.startsWith('[') && v.endsWith(']')) return v
+
+  const cps = Array.from(v).map(ch => ch.codePointAt(0)).filter((x): x is number => typeof x === 'number')
+  if (cps.length === 0) return v
+  if (cps.length === 1) return `[#${cps[0]};]`
+  return `[#${cps.join(';#')};]`
+}
+
+function fromKookEmojiId(idOrName: string) {
+  const v = (idOrName ?? '').trim()
+  const m = v.match(/^\[#(.+)\]$/)
+  if (!m) return v
+  const inner = m[1].replace(/;$/, '')
+  const parts = inner.split(';').filter(Boolean).map(p => p.replace(/^#/, ''))
+  const chars = parts
+    .map(p => Number(p))
+    .filter(n => Number.isFinite(n))
+    .map(n => String.fromCodePoint(n))
+  return chars.length ? chars.join('') : v
 }
 
 export default function KookMessageBrowserPage() {
@@ -53,6 +82,8 @@ export default function KookMessageBrowserPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [viewMode, setViewMode] = useState<'preview' | 'json'>('preview')
+  const [reactionInputByMsgId, setReactionInputByMsgId] = useState<Record<string, string>>({})
+  const [addingReactionByMsgId, setAddingReactionByMsgId] = useState<Record<string, boolean>>({})
 
   const oldestMessageId = useMemo(() => messages[messages.length - 1]?.id, [messages])
 
@@ -122,6 +153,38 @@ export default function KookMessageBrowserPage() {
       setError(e?.message ?? String(e))
     } finally {
       setLoadingMore(false)
+    }
+  }
+
+  async function addReaction(msgId: string, emojiInput: string) {
+    const emoji = toKookEmojiId(emojiInput)
+    if (!emoji) return
+    setAddingReactionByMsgId(prev => ({ ...prev, [msgId]: true }))
+    setError(null)
+    try {
+      const res = await ((api as any).kook.messages as any)[':msgId'].reactions.$post({
+        param: { msgId },
+        json: { emoji },
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null) as any
+        throw new Error(data?.error ?? 'Failed to add reaction')
+      }
+      setMessages(prev => prev.map(m => {
+        if (m.id !== msgId) return m
+        const existing = m.reactions ?? []
+        const idx = existing.findIndex(r => r.emoji?.id === emoji || r.emoji?.name === emoji)
+        if (idx >= 0) {
+          const next = [...existing]
+          next[idx] = { ...next[idx], count: (next[idx].count ?? 0) + 1, me: true }
+          return { ...m, reactions: next }
+        }
+        return { ...m, reactions: [...existing, { emoji: { id: emoji, name: emoji }, count: 1, me: true }] }
+      }))
+    } catch (e: any) {
+      setError(e?.message ?? String(e))
+    } finally {
+      setAddingReactionByMsgId(prev => ({ ...prev, [msgId]: false }))
     }
   }
 
@@ -244,6 +307,36 @@ export default function KookMessageBrowserPage() {
                   <div>type: {m.type}</div>
                   {authorName ? <div>author: {authorName}</div> : null}
                   {time ? <div>time: {time}</div> : null}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  {(m.reactions ?? []).map((r) => {
+                    const key = `${m.id}:${r.emoji?.id ?? r.emoji?.name}`
+                    const label = fromKookEmojiId(r.emoji?.id ?? r.emoji?.name ?? '')
+                    return (
+                      <div key={key} className="px-2 py-1 rounded-lg bg-black-bg border border-black-border text-xs text-slate-200 flex items-center gap-1">
+                        <span>{label}</span>
+                        <span className="text-slate-400">{r.count}</span>
+                        {r.me ? <span className="text-gold">•</span> : null}
+                      </div>
+                    )
+                  })}
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={reactionInputByMsgId[m.id] ?? ''}
+                      onChange={(e) => setReactionInputByMsgId(prev => ({ ...prev, [m.id]: e.target.value }))}
+                      placeholder="😀 或 [#128512;]"
+                      className="w-40 bg-black-bg border border-black-border rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-gold/50"
+                    />
+                    <button
+                      className="px-3 py-1 bg-black-bg hover:bg-black-border text-white font-black rounded-lg border border-black-border disabled:opacity-50 uppercase tracking-widest text-[10px]"
+                      onClick={() => addReaction(m.id, reactionInputByMsgId[m.id] ?? '')}
+                      disabled={!!addingReactionByMsgId[m.id]}
+                    >
+                      回应
+                    </button>
+                  </div>
                 </div>
 
                 {viewMode === 'json' ? (

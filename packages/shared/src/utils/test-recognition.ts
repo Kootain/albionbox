@@ -157,7 +157,7 @@ async function main() {
     return;
   }
 
-  const imagesToProcess = uniqueImages.slice(0, 3);
+  const imagesToProcess = uniqueImages.slice(0, 20);
 
   // 5. Create results directory
   const resultsDir = path.join(__dirname, 'test-results');

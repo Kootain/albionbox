@@ -22,8 +22,8 @@ export async function runRegearApplyAutoBinder(
   const limit = options?.limit ?? 25
   const windowMinutes = options?.windowMinutes ?? 5
   const windowMs = (options?.windowMinutes ?? 5) * 60 * 1000
-  const battleFetchLimit = options?.battleFetchLimit ?? 51
-  const eventFetchLimit = options?.eventFetchLimit ?? 51
+  const battleFetchLimit = options?.battleFetchLimit ?? 10
+  const eventFetchLimit = options?.eventFetchLimit ?? 10
 
   const jobStartedAt = Date.now()
   console.log(JSON.stringify({

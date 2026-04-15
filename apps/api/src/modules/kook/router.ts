@@ -8,7 +8,7 @@ import type { AppContext } from '../../context'
 const factory = createFactory<AppContext>()
 const router = new Hono<AppContext>()
 
-async function kookRequest(c: any, apiPath: string, query?: Record<string, string | number | undefined>) {
+async function kookGet(c: any, apiPath: string, query?: Record<string, string | number | undefined>) {
   const url = new URL(`https://www.kookapp.cn/api/v3${apiPath}`)
   for (const [k, v] of Object.entries(query ?? {})) {
     if (v === undefined) continue
@@ -36,15 +36,42 @@ async function kookRequest(c: any, apiPath: string, query?: Record<string, strin
   return c.json(data)
 }
 
+async function kookPostForm(c: any, apiPath: string, body: Record<string, string>) {
+  const url = new URL(`https://www.kookapp.cn/api/v3${apiPath}`)
+
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bot ${c.env.KOOK_BOT_TOKEN}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams(body).toString(),
+  })
+
+  const text = await res.text()
+  let data: unknown = null
+  try {
+    data = text ? JSON.parse(text) : null
+  } catch {
+    data = text
+  }
+
+  if (!res.ok) {
+    return c.json({ error: data ?? res.statusText }, res.status)
+  }
+
+  return c.json(data)
+}
+
 const listGuildsHandler = factory.createHandlers(async (c) => {
-  return kookRequest(c, '/guild/list')
+  return kookGet(c, '/guild/list')
 })
 
 const listChannelsHandler = factory.createHandlers(
   zValidator('param', z.object({ guildId: z.string().min(1) })),
   async (c) => {
     const { guildId } = c.req.valid('param')
-    return kookRequest(c, '/channel/list', { guild_id: guildId })
+    return kookGet(c, '/channel/list', { guild_id: guildId })
   }
 )
 
@@ -57,11 +84,21 @@ const listMessagesHandler = factory.createHandlers(
   async (c) => {
     const { channelId } = c.req.valid('param')
     const { before, pageSize } = c.req.valid('query')
-    return kookRequest(c, '/message/list', {
+    return kookGet(c, '/message/list', {
       target_id: channelId,
       page_size: pageSize ?? 50,
       ...(before ? { msg_id: before, flag: 'before' } : {}),
     })
+  }
+)
+
+const addReactionHandler = factory.createHandlers(
+  zValidator('param', z.object({ msgId: z.string().min(1) })),
+  zValidator('json', z.object({ emoji: z.string().min(1) })),
+  async (c) => {
+    const { msgId } = c.req.valid('param')
+    const { emoji } = c.req.valid('json')
+    return kookPostForm(c, '/message/add-reaction', { msg_id: msgId, emoji })
   }
 )
 
@@ -70,5 +107,6 @@ const routes = router
   .get('/guilds', ...listGuildsHandler)
   .get('/guilds/:guildId/channels', ...listChannelsHandler)
   .get('/channels/:channelId/messages', ...listMessagesHandler)
+  .post('/messages/:msgId/reactions', ...addReactionHandler)
 
 export { routes as kookRouter }
