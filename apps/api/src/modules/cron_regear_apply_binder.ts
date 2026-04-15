@@ -3,6 +3,7 @@ import { and, asc, eq, isNull } from 'drizzle-orm'
 import { ApplyStatus, AlbionServer, type AlbionOfficialBattle, type AlbionOfficialEvent } from '@albionbox/shared'
 import { regearApplies } from '@albionbox/db'
 import { AlbionApiClient } from '../lib/albion-sdk'
+import { addKookMessageReaction, createKookRestClient } from '../lib/kook-sdk'
 
 type RegearApplyRow = typeof regearApplies.$inferSelect
 
@@ -44,6 +45,7 @@ export async function runRegearApplyAutoBinder(
   const client = new AlbionApiClient(AlbionServer.ASIA)
   const guildNameToIdCache = new Map<string, string | null>()
   const guildIdToBattlesCache = new Map<string, AlbionOfficialBattle[] | null>()
+  const kook = env.KOOK_BOT_TOKEN ? createKookRestClient({ token: env.KOOK_BOT_TOKEN }) : null
 
   let updated = 0
   let bound = 0
@@ -82,6 +84,11 @@ export async function runRegearApplyAutoBinder(
         })
         .where(eq(regearApplies.id, apply.id))
         .execute()
+      if (apply.msgId && kook) {
+        try {
+          await addKookMessageReaction({ client: kook, msgId: apply.msgId, emoji: '🔗' })
+        } catch {}
+      }
       updated += 1
       bound += 1
       continue
