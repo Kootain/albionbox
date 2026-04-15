@@ -110,6 +110,8 @@ export const htmlTemplate = `<!DOCTYPE html>
       consumers: [],
       guilds: [],
       channels: [],
+      channelsByGuildId: {},
+      channelsLoadingByGuildId: {},
       roles: [],
       filters: []
     };
@@ -184,11 +186,39 @@ export const htmlTemplate = `<!DOCTYPE html>
 
         renderConsumers();
         renderGuilds();
+        await prefetchFilterChannels();
         renderFilters();
       } catch (e) {
         console.error('Initialization error:', e);
         elements.formError.textContent = 'Failed to load initial data. Ensure KOOK_BOT_TOKEN is valid.';
       }
+    }
+
+    async function ensureChannelsLoaded(guildId) {
+      if (!guildId) return;
+      if (state.channelsByGuildId[guildId]) return;
+      if (state.channelsLoadingByGuildId[guildId]) return state.channelsLoadingByGuildId[guildId];
+
+      state.channelsLoadingByGuildId[guildId] = api.getChannels(guildId)
+        .then((channels) => {
+          state.channelsByGuildId[guildId] = channels;
+          delete state.channelsLoadingByGuildId[guildId];
+        })
+        .catch((err) => {
+          console.error('Failed to load channels for guild:', guildId, err);
+          delete state.channelsLoadingByGuildId[guildId];
+        });
+
+      return state.channelsLoadingByGuildId[guildId];
+    }
+
+    async function prefetchFilterChannels() {
+      const guildIds = [...new Set(
+        state.filters
+          .filter(f => f.guild_id && f.channel_id)
+          .map(f => f.guild_id)
+      )];
+      await Promise.all(guildIds.map((guildId) => ensureChannelsLoaded(guildId)));
     }
 
     // Event Listeners
@@ -212,6 +242,7 @@ export const htmlTemplate = `<!DOCTYPE html>
         ]);
         
         state.channels = channels;
+        state.channelsByGuildId[guildId] = channels;
         state.roles = roles;
         
         renderChannels();
@@ -287,6 +318,15 @@ export const htmlTemplate = `<!DOCTYPE html>
       return g ? g.name : id;
     }
 
+    function getChannelName(guildId, channelId) {
+      if (!channelId) return '-';
+      if (!guildId) return channelId;
+      const channels = state.channelsByGuildId[guildId];
+      if (!channels) return channelId;
+      const c = channels.find(c => c.id === channelId);
+      return c ? c.name : channelId;
+    }
+
     function renderFilters() {
       elements.filtersLoading.style.display = 'none';
       elements.filtersTable.style.display = 'table';
@@ -301,7 +341,7 @@ export const htmlTemplate = `<!DOCTYPE html>
           <td><small>\${f.id.substring(0, 8)}...</small></td>
           <td>\${f.consumer_id}</td>
           <td>\${getGuildName(f.guild_id)}</td>
-          <td>\${f.channel_id || '-'}</td>
+          <td>\${getChannelName(f.guild_id, f.channel_id)}</td>
           <td>\${f.msg_type || '-'}</td>
           <td>\${f.role_id || '-'}</td>
           <td>
