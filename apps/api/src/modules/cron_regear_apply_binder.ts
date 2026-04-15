@@ -4,6 +4,7 @@ import { ApplyStatus, AlbionServer, type AlbionOfficialBattle, type AlbionOffici
 import { regearApplies } from '@albionbox/db'
 import { AlbionApiClient } from '../lib/albion-sdk'
 import { addKookMessageReaction, createKookRestClient } from '../lib/kook-sdk'
+import { resolveAlbionGuildIdByName } from './guilds/guilds.service'
 
 type RegearApplyRow = typeof regearApplies.$inferSelect
 
@@ -81,6 +82,7 @@ export async function runRegearApplyAutoBinder(
     const result = await tryBindOneApply({
       apply,
       client,
+      db,
       windowMs,
       battleFetchLimit,
       eventFetchLimit,
@@ -148,13 +150,14 @@ export async function runRegearApplyAutoBinder(
 async function tryBindOneApply(params: {
   apply: RegearApplyRow
   client: AlbionApiClient
+  db: ReturnType<typeof drizzle>
   windowMs: number
   battleFetchLimit: number
   eventFetchLimit: number
   guildNameToIdCache: Map<string, string | null>
   guildIdToBattlesCache: Map<string, AlbionOfficialBattle[] | null>
 }): Promise<BindResult> {
-  const { apply, client, windowMs, battleFetchLimit, eventFetchLimit } = params
+  const { apply, client, db, windowMs, battleFetchLimit, eventFetchLimit } = params
 
   if (apply.eventId) return { type: 'skipped' }
 
@@ -178,7 +181,7 @@ async function tryBindOneApply(params: {
     return { type: 'missing_fields' }
   }
 
-  const guildId = await getGuildIdFromName(client, guildName, params.guildNameToIdCache)
+  const guildId = await getGuildIdFromName(db, guildName, params.guildNameToIdCache)
   if (!guildId) {
     console.log(JSON.stringify({ msg: 'regear_apply_binder_guild_not_found', applyId: apply.id, victimGuild: guildName }))
     return { type: 'no_match' }
@@ -243,39 +246,14 @@ async function tryBindOneApply(params: {
   return { type: 'bound', eventId: best.eventId, battleId: best.battleId }
 }
 
-async function getGuildIdFromName(client: AlbionApiClient, guildName: string, cache: Map<string, string | null>) {
-  const cached = cache.get(guildName)
+async function getGuildIdFromName(db: ReturnType<typeof drizzle>, guildName: string, cache: Map<string, string | null>) {
+  const key = guildName.trim().toLowerCase()
+  const cached = cache.get(key)
   if (cached !== undefined) return cached
 
-  try {
-    const searchResult = await client.search(guildName)
-    const exact = searchResult.guilds.find((g) => g.Name === guildName)
-    if (exact?.Id) {
-      cache.set(guildName, exact.Id)
-      return exact.Id
-    }
-
-    const caseInsensitive = searchResult.guilds.find((g) => g.Name.toLowerCase() === guildName.toLowerCase())
-    if (caseInsensitive?.Id) {
-      cache.set(guildName, caseInsensitive.Id)
-      return caseInsensitive.Id
-    }
-
-    if (searchResult.guilds.length === 1 && searchResult.guilds[0]?.Id) {
-      cache.set(guildName, searchResult.guilds[0].Id)
-      return searchResult.guilds[0].Id
-    }
-
-    const sorted = searchResult.guilds
-      .filter((g) => !!g.Id)
-      .sort((a, b) => (b.KillFame ?? 0) - (a.KillFame ?? 0))
-
-    const best = sorted[0]?.Id ?? null
-    cache.set(guildName, best)
-    return best
-  } catch {
-    return null
-  }
+  const result = await resolveAlbionGuildIdByName(db, guildName).catch(() => null)
+  cache.set(key, result)
+  return result
 }
 
 async function getGuildBattles(

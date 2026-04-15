@@ -8,7 +8,7 @@ import { CreateGuildSchema, BattleType, decodeBattleTypes, encodeBattleTypes } f
 import { guilds, guildMembers, battles } from '@albionbox/db'
 import { authMiddleware } from '../users'
 import { guildPermMiddleware } from '../permissions'
-import { createGuildWithAdmin } from './guilds.service'
+import { createGuildWithAdmin, findGuildByName } from './guilds.service'
 import type { AppContext } from '../../context'
 
 const factory = createFactory<AppContext>();
@@ -55,6 +55,18 @@ const getGuildHandler = factory.createHandlers(guildPermMiddleware(['guild:view'
 
       return c.json({ ...guild, memberCount })
     });
+
+const getGuildByNameHandler = factory.createHandlers(
+  zValidator('query', z.object({ name: z.string().min(1) })),
+  async (c) => {
+    const db = drizzle(c.env.DB)
+    const name = c.req.valid('query').name.trim()
+    if (!name) return c.json({ error: 'Missing name' }, 400)
+    const guild = await findGuildByName(db, name)
+    if (!guild) return c.json({ error: '工会不存在' }, 404)
+    return c.json(guild)
+  }
+)
 
 
 const upsertBattleHandler = factory.createHandlers(
@@ -152,6 +164,7 @@ const routes = router
       .use('*', authMiddleware)
       .post('/', ...createGuildHandler)
       .get('/', ...listGuildsHandler)
+      .get('/by_name', ...getGuildByNameHandler)
       .get('/:id', ...getGuildHandler)
       .put('/:id/battles/:battleId', ...upsertBattleHandler)
       .post('/:id/battles', ...batchSearchBattlesHandler)
