@@ -84,8 +84,37 @@ export type AppType = typeof routes
 
 export const fetch = app.fetch
 
-export const scheduled = (_event: ScheduledEvent, env: Env, ctx: ExecutionContext) => {
-  ctx.waitUntil(runRegearApplyAutoBinder(env).catch(() => undefined))
+export const scheduled = (event: ScheduledEvent, env: Env, ctx: ExecutionContext) => {
+  ctx.waitUntil((async () => {
+    const startedAt = Date.now()
+    console.log(JSON.stringify({
+      msg: 'scheduled_start',
+      name: 'regear_apply_binder',
+      cron: event.cron,
+      scheduledTime: event.scheduledTime,
+    }))
+    try {
+      const result = await runRegearApplyAutoBinder(env)
+      console.log(JSON.stringify({
+        msg: 'scheduled_done',
+        name: 'regear_apply_binder',
+        cron: event.cron,
+        scheduledTime: event.scheduledTime,
+        durationMs: Date.now() - startedAt,
+        result,
+      }))
+    } catch (e) {
+      const err = e as any
+      console.error(JSON.stringify({
+        msg: 'scheduled_error',
+        name: 'regear_apply_binder',
+        cron: event.cron,
+        scheduledTime: event.scheduledTime,
+        durationMs: Date.now() - startedAt,
+        error: { name: err?.name, message: err?.message ?? String(e) },
+      }))
+    }
+  })())
 }
 
 export default { fetch, scheduled }

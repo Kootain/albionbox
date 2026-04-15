@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { parseUtcTimestamp, pickBestMatchFromEvents } from '../src/modules/cron_regear_apply_binder'
+import { addKookMessageReaction } from '../src/lib/kook-sdk'
 
 const d1 = parseUtcTimestamp('2026-04-15 12:45')
 assert.ok(d1)
@@ -31,4 +32,25 @@ assert.equal(none, null)
 const notSameMinute = pickBestMatchFromEvents(events, 'Alice', Date.parse('2026-04-15T12:46:00Z'))
 assert.equal(notSameMinute, null)
 
-console.log('regear-apply-binder-smoke: ok')
+async function main() {
+  let called = false
+  const fakeClient = {
+    request: async (url: string, method: string, data?: unknown) => {
+      called = true
+      assert.equal(url, '/api/v3/message/add-reaction')
+      assert.equal(method, 'POST')
+      assert.deepEqual(data, { msg_id: 'msg-1', emoji: '🔗' })
+      return { success: true }
+    },
+  }
+
+  await addKookMessageReaction({ client: fakeClient as any, msgId: 'msg-1', emoji: '🔗' })
+  assert.ok(called)
+
+  console.log('regear-apply-binder-smoke: ok')
+}
+
+main().catch((e) => {
+  console.error(e)
+  process.exitCode = 1
+})
