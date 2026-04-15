@@ -22,6 +22,7 @@ export type RegearRecordStatus = 'excluded' | 'pending_review' | 'rejected' | 'p
 export interface RegearRecord {
   id: string;
   eventId?: string;
+  battleId?: string;
   playerId?: string;
   status: RegearRecordStatus;
   reviewComment?: string;
@@ -47,4 +48,5 @@ export interface RegearOrderDetail {
   order: RegearOrder;
   config: RegearConfig;
   records: RegearRecord[];
+  battleEvents?: Record<string, string[]>;
 }

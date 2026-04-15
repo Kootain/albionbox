@@ -1,0 +1,4 @@
+- [x] `packages/db` 中成功包含 `regear_applies` 表并且对外导出。
+- [x] `packages/shared` 中成功定义了状态枚举和 Schema 并对外导出。
+- [x] `apps/api` 的 `regear_applies` 模块能够被正确访问（创建、删除、更新状态、绑定 regear 记录、更新 apply_detail）。
+- [x] `apps/api` 的 `pnpm tsc --noEmit` 命令执行通过，无 TypeScript 报错。

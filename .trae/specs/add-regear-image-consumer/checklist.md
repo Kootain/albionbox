@@ -1,0 +1,7 @@
+- [ ] 新增 `consumer_id = regear-image-recognition` 并可通过现有 KV filter 机制触发消费
+- [ ] type=2 消息可正确从 `d.content` 提取图片 URL
+- [ ] type=10 CardMessage 可正确遍历 cards/modules 并从 container.elements 提取图片 URL
+- [ ] 图像识别输出关键字段为空时会跳过，不创建 regear_apply
+- [ ] 图像识别输出有效时，成功调用 `POST /regear_applies` 创建申请（字段映射正确）
+- [ ] apps/api 支持 internal token 调用 `POST /regear_applies`（不影响现有用户鉴权）
+- [ ] `kook-consumer-worker` 与 `apps/api` 均通过 `tsc --noEmit`

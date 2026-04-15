@@ -1,0 +1,7 @@
+- [x] Both `kook-webhook-worker` and `kook-consumer-worker` are correctly configured with Queue and KV bindings in their respective `wrangler.jsonc`.
+- [x] `kook-webhook-worker` successfully pushes incoming KOOK events to the Queue.
+- [x] `kook-consumer-worker` successfully consumes messages from the Queue.
+- [x] The event dispatcher correctly evaluates KV-based filters (guild, channel, type, permission) and routes to the correct consumer instance.
+- [x] The management API can successfully fetch KOOK guilds, channels, users, and permissions.
+- [x] The management API can successfully create, read, update, and delete filter configurations in KV.
+- [x] The static management frontend is accessible via the API worker and can interact with the management APIs.

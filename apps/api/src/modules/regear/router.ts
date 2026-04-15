@@ -27,8 +27,63 @@ const createTicketHandler = factory.createHandlers(
   zValidator('json', CreateRegearTicketSchema),
   async (c) => {
     const guildId = c.req.param('guildId') as string
-    const { battleIds, eventIds, players, server, config } = c.req.valid('json')
+    const { battleEvents, players, server, config } = c.req.valid('json')
     const db = drizzle(c.env.DB)
+
+    const eventToBattleId = new Map<string, string | null>()
+    const normalizedBattleIds = new Set<string>()
+    const normalizedEventEntries: Array<{ eventId: string; battleId: string | null }> = []
+
+    for (const [rawBattleId, rawEventIds] of Object.entries(battleEvents)) {
+      const battleId = rawBattleId.trim()
+      if (!battleId) return c.json({ error: 'battleEvents 中存在空 battleId' }, 400)
+
+      normalizedBattleIds.add(battleId)
+
+      const uniqueEventIds = Array.from(new Set(rawEventIds.map((id) => id.trim()).filter(Boolean)))
+      if (uniqueEventIds.length === 0) {
+        return c.json({ error: `battleEvents[${battleId}] 不能为空` }, 400)
+      }
+
+      for (const eventId of uniqueEventIds) {
+        const existingBattleId = eventToBattleId.get(eventId)
+        if (existingBattleId !== undefined && existingBattleId !== battleId) {
+          return c.json({ error: `eventId(${eventId}) 同时归属多个 battleId：${existingBattleId}, ${battleId}` }, 400)
+        }
+        eventToBattleId.set(eventId, battleId)
+      }
+    }
+
+    for (const [eventId, battleId] of eventToBattleId.entries()) {
+      normalizedEventEntries.push({ eventId, battleId })
+    }
+
+    if (players) {
+      const unknownEventIds = Object.keys(players).filter((eventId) => !eventToBattleId.has(eventId))
+      if (unknownEventIds.length > 0) {
+        return c.json({ error: 'players 映射包含未知 eventId', unknownEventIds }, 400)
+      }
+    }
+
+    if (eventToBattleId.size > 0) {
+      const allEventIds = Array.from(eventToBattleId.keys())
+      const existing = await db.select({
+        eventId: regears.eventId,
+        ticketId: regearTickets.id,
+      })
+      .from(regears)
+      .innerJoin(regearTickets, eq(regearTickets.id, regears.ticketId))
+      .where(and(
+        inArray(regears.eventId, allEventIds),
+        isNull(regears.deletedAt),
+        isNull(regearTickets.deletedAt),
+      ))
+      .all()
+
+      if (existing.length > 0) {
+        return c.json({ error: '部分 eventId 已存在于其他未删除的 Ticket', conflicts: existing }, 409)
+      }
+    }
 
     const ticketId = crypto.randomUUID()
     const now = new Date().toISOString()
@@ -42,7 +97,7 @@ const createTicketHandler = factory.createHandlers(
       updatedAt: now,
     }).execute()
 
-    const battlesToInsert = battleIds.map((battleId: string) => ({
+    const battlesToInsert = Array.from(normalizedBattleIds).map((battleId: string) => ({
       id: crypto.randomUUID(),
       ticketId,
       guildId,
@@ -54,10 +109,11 @@ const createTicketHandler = factory.createHandlers(
       await db.insert(regearTicketBattles).values(battlesToInsert).execute()
     }
 
-    const regearsToInsert = eventIds.map((eventId: string) => ({
+    const regearsToInsert = normalizedEventEntries.map(({ eventId, battleId }) => ({
       id: crypto.randomUUID(),
       ticketId,
       eventId,
+      battleId,
       status: 'pending_review' as const,
       server,
       playerName: players?.[eventId] ?? '',

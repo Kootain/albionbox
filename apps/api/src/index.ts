@@ -7,6 +7,8 @@ import { guildsRouter, guildRolesRouter, guildMembersRouter, guildSettingsRouter
 import { adminReviewsRouter } from './modules/admin'
 import { battleRecordsRouter } from './modules/battle_records'
 import { regearRouter } from './modules/regear'
+import { regearApplyRouter } from './modules/regear_apply/router'
+import { kookRouter } from './modules/kook'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -74,6 +76,8 @@ const routes = app
   .route('/guilds', guildSettingsRouter)
   .route('/guilds', battleRecordsRouter)
   .route('/guilds', regearRouter)
+  .route('/regear_applies', regearApplyRouter)
+  .route('/kook', kookRouter)
 
 export type AppType = typeof routes
 

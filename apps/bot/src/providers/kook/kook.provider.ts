@@ -1,7 +1,49 @@
 import { IBotProvider, IMessage, IGuildInfo, IChannelInfo, IMessageHistory, IReactionUser } from '../../core/bot.interface.js';
 import { BotProviderType } from '../../core/provider.enum.js';
-import { KookClient, extractContent } from '@kookapp/js-sdk';
+import { KookClient, extractContent,CardBuilder } from '@kookapp/js-sdk';
 
+const kk1 = `[{"theme":"warning","color":"","size":"lg","expand":false,"modules":[{"type":"header","text":{"type":"plain-text","emoji":true,"content":"以下是你可以选择的角色：","elements":[]},"elements":[]},{"type":"divider","elements":[]},{"type":"header","text":{"type":"plain-text","emoji":true,"content":"文字频道管理员","elements":[]},"elements":[]},{"type":"section","mode":"left","accessory":null,"text":{"type":"plain-text","emoji":true,"content":"123","elements":[]},"elements":[]},{"type":"action-group","elements":[{"type":"button","theme":"primary","value":"grant:001","click":"return-val","text":{"type":"plain-text","emoji":true,"content":"领取该角色","elements":[]},"external":true,"elements":[]},{"type":"button","theme":"danger","value":"revoke:57900675","click":"return-val","text":{"type":"plain-text","emoji":true,"content":"去掉该角色","elements":[]},"external":true,"elements":[]}]},{"type":"header","text":{"type":"plain-text","emoji":true,"content":"语音频道管理员","elements":[]},"elements":[]},{"type":"section","mode":"left","accessory":null,"text":{"type":"plain-text","emoji":true,"content":"123","elements":[]},"elements":[]},{"type":"action-group","elements":[{"type":"button","theme":"primary","value":"grant:57900676","click":"return-val","text":{"type":"plain-text","emoji":true,"content":"领取该角色","elements":[]},"external":true,"elements":[]},{"type":"button","theme":"danger","value":"revoke:57900676","click":"return-val","text":{"type":"plain-text","emoji":true,"content":"去掉该角色","elements":[]},"external":true,"elements":[]}]}],"type":"card"}]`
+
+const kk = `[
+    {
+        "type": "card",
+        "theme": "secondary",
+        "size": "lg",
+        "modules":
+        [
+            {
+                "type": "action-group",
+                "elements":
+                [
+                    {
+                        "type": "button",
+                        "theme": "primary",
+                        "value": "ok",
+                        "text":
+                        {
+                            "type": "plain-text",
+                            "content": "确定"
+                        },
+                        "external": true,
+                        "elements": []
+                    },
+                    {
+                        "type": "button",
+                        "theme": "danger",
+                        "value": "cancel",
+                        "text":
+                        {
+                            "type": "plain-text",
+                            "content": "取消"
+                        },
+                        "external": true,
+                        "elements": []
+                    }
+                ]
+            }
+        ]
+    }
+]`
 export class KookProvider implements IBotProvider {
     private client: KookClient;
     private messageHandlers: ((msg: IMessage) => Promise<void>)[] = [];
@@ -22,6 +64,11 @@ export class KookProvider implements IBotProvider {
         this.client.on('close', () => {
             console.log('[KookProvider] Disconnected');
         });
+
+        this.client.on('event', (event) => {
+            console.log('[KookProvider] Received event:', event);
+        })
+
 
         this.client.on('textChannelEvent', async (event) => {
             const raw = event as unknown as {
@@ -47,11 +94,15 @@ export class KookProvider implements IBotProvider {
                 },
                 provider: BotProviderType.KOOK,
                 reply: async (content: string) => {
+                    const card = CardBuilder.fromTemplate({initialCard: {theme:'info'}})
+                    .addHeader('AlbionBox Reply')
+                    .addActionGroup([{text:'ok',value:'ok'}])
+                    .build();
+                
                     const res = await this.client.api.createMessage({
-                        type: 9,
+                        type: 10,
                         target_id: raw.target_id,
-                        content,
-                        quote: raw.msg_id
+                        content: kk,
                     });
                     if (!res.success) {
                         throw new Error(`[KookProvider] Reply failed: ${res.code} ${res.message}`);

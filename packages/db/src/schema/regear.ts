@@ -31,6 +31,7 @@ export const regears = sqliteTable('regears', {
   id: text('id').primaryKey(),
   ticketId: text('ticket_id').notNull().references(() => regearTickets.id),
   eventId: text('event_id').notNull(),
+  battleId: text('battle_id'),
   status: text('status', { enum: ['pending_review', 'excluded', 'rejected', 'pending_regear', 'completed'] }).notNull().default('pending_review'),
   comment: text('comment'),
   server: text('server', { enum: ['asia', 'eu', 'us'] }).notNull(),

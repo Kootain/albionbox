@@ -183,14 +183,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
 
   // Aggregate Equipment
   const groupedEquipmentStats = useMemo(() => {
-    let baseRecords = [...records];
-    baseRecords.sort((a, b) => {
-      let comparison = 0;
-      if (sortConfig.key === 'playerName') comparison = a.playerName.localeCompare(b.playerName);
-      else if (sortConfig.key === 'ip') comparison = a.ip - b.ip;
-      else if (sortConfig.key === 'deathFame') comparison = a.deathFame - b.deathFame;
-      return sortConfig.direction === 'asc' ? comparison : -comparison;
-    });
+    let baseRecords = [...filteredAndSortedRecords];
     baseRecords = baseRecords.filter(r => equipmentStatusFilter.includes(r.status));
 
     const groups: { title: string; subtitle?: string; records: RegearRecord[] }[] = [];
@@ -281,7 +274,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
 
       return { title: group.title, subtitle: group.subtitle, stats: result, recordCount: group.records.length, empty: Object.keys(result).length === 0 };
     });
-  }, [records, sortConfig, equipmentStatusFilter, equipmentGroupSize, config.allowedSlots, i18n.language, t]); // Depend on language and filter to trigger re-aggregation
+  }, [filteredAndSortedRecords, equipmentStatusFilter, equipmentGroupSize, config.allowedSlots, i18n.language, t]); // Depend on language and filter to trigger re-aggregation
 
   const updateRecordStatus = async (recordId: string, status: RegearRecord['status'], comment?: string) => {
     try {

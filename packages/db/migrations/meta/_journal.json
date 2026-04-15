@@ -29,6 +29,13 @@
       "when": 1776002072250,
       "tag": "0003_narrow_sister_grimm",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1776236632827,
+      "tag": "0004_mighty_abomination",
+      "breakpoints": true
     }
   ]
 }

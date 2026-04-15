@@ -179,6 +179,7 @@ export function RegearTab({ guildId }: RegearTabProps) {
           id: dbRecord.id, // Internal DB regearId
           guildId: ev.Victim?.GuildId,
           eventId: evIdStr,
+          battleId: String(dbRecord.battleId ?? ev.BattleId ?? ''),
           status: dbRecord.status,
           reviewComment: dbRecord.comment,
           deathTime: ev.TimeStamp,
@@ -263,6 +264,11 @@ export function RegearTab({ guildId }: RegearTabProps) {
       const battleEventsArray = await Promise.all(ids.map(fetchEventsForBattle));
       battleEventsArray.forEach(events => allEvents.push(...events));
 
+      const rawBattleEventsMap: Record<string, AlbionOfficialEvent[]> = {};
+      ids.forEach((battleId, idx) => {
+        rawBattleEventsMap[battleId] = battleEventsArray[idx] ?? [];
+      });
+
       // Map events to RegearRecords
       const recordsMap = new Map<string, RegearRecord>();
       
@@ -287,6 +293,7 @@ export function RegearTab({ guildId }: RegearTabProps) {
         recordsMap.set(String(ev.EventId), {
           id: String(ev.EventId),
           eventId: String(ev.EventId),
+          battleId: String(ev.BattleId ?? ''),
           status: 'pending_review',
           deathTime: ev.TimeStamp,
           deathFame: victim.DeathFame,
@@ -301,6 +308,15 @@ export function RegearTab({ guildId }: RegearTabProps) {
       const generatedRecords = Array.from(recordsMap.values());
       generatedRecords.sort((a, b) => new Date(a.deathTime).getTime() - new Date(b.deathTime).getTime());
       const regearRecords = generatedRecords.filter(r => r.guildId === guildId);
+      const regearEventIdSet = new Set(regearRecords.map(r => r.eventId).filter(Boolean) as string[]);
+
+      const filteredBattleEventsMap: Record<string, string[]> = {};
+      Object.entries(rawBattleEventsMap).forEach(([battleId, events]) => {
+        const filtered = events.filter(ev => regearEventIdSet.has(String(ev.EventId)));
+        if (filtered.length > 0) {
+          filteredBattleEventsMap[battleId] = Array.from(new Set(filtered.map(ev => String(ev.EventId))));
+        }
+      });
 
       if (regearRecords.length === 0) {
         throw new Error(t('guild_dashboard.regear_tab.create_no_deaths', { defaultValue: 'No deaths found for your guild in these battles.' }));
@@ -330,11 +346,11 @@ export function RegearTab({ guildId }: RegearTabProps) {
           startTime: generatedRecords.length > 0 ? generatedRecords[0].deathTime : new Date().toISOString(),
           endTime: generatedRecords.length > 0 ? generatedRecords[generatedRecords.length - 1].deathTime : new Date().toISOString(),
           status: 'active',
-          battleIds: ids,
+          battleIds: Object.keys(filteredBattleEventsMap),
           stats: {
-            totalDeaths: generatedRecords.length,
+            totalDeaths: regearRecords.length,
             reviewedDeaths: 0,
-            pendingReview: generatedRecords.length,
+            pendingReview: regearRecords.length,
             pendingRegear: 0,
             completedRegear: 0,
             // excludedRegear: 0,
@@ -346,7 +362,8 @@ export function RegearTab({ guildId }: RegearTabProps) {
           defaultPLevel,
           policies: defaultPolicies
         },
-        records: regearRecords
+        records: regearRecords,
+        battleEvents: filteredBattleEventsMap
       };
 
       setPreviewDetail(newPreview);
@@ -376,12 +393,14 @@ export function RegearTab({ guildId }: RegearTabProps) {
     if (!guildId) return;
     
     try {
-      const eventIds: string[] = [];
+      const battleEvents = preview.battleEvents;
+      if (!battleEvents || Object.keys(battleEvents).length === 0) {
+        throw new Error('Missing battle events in preview. Please regenerate the preview.');
+      }
       const players: Record<string, string> = {};
       
       preview.records.forEach(r => {
         if (r.eventId) {
-          eventIds.push(r.eventId);
           players[r.eventId] = r.playerName;
         }
       });
@@ -389,8 +408,7 @@ export function RegearTab({ guildId }: RegearTabProps) {
       const res = await api.guilds[':guildId'].regear.tickets.$post({
         param: { guildId },
         json: {
-          battleIds: preview.order.battleIds,
-          eventIds,
+          battleEvents,
           players,
           server: 'asia', // TODO: Get from guild server context
           config: preview.config
