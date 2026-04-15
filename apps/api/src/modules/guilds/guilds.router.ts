@@ -2,13 +2,13 @@ import { Hono } from 'hono'
 import { createFactory } from 'hono/factory'
 import { zValidator } from '@hono/zod-validator'
 import { drizzle } from 'drizzle-orm/d1'
-import { count, eq, and, inArray, sql } from 'drizzle-orm'
+import { count, eq, and, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { CreateGuildSchema, BattleType, decodeBattleTypes, encodeBattleTypes } from '@albionbox/shared'
 import { guilds, guildMembers, battles } from '@albionbox/db'
 import { authMiddleware } from '../users'
 import { guildPermMiddleware } from '../permissions'
-import { createGuildWithAdmin } from './guilds.service'
+import { createGuildWithAdmin, findGuildByName } from './guilds.service'
 import type { AppContext } from '../../context'
 
 const factory = createFactory<AppContext>();
@@ -62,42 +62,9 @@ const getGuildByNameHandler = factory.createHandlers(
     const db = drizzle(c.env.DB)
     const name = c.req.valid('query').name.trim()
     if (!name) return c.json({ error: 'Missing name' }, 400)
-
-    const nameLower = name.toLowerCase()
-
-    const exact = await db
-      .select({
-        id: guilds.id,
-        name: guilds.name,
-        server: guilds.server,
-        albionGuildId: guilds.albionGuildId,
-      })
-      .from(guilds)
-      .where(sql`lower(${guilds.name}) = ${nameLower}`)
-      .all()
-
-    const exactBest =
-      exact.find((g) => typeof g.albionGuildId === 'string' && g.albionGuildId.length > 0) ?? exact[0]
-
-    if (exactBest) return c.json(exactBest)
-
-    const partial = await db
-      .select({
-        id: guilds.id,
-        name: guilds.name,
-        server: guilds.server,
-        albionGuildId: guilds.albionGuildId,
-      })
-      .from(guilds)
-      .where(sql`lower(${guilds.name}) like ${`%${nameLower}%`}`)
-      .limit(20)
-      .all()
-
-    const partialBest =
-      partial.find((g) => typeof g.albionGuildId === 'string' && g.albionGuildId.length > 0) ?? partial[0]
-
-    if (!partialBest) return c.json({ error: '工会不存在' }, 404)
-    return c.json(partialBest)
+    const guild = await findGuildByName(db, name)
+    if (!guild) return c.json({ error: '工会不存在' }, 404)
+    return c.json(guild)
   }
 )
 

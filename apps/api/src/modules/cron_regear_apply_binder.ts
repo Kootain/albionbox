@@ -1,9 +1,10 @@
 import { drizzle } from 'drizzle-orm/d1'
-import { and, asc, eq, isNull, isNotNull, ne, sql } from 'drizzle-orm'
+import { and, asc, eq, isNull } from 'drizzle-orm'
 import { ApplyStatus, AlbionServer, type AlbionOfficialBattle, type AlbionOfficialEvent } from '@albionbox/shared'
-import { guilds, regearApplies } from '@albionbox/db'
+import { regearApplies } from '@albionbox/db'
 import { AlbionApiClient } from '../lib/albion-sdk'
 import { addKookMessageReaction, createKookRestClient } from '../lib/kook-sdk'
+import { resolveAlbionGuildIdByName } from './guilds/guilds.service'
 
 type RegearApplyRow = typeof regearApplies.$inferSelect
 
@@ -250,42 +251,9 @@ async function getGuildIdFromName(db: ReturnType<typeof drizzle>, guildName: str
   const cached = cache.get(key)
   if (cached !== undefined) return cached
 
-  try {
-    const nameLower = key
-
-    const exact = await db
-      .select({ albionGuildId: guilds.albionGuildId })
-      .from(guilds)
-      .where(and(
-        sql`lower(${guilds.name}) = ${nameLower}`,
-        isNotNull(guilds.albionGuildId),
-        ne(guilds.albionGuildId, '')
-      ))
-      .get()
-
-    if (exact?.albionGuildId) {
-      cache.set(key, exact.albionGuildId)
-      return exact.albionGuildId
-    }
-
-    const partial = await db
-      .select({ albionGuildId: guilds.albionGuildId })
-      .from(guilds)
-      .where(and(
-        sql`lower(${guilds.name}) like ${`%${nameLower}%`}`,
-        isNotNull(guilds.albionGuildId),
-        ne(guilds.albionGuildId, '')
-      ))
-      .limit(1)
-      .get()
-
-    const best = partial?.albionGuildId ?? null
-    cache.set(key, best)
-    return best
-  } catch {
-    cache.set(key, null)
-    return null
-  }
+  const result = await resolveAlbionGuildIdByName(db, guildName).catch(() => null)
+  cache.set(key, result)
+  return result
 }
 
 async function getGuildBattles(
