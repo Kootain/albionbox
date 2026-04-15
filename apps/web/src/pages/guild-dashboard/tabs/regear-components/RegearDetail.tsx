@@ -478,7 +478,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
       setDetailEventRecord(ev);
     } catch (err) {
       console.error(err);
-      toast.error(t('common.load_failed'));
+      toast.error(t('common.load_failed', { defaultValue: 'Failed to load kill details' }));
     } finally {
       setIsDetailLoading(false);
     }
@@ -839,7 +839,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
         {/* Pagination at the bottom */}
         <div className="p-4 border-t border-black-border flex items-center justify-between bg-black-bg/50">
           <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-            {t('guild_dashboard.regear_tab.total_records', { count: filteredAndSortedRecords.length })}
+            {t('guild_dashboard.regear_tab.total_records', { defaultValue: 'Total: ' })} {filteredAndSortedRecords.length}
           </div>
           <div className="flex items-center gap-2">
             <button 
