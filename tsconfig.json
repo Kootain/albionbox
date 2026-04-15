@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true
+  },
+  "include": [
+    "apps/api/src/**/*.ts",
+    "apps/api/worker-configuration.d.ts",
+    "packages/shared/src/**/*.ts",
+    "packages/db/src/**/*.ts"
+  ],
+  "exclude": [
+    "packages/shared/src/utils/**",
+    "**/node_modules/**"
+  ]
+}

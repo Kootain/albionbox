@@ -84,3 +84,13 @@ export const ListRegearAppliesResponseSchema = z.object({
 
 export type ListRegearAppliesQuery = z.infer<typeof ListRegearAppliesQuerySchema>
 export type ListRegearAppliesResponse = z.infer<typeof ListRegearAppliesResponseSchema>
+
+export const ListRegearApplySupplementCandidatesQuerySchema = z.object({
+  msgGuild: z.string().min(1),
+  startTime: z.string().min(1),
+})
+
+export const ListRegearApplySupplementCandidatesResponseSchema = z.array(RegearApplySchema)
+
+export type ListRegearApplySupplementCandidatesQuery = z.infer<typeof ListRegearApplySupplementCandidatesQuerySchema>
+export type ListRegearApplySupplementCandidatesResponse = z.infer<typeof ListRegearApplySupplementCandidatesResponseSchema>
