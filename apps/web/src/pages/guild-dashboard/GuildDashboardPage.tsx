@@ -69,7 +69,7 @@ export default function GuildDashboardPage() {
       case 'battle-report': return <BattleReportTab guildName={currentGuild.name} guildId={currentGuild.id} onRegearPreview={handleRegearPreview} />;
       case 'members': return <MembersTab />;
       case 'regear': return <RegearTab guildId={currentGuild.id} />;
-      case 'regear-approval': return <RegearApprovalTab />;
+      case 'regear-approval': return <RegearApprovalTab guildId={currentGuild.id} onRegearPreview={handleRegearPreview} />;
       case 'orders': return <OrdersTab />;
       case 'activities': return <ActivitiesTab />;
       case 'attendance': return <AttendanceTab />;

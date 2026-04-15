@@ -9,7 +9,8 @@ import {
   BindRegearApplySchema,
   UpdateApplyDetailSchema,
   ApplyStatus,
-  ListRegearAppliesQuerySchema
+  ListRegearAppliesQuerySchema,
+  ListRegearApplySupplementCandidatesQuerySchema
 } from '@albionbox/shared'
 import { regearApplies } from '@albionbox/db'
 import { authMiddleware } from '../users'
@@ -107,6 +108,49 @@ const listAppliesHandler = factory.createHandlers(
   }
 )
 
+const listSupplementCandidatesHandler = factory.createHandlers(
+  zValidator('query', ListRegearApplySupplementCandidatesQuerySchema),
+  async (c) => {
+    const { msgGuild, startTime } = c.req.valid('query')
+    const db = drizzle(c.env.DB)
+
+    const itemsRaw = await db.select().from(regearApplies)
+      .where(and(eq(regearApplies.msgGuild, msgGuild), eq(regearApplies.status, ApplyStatus.PENDING_AUDIT)))
+      .orderBy(desc(regearApplies.createTime))
+      .all()
+
+    const filtered = itemsRaw.filter((r) => {
+      if (!r.applyDetail) return false
+      let parsed: unknown = null
+      try {
+        parsed = JSON.parse(r.applyDetail)
+      } catch {
+        return false
+      }
+
+      const timestamp = (parsed as { timestamp?: unknown } | null)?.timestamp
+      return typeof timestamp === 'string' && timestamp > startTime
+    })
+
+    const items = filtered.map((r) => ({
+      ...r,
+      msgUsername: r.msgUsername ?? undefined,
+      msgUserid: r.msgUserid ?? undefined,
+      msgGuild: r.msgGuild ?? undefined,
+      msgChannel: r.msgChannel ?? undefined,
+      regearId: r.regearId ?? undefined,
+      eventId: r.eventId ?? undefined,
+      battleId: r.battleId ?? undefined,
+      applyMeta: r.applyMeta ?? undefined,
+      victimName: r.victimName ?? undefined,
+      victimGuild: r.victimGuild ?? undefined,
+      applyDetail: r.applyDetail ?? undefined,
+    }))
+
+    return c.json(items)
+  }
+)
+
 const deleteApplyHandler = factory.createHandlers(
   async (c) => {
     const id = c.req.param('id') as string
@@ -182,6 +226,7 @@ const updateDetailHandler = factory.createHandlers(
 const routes = router
   .post('/', authOrInternalMiddleware, ...createApplyHandler)
   .use('*', authMiddleware)
+  .get('/supplement-candidates', ...listSupplementCandidatesHandler)
   .get('/', ...listAppliesHandler)
   .delete('/:id', ...deleteApplyHandler)
   .put('/:id/status', ...updateStatusHandler)

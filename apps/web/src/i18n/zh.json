@@ -182,6 +182,10 @@
     "regear_approval": {
       "title": "补装审批",
       "desc": "查看并筛选从聊天消息生成的补装申请",
+      "views": {
+        "applies": "申请列表",
+        "supplement": "补装候选"
+      },
       "filters": {
         "status": "状态",
         "channel": "频道",
@@ -201,6 +205,24 @@
         "loading": "加载中...",
         "empty": "暂无补装申请",
         "error": "加载补装申请失败"
+      },
+      "supplement": {
+        "hint": "选择开始时间后拉取候选记录，并按 battleId 聚合",
+        "start": "开始补装",
+        "generate": "生成补装工单",
+        "invalid_time": "无效的开始时间",
+        "empty": "暂无候选战斗",
+        "no_tag": "无标签",
+        "apply_count": "{{count}} 条申请",
+        "detail": "详情",
+        "mark_mass": "标记 MASS",
+        "unmark_mass": "取消 MASS",
+        "confirm_non_mass": "存在未标记为 MASS 的战斗，仍要生成补装工单吗？",
+        "confirm_delete_apply": "确定要删除这条申请吗？",
+        "start_modal_title": "开始补装",
+        "start_time": "开始时间",
+        "detail_modal_title": "战斗详情",
+        "deleted": "已删除"
       }
     },
     "settings": {

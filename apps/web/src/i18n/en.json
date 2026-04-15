@@ -182,6 +182,10 @@
     "regear_approval": {
       "title": "Regear Approval",
       "desc": "Review regear applies generated from chat messages",
+      "views": {
+        "applies": "Applies",
+        "supplement": "Supplement"
+      },
       "filters": {
         "status": "Status",
         "channel": "Channel",
@@ -201,6 +205,24 @@
         "loading": "Loading...",
         "empty": "No regear applies found",
         "error": "Failed to load regear applies"
+      },
+      "supplement": {
+        "hint": "Select a start time to fetch candidates grouped by battleId",
+        "start": "Start Supplement",
+        "generate": "Generate Ticket",
+        "invalid_time": "Invalid start time",
+        "empty": "No candidate battles",
+        "no_tag": "No Tag",
+        "apply_count": "{{count}} applies",
+        "detail": "Details",
+        "mark_mass": "Mark MASS",
+        "unmark_mass": "Unmark MASS",
+        "confirm_non_mass": "Some battles are not marked as MASS. Generate ticket anyway?",
+        "confirm_delete_apply": "Are you sure you want to delete this apply?",
+        "start_modal_title": "Start Supplement",
+        "start_time": "Start Time",
+        "detail_modal_title": "Battle Details",
+        "deleted": "Deleted"
       }
     },
     "settings": {

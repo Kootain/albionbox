@@ -1,0 +1,8 @@
+- [x] 补装申请页出现“开始补装”按钮，且可选择开始时间后进入补装流程视图。
+- [x] 候选查询接口仅返回 `pending_audit` 且 `applyDetail.timestamp > startTime` 的 apply，并对不可解析时间戳的记录采取一致策略（不纳入候选）。
+- [x] 页面可按 battleId 聚合展示战斗列表，并优先展示“无 tag 且非 MASS”的战斗。
+- [x] 页面可批量拉取并展示 battle tag，且可在列表中标记/取消 MASS 并持久化。
+- [x] 每条战斗可通过“详情”按钮弹出模态框，并复用 `BattleDetail` 展示详情。
+- [x] 页面可删除 apply，删除后 UI 与候选集合正确更新（battle 下无 apply 时该 battle 消失）。
+- [x] 点击“生成补装工单”时：若存在非 MASS 战斗会提示确认；确认后成功进入 ticket preview 流程并携带 battleIds。
+- [x] `apps/api` 与 `apps/web` 的 TypeScript / build 检查通过（按仓库既有命令）。
