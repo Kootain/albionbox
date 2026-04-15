@@ -257,6 +257,7 @@
       "columns": {
         "time": "时间",
         "type": "类型",
+        "tags": "标签",
         "participating_guilds": "参与工会",
         "total_stats": "总计",
         "our_stats": "本公会统计",
@@ -264,6 +265,11 @@
         "killer": "击杀者",
         "victim": "死亡者",
         "fame": "声望"
+      },
+      "edit_tags": "编辑标签",
+      "battle_tags": {
+        "MASS": "大规模",
+        "SMALL_SCALE": "小规模"
       },
       "aggregated_tooltip": "聚合了 {{count}} 场战斗",
       "single_type": "单场",

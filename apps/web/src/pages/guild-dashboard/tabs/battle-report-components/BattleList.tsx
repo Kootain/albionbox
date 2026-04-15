@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link as LinkIcon, Search, CheckSquare, Clock, ExternalLink, Loader2, ShieldAlert, Users } from 'lucide-react';
+import { Search, CheckSquare, Clock, ExternalLink, Loader2, ShieldAlert, Users } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { BattleReportSummary } from './types';
 import { api } from '@/lib/api';
 import { useConfirm } from '@/components/ui/Confirm';
+import { useToast } from '@/components/ui/Toast';
+import { Badge, Button, Modal } from '@/components/ui';
+import { BattleType } from '@albionbox/shared';
 
 interface BattleListProps {
   onSelectDetail: (ids: string[]) => void;
@@ -16,6 +19,7 @@ interface BattleListProps {
 
 export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villains', defaultGuildId, onRegearPreview }: BattleListProps) {
   const { t } = useTranslation();
+  const toast = useToast();
   const [timeFormat, setTimeFormat] = useState<'UTC' | 'Local'>('UTC');
   const [minPlayers, setMinPlayers] = useState<number>(0);
   const [splitMinutes, setSplitMinutes] = useState<number>(60);
@@ -28,6 +32,12 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
+  const [tagEditor, setTagEditor] = useState<{ open: boolean; battleId: string | null; types: BattleType[] }>({
+    open: false,
+    battleId: null,
+    types: [],
+  });
+  const [tagSaving, setTagSaving] = useState(false);
   
   // Pagination state
   const [offset, setOffset] = useState(0);
@@ -38,6 +48,7 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
   const bottomBoundaryRef = useRef<HTMLDivElement>(null);
   const LIMIT = 10;
   const MAX_AUTO_LOAD_PAGES = 10;
+  const server: 'asia' | 'eu' | 'us' = 'asia';
 
   // Active guild being viewed
   const [activeGuildId, setActiveGuildId] = useState<string | null>(defaultGuildId || null);
@@ -117,27 +128,46 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
           ourKills: ourGuild?.kills || 0,
           ourDeaths: ourGuild?.deaths || 0,
           ourPlayers: ourPlayers,
-          regearTicketId: null
+          regearTicketId: null,
+          tags: []
         };
       });
 
       if (mappedBattles.length > 0) {
-        try {
-          const ticketCheckRes = await api.guilds[':guildId'].regear.battles['check-tickets'].$post({
-            param: { guildId },
-            json: { battleIds: mappedBattles.map(b => b.id) }
-          });
-          if (ticketCheckRes.ok) {
-            const ticketMap = await ticketCheckRes.json() as Record<string, string>;
-            mappedBattles.forEach(b => {
-              if (ticketMap[b.id]) {
-                b.regearTicketId = ticketMap[b.id];
+        const battleIds = mappedBattles.map(b => Number(b.id)).filter(n => Number.isFinite(n) && n > 0);
+        await Promise.all([
+          (async () => {
+            try {
+              const ticketCheckRes = await api.guilds[':guildId'].regear.battles['check-tickets'].$post({
+                param: { guildId },
+                json: { battleIds: mappedBattles.map(b => b.id) }
+              });
+              if (ticketCheckRes.ok) {
+                const ticketMap = await ticketCheckRes.json() as Record<string, string>;
+                mappedBattles.forEach(b => {
+                  if (ticketMap[b.id]) {
+                    b.regearTicketId = ticketMap[b.id];
+                  }
+                });
               }
-            });
-          }
-        } catch (e) {
-          console.error('Failed to check tickets for battles', e);
-        }
+            } catch {}
+          })(),
+          (async () => {
+            if (battleIds.length === 0) return;
+            try {
+              const tagsRes = await api.guilds[':id'].battles.$post({
+                param: { id: guildId },
+                json: { server, ids: battleIds },
+              });
+              if (!tagsRes.ok) return;
+              const rows = await tagsRes.json() as Array<{ id: number; types: BattleType[] }>;
+              const map = new Map(rows.map(r => [String(r.id), Array.isArray(r.types) ? r.types : []]));
+              mappedBattles.forEach(b => {
+                b.tags = map.get(b.id) ?? [];
+              });
+            } catch {}
+          })(),
+        ]);
       }
 
       // Auto-load next page if filtering removed all new results
@@ -221,6 +251,38 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
   };
   const toggleSelection = (id: string) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+  
+  const toggleTagType = (type: BattleType) => {
+    setTagEditor(prev => ({
+      ...prev,
+      types: prev.types.includes(type) ? prev.types.filter(t => t !== type) : [...prev.types, type],
+    }));
+  };
+
+  const saveTags = async () => {
+    if (!activeGuildId || !tagEditor.battleId) return;
+    const battleIdNum = Number(tagEditor.battleId);
+    if (!Number.isFinite(battleIdNum) || battleIdNum <= 0) return;
+
+    setTagSaving(true);
+    try {
+      const res = await api.guilds[':id'].battles[':battleId'].$put({
+        param: { id: activeGuildId, battleId: tagEditor.battleId },
+        json: { server, types: tagEditor.types },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({} as any));
+        throw new Error((data as any)?.error || 'Failed to save');
+      }
+      setBattles(prev => prev.map(b => (b.id === tagEditor.battleId ? { ...b, tags: tagEditor.types } : b)));
+      setTagEditor({ open: false, battleId: null, types: [] });
+      toast.success(t('common.saved', { defaultValue: 'Saved' }));
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Failed to save');
+    } finally {
+      setTagSaving(false);
+    }
   };
 
   const handleAggregate = () => {
@@ -343,7 +405,7 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
                 </div>
               </th>
               <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.battle_report.columns.time')}</th>
-              <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.battle_report.columns.type')}</th>
+              <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.battle_report.columns.tags')}</th>
               <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.battle_report.columns.participating_guilds')}</th>
               <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">{t('guild_dashboard.battle_report.columns.total_stats')}</th>
               <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">{t('guild_dashboard.battle_report.columns.our_stats')}</th>
@@ -480,16 +542,32 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
                   {formatDate(battle.startTime, timeFormat === 'UTC')}
                 </td>
                 <td className="py-4 px-4">
-                  {battle.aggregatedCount > 0 ? (
-                    <div className="relative group inline-flex">
-                      <LinkIcon className="w-4 h-4 text-gold cursor-pointer" />
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block px-2 py-1 bg-black text-[10px] text-white rounded whitespace-nowrap z-10 border border-black-border">
-                        {t('guild_dashboard.battle_report.aggregated_tooltip', { count: battle.aggregatedCount })}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTagEditor({
+                        open: true,
+                        battleId: battle.id,
+                        types: battle.tags ?? [],
+                      })
+                    }}
+                    className={cn(
+                      "w-full text-left rounded-lg border border-transparent hover:border-gold/20 transition-colors",
+                      "px-2 py-1 -mx-2 -my-1"
+                    )}
+                  >
+                    {battle.tags && battle.tags.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {battle.tags.map(tag => (
+                          <Badge key={tag} variant="gold">
+                            {t(`guild_dashboard.battle_report.battle_tags.${tag}`)}
+                          </Badge>
+                        ))}
                       </div>
-                    </div>
-                  ) : (
-                    <span className="text-xs text-slate-500 font-bold uppercase">{t('guild_dashboard.battle_report.single_type')}</span>
-                  )}
+                    ) : (
+                      <span className="text-xs text-slate-600 font-bold uppercase tracking-widest">-</span>
+                    )}
+                  </button>
                 </td>
                 <td className="py-4 px-4">
                   <div className="flex flex-col gap-1">
@@ -625,6 +703,55 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
           </div>
         )}
       </div>
+
+      {tagEditor.open && (
+        <Modal
+          title={t('guild_dashboard.battle_report.edit_tags', { defaultValue: 'Edit Tags' })}
+          onClose={() => {
+            if (tagSaving) return;
+            setTagEditor({ open: false, battleId: null, types: [] });
+          }}
+        >
+          <div className="space-y-4">
+            <div className="space-y-2">
+              {Object.values(BattleType).map(type => (
+                <label
+                  key={type}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors",
+                    tagEditor.types.includes(type) ? "bg-gold/10 border-gold/40" : "bg-black-bg border-black-border hover:border-gold/30"
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={tagEditor.types.includes(type)}
+                    onChange={() => toggleTagType(type)}
+                    className="h-4 w-4 accent-gold"
+                    disabled={tagSaving}
+                  />
+                  <span className={cn("text-xs font-black uppercase tracking-widest", tagEditor.types.includes(type) ? "text-gold" : "text-slate-300")}>
+                    {t(`guild_dashboard.battle_report.battle_tags.${type}`)}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={tagSaving}
+                onClick={() => setTagEditor({ open: false, battleId: null, types: [] })}
+              >
+                {t('common.cancel', { defaultValue: 'Cancel' })}
+              </Button>
+              <Button size="sm" loading={tagSaving} onClick={saveTags}>
+                {t('common.save', { defaultValue: 'Save' })}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import { BattleType } from '@albionbox/shared';
+
 export interface GuildSummary {
   id: string;
   name: string;
@@ -21,6 +23,7 @@ export interface BattleReportSummary {
   ourDeaths: number;
   ourPlayers: { id: string; name: string }[];
   regearTicketId?: string | null;
+  tags?: BattleType[];
 }
 
 export interface AggregationGroup {
@@ -50,4 +53,3 @@ export interface PlayerStatRecord {
   killFame: number;
   deathFame: number;
 }
-
