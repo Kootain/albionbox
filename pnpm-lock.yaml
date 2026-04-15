@@ -95,6 +95,9 @@ importers:
 
   apps/kook-consumer-worker:
     dependencies:
+      '@albionbox/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@hono/zod-validator':
         specifier: ^0.7.6
         version: 0.7.6(hono@4.12.10)(zod@4.3.6)

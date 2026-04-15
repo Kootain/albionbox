@@ -147,8 +147,6 @@ async function main() {
       } catch (e) {
         console.log(`[Msg ${msg.id} | Type 10] Failed to parse card JSON`);
       }
-    } else {
-      console.log(`[Msg ${msg.id} | Type ${msg.type}] Content: ${msg.content.substring(0, 100)}...`);
     }
   }
 
@@ -159,8 +157,7 @@ async function main() {
     return;
   }
 
-  // Limit removed: process all found images
-  const imagesToProcess = uniqueImages;
+  const imagesToProcess = uniqueImages.slice(0, 3);
 
   // 5. Create results directory
   const resultsDir = path.join(__dirname, 'test-results');

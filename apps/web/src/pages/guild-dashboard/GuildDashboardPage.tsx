@@ -10,6 +10,7 @@ import { GameData } from '@albionbox/shared';
 import { BattleReportTab } from './tabs/BattleReportTab';
 import { MembersTab } from './tabs/MembersTab';
 import { RegearTab } from './tabs/RegearTab';
+import { RegearApprovalTab } from './tabs/RegearApprovalTab';
 import { OrdersTab } from './tabs/OrdersTab';
 import { ActivitiesTab } from './tabs/ActivitiesTab';
 import { AttendanceTab } from './tabs/AttendanceTab';
@@ -68,6 +69,7 @@ export default function GuildDashboardPage() {
       case 'battle-report': return <BattleReportTab guildName={currentGuild.name} guildId={currentGuild.id} onRegearPreview={handleRegearPreview} />;
       case 'members': return <MembersTab />;
       case 'regear': return <RegearTab guildId={currentGuild.id} />;
+      case 'regear-approval': return <RegearApprovalTab />;
       case 'orders': return <OrdersTab />;
       case 'activities': return <ActivitiesTab />;
       case 'attendance': return <AttendanceTab />;

@@ -22,8 +22,12 @@
     }
   ],
   "secrets": {
-    "required": ["KOOK_BOT_TOKEN"]
-  },  
+    "required": ["KOOK_BOT_TOKEN", "ARK_API_KEY", "INTERNAL_API_TOKEN"]
+  },
+  "vars": {
+    "API_BASE_URL": "https://api.albionbox.com",
+    "ARK_MODEL_ID": "doubao-seed-1-8-251228"
+  },
   "observability": {
     "enabled": false,
     "head_sampling_rate": 1,

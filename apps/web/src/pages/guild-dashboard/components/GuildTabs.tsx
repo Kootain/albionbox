@@ -1,7 +1,15 @@
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 
-export type TabType = 'battle-report' | 'members' | 'regear' | 'orders' | 'activities' | 'attendance' | 'settings';
+export type TabType =
+  | 'battle-report'
+  | 'members'
+  | 'regear'
+  | 'regear-approval'
+  | 'orders'
+  | 'activities'
+  | 'attendance'
+  | 'settings';
 
 interface GuildTabsProps {
   activeTab: TabType;
@@ -15,6 +23,7 @@ export function GuildTabs({ activeTab, onChange }: GuildTabsProps) {
     { id: 'battle-report', label: t('guild_dashboard.tabs.battle_report') },
     { id: 'members', label: t('guild_dashboard.tabs.members') },
     { id: 'regear', label: t('guild_dashboard.tabs.regear') },
+    { id: 'regear-approval', label: t('guild_dashboard.tabs.regear_approval', { defaultValue: 'Regear Approval' }) },
     { id: 'orders', label: t('guild_dashboard.tabs.orders') },
     { id: 'activities', label: t('guild_dashboard.tabs.activities') },
     { id: 'attendance', label: t('guild_dashboard.tabs.attendance') },

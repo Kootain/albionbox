@@ -10,7 +10,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "generate": "drizzle-kit generate --config=drizzle.config.ts",
-    "migrate:local": "wrangler d1 migrations apply albion-box-db --local --config=../../apps/api/wrangler.jsonc"
+    "migrate:local": "wrangler d1 migrations apply albion-box-db --local --config=../../apps/api/wrangler.jsonc",
+    "migrate:remote": "wrangler d1 migrations apply albion-box-db --remote --config=../../apps/api/wrangler.jsonc"
   },
   "keywords": [],
   "author": "",

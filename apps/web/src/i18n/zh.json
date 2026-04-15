@@ -161,6 +161,7 @@
       "battle_report": "战报",
       "members": "人员",
       "regear": "补装",
+      "regear_approval": "补装审批",
       "orders": "订单",
       "activities": "活动",
       "attendance": "考勤",
@@ -177,6 +178,30 @@
       "orders": "订单数",
       "activities": "活动",
       "recent_losses": "近期战损"
+    },
+    "regear_approval": {
+      "title": "补装审批",
+      "desc": "查看并筛选从聊天消息生成的补装申请",
+      "filters": {
+        "status": "状态",
+        "channel": "频道",
+        "msg_userid": "申请人ID",
+        "victim_name": "死亡玩家"
+      },
+      "table": {
+        "time": "时间",
+        "status": "状态",
+        "victim": "死亡玩家",
+        "victim_guild": "公会",
+        "msg_user": "申请人",
+        "channel": "频道",
+        "regear_id": "补装工单"
+      },
+      "states": {
+        "loading": "加载中...",
+        "empty": "暂无补装申请",
+        "error": "加载补装申请失败"
+      }
     },
     "settings": {
       "title": "系统设置",
@@ -305,10 +330,12 @@
       "order_prefix_list": "补装工单: ",
       "battles_suffix": "场关联战报",
       "order_not_found": "未找到补装工单",
+      "confirm_delete_order": "确定要删除这个工单吗？",
       "config_slots": "配置：允许 {{count}} 个栏位",
       "config_modal_title": "工单补装配置",
       "config_modal_desc": "选择当前补装工单允许补偿的装备栏位。未勾选栏位的装备将被忽略。",
       "related_battles": "关联战报",
+      "related_battles_list": "关联战报列表",
       "duration": "战斗时长",
       "hours": "小时",
       "total_deaths": "总死亡",
@@ -320,6 +347,9 @@
       "equipment_stats_title": "补装物品统计",
       "create_preview_title": "生成补装预览",
       "create_preview_desc": "输入战报 ID，自动拉取相关战斗事件，生成包含所有公会死亡记录的预览补装工单。支持通过逗号或空格分隔多个 ID。",
+      "create_no_ids": "请至少输入一个战报 ID",
+      "create_no_deaths": "这些战报中未找到你公会的死亡记录。",
+      "preview_prefix": "预览：",
       "preview_action_warning": "当前工单预览状态，尚未生成工单",
       "create_from_preview": "创建补装工单",
       "no_items": "没有需要补装的物品",
@@ -336,6 +366,7 @@
         "Food": "食物"
       },
       "records_title": "死亡记录与补装状态",
+      "total_records": "总计：",
       "actions": {
         "approve": "通过",
         "reject": "驳回",

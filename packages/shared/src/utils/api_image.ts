@@ -104,7 +104,7 @@ export async function recognizeImageContent<T>(
     );
   }
 
-  const data = await response.json();
+  const data: any = await response.json();
   const content = data.choices?.[0]?.message?.content;
 
   if (!content) {
@@ -138,11 +138,11 @@ export interface KillEventParsed {
 export const killEventJsonSchema = {
   type: 'object',
   properties: {
-    killerName: { type: 'string', description: 'Name of the killer' },
-    killerGuild: { type: 'string', description: 'Guild of the killer' },
+    killerName: { type: 'string', description: 'Name of the killer. Must be a single token with only letters and digits (no spaces, no punctuation).' },
+    killerGuild: { type: 'string', description: 'Guild of the killer. Must contain only letters and spaces (no punctuation).' },
     killerIP: { type: 'number', description: 'Item Power (IP) of the killer, e.g. 1519' },
-    victimName: { type: 'string', description: 'Name of the victim' },
-    victimGuild: { type: 'string', description: 'Guild of the victim' },
+    victimName: { type: 'string', description: 'Name of the victim. Must be a single token with only letters and digits (no spaces, no punctuation).' },
+    victimGuild: { type: 'string', description: 'Guild of the victim. Must contain only letters and spaces (no punctuation).' },
     victimIP: { type: 'number', description: 'Item Power (IP) of the victim, e.g. 1650' },
     killFame: { type: 'number', description: 'Total kill fame as a number, e.g. 169816' },
     timestamp: { type: 'string', description: 'Time of the kill in YYYY-MM-DD HH:mm format without timezone, e.g. "2026-04-14 12:45"' },
@@ -183,10 +183,13 @@ export async function parseKillEventFromImage(
     `Please extract the Kill Event details from this screenshot, including killer and victim information, item power, kill fame, map name, timestamp, and assists.
     
     IMPORTANT FORMATTING RULES:
+    0. DO NOT swap killer and victim. In the kill-event UI, the VICTIM is on the LEFT side and the KILLER is on the RIGHT side.
     1. For "timestamp", extract ONLY the date and time string (e.g. "2026-04-14 12:45"). DO NOT include the timezone or "(UTC)" suffix.
     2. "killFame", "killerIP", "victimIP", and "assists" MUST be numbers, without commas or text.
     3. The "mapName" is the location where the kill happened, usually indicated after the character "于" in the Chinese UI.
-    4. The "assists" is the number of players who assisted in the kill, usually indicated by a number near a multiple-person icon or below the killer's info. If there are no assists shown, return 0.`;
+    4. The "assists" is the number of players who assisted in the kill, usually indicated by a number near a multiple-person icon or below the killer's info. If there are no assists shown, return 0.
+    5. "killerName" and "victimName" MUST be a single line with ONLY English letters and digits. No punctuation, no commas, no spaces.
+    6. "killerGuild" and "victimGuild" MUST contain ONLY English letters and spaces. No punctuation. Do NOT merge player name and guild name into one field (e.g. do not output "Sohai877, HuaDaBin").`;
 
   return recognizeImageContent<KillEventParsed>({
     modelId,

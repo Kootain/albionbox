@@ -3,11 +3,7 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { RestClient } from "@kookapp/js-sdk";
 import { registry } from "./consumer.js";
-
-export type Bindings = {
-  FILTER_CONFIGS: KVNamespace;
-  KOOK_BOT_TOKEN: string;
-};
+import type { Bindings } from "./bindings.js";
 
 const app = new Hono<{ Bindings: Bindings }>();
 

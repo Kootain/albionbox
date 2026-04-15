@@ -62,3 +62,23 @@ export const BindRegearApplySchema = z.object({
 export const UpdateApplyDetailSchema = z.object({
   applyDetail: ApplyDetailSchema
 })
+
+export const ListRegearAppliesQuerySchema = z.object({
+  msgGuild: z.string().min(1).optional(),
+  status: z.nativeEnum(ApplyStatus).optional(),
+  msgChannel: z.string().min(1).optional(),
+  msgUserid: z.string().min(1).optional(),
+  victimName: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+})
+
+export const ListRegearAppliesResponseSchema = z.object({
+  items: z.array(RegearApplySchema),
+  total: z.number().int().min(0),
+  limit: z.number().int().min(1),
+  offset: z.number().int().min(0),
+})
+
+export type ListRegearAppliesQuery = z.infer<typeof ListRegearAppliesQuerySchema>
+export type ListRegearAppliesResponse = z.infer<typeof ListRegearAppliesResponseSchema>

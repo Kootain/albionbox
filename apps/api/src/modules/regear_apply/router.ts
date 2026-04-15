@@ -2,13 +2,14 @@ import { Hono, type MiddlewareHandler } from 'hono'
 import { createFactory } from 'hono/factory'
 import { zValidator } from '@hono/zod-validator'
 import { drizzle } from 'drizzle-orm/d1'
-import { eq } from 'drizzle-orm'
+import { and, count, desc, eq, like } from 'drizzle-orm'
 import {
   CreateRegearApplySchema,
   UpdateApplyStatusSchema,
   BindRegearApplySchema,
   UpdateApplyDetailSchema,
-  ApplyStatus
+  ApplyStatus,
+  ListRegearAppliesQuerySchema
 } from '@albionbox/shared'
 import { regearApplies } from '@albionbox/db'
 import { authMiddleware } from '../users'
@@ -54,6 +55,53 @@ const createApplyHandler = factory.createHandlers(
     }).execute()
 
     return c.json({ id, message: '申请创建成功' }, 201)
+  }
+)
+
+const listAppliesHandler = factory.createHandlers(
+  zValidator('query', ListRegearAppliesQuerySchema),
+  async (c) => {
+    const { msgGuild, status, msgChannel, msgUserid, victimName, limit, offset } = c.req.valid('query')
+    const db = drizzle(c.env.DB)
+
+    const conditions = []
+    if (msgGuild) conditions.push(eq(regearApplies.msgGuild, msgGuild))
+    if (status) conditions.push(eq(regearApplies.status, status))
+    if (msgChannel) conditions.push(eq(regearApplies.msgChannel, msgChannel))
+    if (msgUserid) conditions.push(eq(regearApplies.msgUserid, msgUserid))
+    if (victimName) conditions.push(like(regearApplies.victimName, `%${victimName}%`))
+
+    const where = conditions.length > 0 ? and(...conditions) : undefined
+
+    const itemsQuery = where
+      ? db.select().from(regearApplies).where(where)
+      : db.select().from(regearApplies)
+
+    const totalQuery = where
+      ? db.select({ value: count() }).from(regearApplies).where(where)
+      : db.select({ value: count() }).from(regearApplies)
+
+    const [itemsRaw, totalRows] = await Promise.all([
+      itemsQuery.orderBy(desc(regearApplies.createTime)).limit(limit).offset(offset).all(),
+      totalQuery.all(),
+    ])
+
+    const total = totalRows?.[0]?.value ?? 0
+
+    const items = itemsRaw.map((r) => ({
+      ...r,
+      msgUsername: r.msgUsername ?? undefined,
+      msgUserid: r.msgUserid ?? undefined,
+      msgGuild: r.msgGuild ?? undefined,
+      msgChannel: r.msgChannel ?? undefined,
+      regearId: r.regearId ?? undefined,
+      applyMeta: r.applyMeta ?? undefined,
+      victimName: r.victimName ?? undefined,
+      victimGuild: r.victimGuild ?? undefined,
+      applyDetail: r.applyDetail ?? undefined,
+    }))
+
+    return c.json({ items, total, limit, offset })
   }
 )
 
@@ -132,6 +180,7 @@ const updateDetailHandler = factory.createHandlers(
 const routes = router
   .post('/', authOrInternalMiddleware, ...createApplyHandler)
   .use('*', authMiddleware)
+  .get('/', ...listAppliesHandler)
   .delete('/:id', ...deleteApplyHandler)
   .put('/:id/status', ...updateStatusHandler)
   .put('/:id/bind', ...bindRegearHandler)

@@ -3,11 +3,7 @@ import { html } from "hono/html";
 import { apiRouter } from "./router.js";
 import { dispatchEvent } from "./consumer.js";
 import { htmlTemplate } from "./frontend.js";
-
-type Bindings = {
-  FILTER_CONFIGS: KVNamespace;
-  KOOK_BOT_TOKEN: string;
-};
+import type { Bindings } from "./bindings.js";
 
 const app = new Hono<{ Bindings: Bindings }>();
 
