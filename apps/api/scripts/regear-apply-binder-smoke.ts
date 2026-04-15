@@ -12,7 +12,6 @@ assert.equal(d2.toISOString(), '2026-04-15T12:45:00.000Z')
 assert.equal(parseUtcTimestamp('not-a-date'), null)
 
 const applyTimeMs = Date.parse('2026-04-15T12:45:00Z')
-const windowMs = 5 * 60 * 1000
 
 const events = [
   { Victim: { Name: 'Alice' }, TimeStamp: '2026-04-15T12:45:30Z', EventId: 1, BattleId: 10 },
@@ -21,12 +20,15 @@ const events = [
   { Victim: { Name: 'Alice' }, TimeStamp: '2026-04-15T13:10:00Z', EventId: 4, BattleId: 12 },
 ] as any
 
-const best = pickBestMatchFromEvents(events, 'Alice', applyTimeMs, windowMs)
+const best = pickBestMatchFromEvents(events, 'Alice', applyTimeMs)
 assert.ok(best)
 assert.equal(best.eventId, '1')
 assert.equal(best.battleId, '10')
 
-const none = pickBestMatchFromEvents(events, 'Charlie', applyTimeMs, windowMs)
+const none = pickBestMatchFromEvents(events, 'Charlie', applyTimeMs)
 assert.equal(none, null)
+
+const notSameMinute = pickBestMatchFromEvents(events, 'Alice', Date.parse('2026-04-15T12:46:00Z'))
+assert.equal(notSameMinute, null)
 
 console.log('regear-apply-binder-smoke: ok')

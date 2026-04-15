@@ -141,7 +141,7 @@ async function tryBindOneApply(params: {
   for (let i = 0; i < settled.length; i += 1) {
     const res = settled[i]
     if (res.status !== 'fulfilled') continue
-    const candidate = pickBestMatchFromEvents(res.value, victimName, applyTimeMs, windowMs)
+    const candidate = pickBestMatchFromEvents(res.value, victimName, applyTimeMs)
     if (!candidate) continue
     if (!best || candidate.diffMs < best.diffMs) {
       best = candidate
@@ -237,17 +237,18 @@ export function parseUtcTimestamp(value: string): Date | null {
 export function pickBestMatchFromEvents(
   events: readonly AlbionOfficialEvent[],
   victimName: string,
-  applyTimeMs: number,
-  windowMs: number
+  applyTimeMs: number
 ): { eventId: string; battleId: string; diffMs: number } | null {
+  const applyMinute = Math.floor(applyTimeMs / 60000)
   let best: { eventId: string; battleId: string; diffMs: number } | null = null
   for (const event of events) {
     const eventVictim = event?.Victim?.Name?.trim()
     if (eventVictim !== victimName) continue
     const eventMs = Date.parse(event.TimeStamp)
     if (Number.isNaN(eventMs)) continue
+    const eventMinute = Math.floor(eventMs / 60000)
+    if (eventMinute !== applyMinute) continue
     const diffMs = Math.abs(eventMs - applyTimeMs)
-    if (diffMs > windowMs) continue
     const eventId = String(event.EventId)
     const battleId = String(event.BattleId)
     if (!eventId || !battleId) continue
