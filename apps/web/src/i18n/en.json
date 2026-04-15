@@ -257,6 +257,7 @@
       "columns": {
         "time": "Time",
         "type": "Type",
+        "tags": "Tags",
         "participating_guilds": "Participating Guilds",
         "total_stats": "Total Stats",
         "our_stats": "Our Stats",
@@ -264,6 +265,11 @@
         "killer": "Killer",
         "victim": "Victim",
         "fame": "Fame"
+      },
+      "edit_tags": "Edit Tags",
+      "battle_tags": {
+        "MASS": "Mass",
+        "SMALL_SCALE": "Small Scale"
       },
       "aggregated_tooltip": "Aggregated {{count}} battles",
       "single_type": "Single",

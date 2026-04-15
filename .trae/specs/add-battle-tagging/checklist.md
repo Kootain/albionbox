@@ -1,0 +1,6 @@
+- [x] `PUT /guilds/:id/battles/:battleId` 能正确 upsert battles 记录，并支持 `types: []` 清空标签（持久化为 0）。
+- [x] `POST /guilds/:id/battles` 能按 `server + ids[]` 批量返回 battles 标签，并把 `types` 解码为 `BattleType[]`。
+- [x] 工会大盘「战报」Tab 列表已移除“类型”列，并用该列展示“标签”。
+- [x] 点击列表中的标签可编辑并保存，保存成功后列表展示即时更新，失败会提示错误且不破坏已有数据。
+- [x] `apps/web` 构建通过（使用仓库既有命令）。
+- [x] `apps/api` TypeScript 检查通过（使用仓库既有命令）。

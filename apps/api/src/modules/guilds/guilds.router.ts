@@ -122,7 +122,7 @@ const batchSearchBattlesHandler = factory.createHandlers(
   guildPermMiddleware(['guild:view']),
   zValidator('json', z.object({
     server: z.enum(['asia', 'eu', 'us']),
-    ids: z.array(z.number().int().positive()).min(1),
+    ids: z.array(z.coerce.number().int().positive()).min(1),
   })),
   async (c) => {
     const guildId = c.req.param('id') as string
