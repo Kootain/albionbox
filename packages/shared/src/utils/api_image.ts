@@ -175,21 +175,24 @@ export const killEventJsonSchema = {
 export async function parseKillEventFromImage(
   image: string,
   apiKey: string,
-  modelId: string
+  modelId: string,
+  prompt?: string
 ): Promise<KillEventParsed> {
   const systemPrompt =
     'You are an expert at extracting data from game screenshots (Albion Online).';
-  const userPrompt =
-    `Please extract the Kill Event details from this screenshot, including victim and killer information, item power, kill fame, map name, timestamp, and assists.
-    
-    IMPORTANT FORMATTING RULES:
-    0. In the kill-event UI, the VICTIM is on the LEFT side and the KILLER is on the RIGHT side.
-    1. For "timestamp", extract ONLY the date and time string (e.g. "2026-04-14 12:45"). DO NOT include the timezone or "(UTC)" suffix.
-    2. "killFame", "killerIP", "victimIP", and "assists" MUST be numbers, without commas or text.
-    3. The "mapName" is the location where the kill happened, usually indicated after the character "于" in the Chinese UI.
-    4. The "assists" is the number of players who assisted in the kill, usually indicated by a number near a multiple-person icon or below the killer's info. If there are no assists shown, return 0.
-    5.  "victimName" and "killerName" MUST be a single line with ONLY English letters and digits. No punctuation, no commas, no spaces.
-    6. "victimGuild" and "killerGuild" MUST contain ONLY English letters and spaces. No punctuation. Do NOT merge player name and guild name into one field`;
+  const defaultUserPrompt = 
+`Please extract the Kill Event details from this screenshot, including victim and killer information, item power, kill fame, map name, timestamp, and assists.
+IMPORTANT FORMATTING RULES:
+0. In the kill-event UI, the VICTIM is on the LEFT side and the KILLER is on the RIGHT side.
+1. For "timestamp", extract ONLY the date and time string (e.g. "2026-04-14 12:45"). DO NOT include the timezone or "(UTC)" suffix.
+2. "killFame", "killerIP", "victimIP", and "assists" MUST be numbers, without commas or text.
+3. The "mapName" is the location where the kill happened, usually indicated after the character "于" in the Chinese UI.
+4. The "assists" is the number of players who assisted in the kill, usually indicated by a number near a multiple-person icon or below the killer's info. If there are no assists shown, return 0.
+5. "victimName" and "killerName" MUST be a single line with ONLY English letters and digits. No punctuation, no commas, no spaces.
+6. "victimGuild" and "killerGuild" MUST contain ONLY English letters and spaces. No punctuation. Do NOT merge player name and guild name into one field
+7. if can't find target field, leave it empty, don't use "unknown" or any other placeholder.`;
+
+  const userPrompt = prompt?.trim() ? prompt : defaultUserPrompt;
 
   return recognizeImageContent<KillEventParsed>({
     modelId,

@@ -24,7 +24,7 @@ if (!MODEL_ID || !ARK_API_KEY || !KOOK_BOT_TOKEN) {
 
 const client = new RestClient({ token: KOOK_BOT_TOKEN });
 const TARGET_GUILD_NAME = 'All The Villains 2';
-const TARGET_CHANNEL_NAME = '坦克-tank-死亡截图';
+const TARGET_CHANNEL_NAME = '输出-DPS-死亡截图';
 
 async function main() {
   console.log(`Searching for guild: ${TARGET_GUILD_NAME}`);
@@ -157,7 +157,7 @@ async function main() {
     return;
   }
 
-  const imagesToProcess = uniqueImages.slice(0, 20);
+  const imagesToProcess = uniqueImages.slice(0, 50);
 
   // 5. Create results directory
   const resultsDir = path.join(__dirname, 'test-results');

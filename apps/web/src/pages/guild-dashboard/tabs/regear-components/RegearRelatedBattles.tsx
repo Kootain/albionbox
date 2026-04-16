@@ -33,7 +33,7 @@ export function RegearRelatedBattles({ battleIds, guildId }: RegearRelatedBattle
         // Fetch battle details one by one using the events endpoint to reconstruct basic stats since there's no single battle summary endpoint
         const results = await Promise.all(
           currentBattleIds.map(async id => {
-            const res = await api.guilds.test.albion.events.$get({ query: { battleId: id, limit: '51', offset: '0' } });
+            const res = await api.guilds.test.albion.events.$get({ query: { battleId: id, limit: '50', offset: '0' } });
             if (!res.ok) throw new Error(`Failed to fetch events for battle ${id}`);
             const events = await res.json() as any[];
             

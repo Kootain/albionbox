@@ -1172,7 +1172,7 @@ function RelatedBattlesStatsWidget({ battleIds, guildId, records, onOpenModal }:
       try {
         let totalK = 0;
         const results = await Promise.all(
-          battleIds.map(id => api.guilds.test.albion.events.$get({ query: { battleId: id, limit: '51', offset: '0' } }).then(r => r.ok ? r.json() : []))
+          battleIds.map(id => api.guilds.test.albion.events.$get({ query: { battleId: id, limit: '50', offset: '0' } }).then(r => r.ok ? r.json() : []))
         );
         results.forEach((events: any) => {
           if (Array.isArray(events)) {

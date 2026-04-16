@@ -15,8 +15,8 @@ export class AlbionApiClient {
     return ALBION_DOMAINS[this.server];
   }
 
-  async getGuildBattles(guildId: string, offset = 0, limit = 51): Promise<AlbionOfficialBattle[]> {
-    const url = `${this.baseUrl}/api/gameinfo/battles?offset=${offset}&limit=${limit}&sort=recent&guildId=${guildId}`;
+  async getGuildBattles(guildId: string, offset = 0, limit = 50): Promise<AlbionOfficialBattle[]> {
+    const url = `${this.baseUrl}/api/gameinfo/battles?offset=${offset}&limit=${limit}&sort=recent&guildId=${guildId}&timestamp=${Date.now()}`;
     const response = await fetch(url);
     
     if (!response.ok) {
@@ -26,7 +26,7 @@ export class AlbionApiClient {
     return response.json() as Promise<AlbionOfficialBattle[]>;
   }
 
-  async getBattleEvents(battleId: string, offset = 0, limit = 51): Promise<AlbionOfficialEvent[]> {
+  async getBattleEvents(battleId: string, offset = 0, limit = 50): Promise<AlbionOfficialEvent[]> {
     const url = `${this.baseUrl}/api/gameinfo/events/battle/${battleId}?offset=${offset}&limit=${limit}`;
     const response = await fetch(url);
     

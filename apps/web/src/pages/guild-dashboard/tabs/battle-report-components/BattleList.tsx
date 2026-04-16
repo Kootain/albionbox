@@ -46,7 +46,7 @@ export function BattleList({ onSelectDetail, defaultGuildName = 'All The Villain
   const [isFetching, setIsFetching] = useState(false); // Hard lock for network requests
   const isFetchingRef = useRef(false);
   const bottomBoundaryRef = useRef<HTMLDivElement>(null);
-  const LIMIT = 10;
+  const LIMIT = 50;
   const MAX_AUTO_LOAD_PAGES = 10;
   const server: 'asia' | 'eu' | 'us' = 'asia';
 

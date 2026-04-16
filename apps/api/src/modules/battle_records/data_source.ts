@@ -31,12 +31,12 @@ export interface BattleReportDataSource {
 }
 
 export class OfficialApiBattleDataSource implements BattleReportDataSource {
-  async getRecentGuildBattles(guildId: string, server: AlbionServer, offset = 0, limit = 51): Promise<AlbionOfficialBattle[]> {
+  async getRecentGuildBattles(guildId: string, server: AlbionServer, offset = 0, limit = 50): Promise<AlbionOfficialBattle[]> {
     const client = new AlbionApiClient(server)
     return client.getGuildBattles(guildId, offset, limit)
   }
 
-  async getBattleEvents(battleId: string, server: AlbionServer, offset = 0, limit = 51): Promise<AlbionOfficialEvent[]> {
+  async getBattleEvents(battleId: string, server: AlbionServer, offset = 0, limit = 50): Promise<AlbionOfficialEvent[]> {
     const client = new AlbionApiClient(server)
     return client.getBattleEvents(battleId, offset, limit)
   }

@@ -47,7 +47,7 @@
 
 #### Scenario: 拉取最近 battles 并并发拉取 events
 - **WHEN** 已获得 guildId
-- **THEN** 系统拉取该工会最近 battles（默认 limit=51），并对每个 battle 并发拉取 events（默认 offset=0, limit=51）
+- **THEN** 系统拉取该工会最近 battles（默认 limit=50），并对每个 battle 并发拉取 events（默认 offset=0, limit=50）
 
 ### Requirement: 自动绑定 job — 匹配规则
 系统 SHALL 以 victimName + timestamp 作为匹配依据，从 events 中选出最符合的一条事件。

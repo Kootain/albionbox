@@ -9,7 +9,9 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./utils/api_image": "./src/utils/api_image.ts"
+    "./utils/api_image": "./src/utils/api_image.ts",
+    "./kook/convert": "./src/kook/convert.ts",
+    "./kook/types": "./src/kook/types.ts"
   },
   "keywords": [],
   "author": "",

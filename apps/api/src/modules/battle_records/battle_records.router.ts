@@ -38,7 +38,7 @@ const getAlbionBattlesDirectHandler = factory.createHandlers(
     guildId: z.string().min(1),
     server: z.enum(['asia', 'us', 'eu']).optional().default('asia'),
     offset: z.coerce.number().min(0).optional().default(0),
-    limit: z.coerce.number().min(1).max(51).optional().default(51)
+    limit: z.coerce.number().min(1).max(51).optional().default(50)
   })),
   async (c) => {
     const { guildId, server, offset, limit } = c.req.valid('query')
@@ -57,7 +57,7 @@ const getAlbionBattleEventsDirectHandler = factory.createHandlers(
     battleId: z.string().min(1),
     server: z.enum(['asia', 'us', 'eu']).optional().default('asia'),
     offset: z.coerce.number().min(0).optional().default(0),
-    limit: z.coerce.number().min(1).max(51).optional().default(51)
+    limit: z.coerce.number().min(1).max(51).optional().default(50)
   })),
   async (c) => {
     const { battleId, server, offset, limit } = c.req.valid('query')

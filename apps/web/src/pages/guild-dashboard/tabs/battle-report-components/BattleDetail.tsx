@@ -85,7 +85,7 @@ export function BattleDetail({ battleIds, onBack, isStandalone }: BattleDetailPr
         await Promise.all(
           battleIds.map(async (battleId) => {
             let offset = 0;
-            const limit = 51;
+            const limit = 50;
             let hasMore = true;
 
             while (hasMore && !isCancelled) {

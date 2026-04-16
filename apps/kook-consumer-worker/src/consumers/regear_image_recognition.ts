@@ -1,6 +1,7 @@
 import { parseKillEventFromImage, type KillEventParsed } from '@albionbox/shared/utils/api_image'
 import type { Consumer } from '../consumer.js'
 import type { Bindings } from '../bindings.js'
+import { RestClient } from '@kookapp/js-sdk'
 
 export type KookMessageEventData = {
   msg_id?: string
@@ -12,6 +13,7 @@ export type KookMessageEventData = {
     author?: {
       id?: string
       username?: string
+      nickname?: string
     }
   }
 }
@@ -134,7 +136,7 @@ export function precheckRegearImageRecognitionInput(
   event: unknown,
   env: Pick<
     Bindings,
-    'ARK_API_KEY' | 'ARK_MODEL_ID' | 'MODEL_ID' | 'API_BASE_URL' | 'INTERNAL_API_TOKEN'
+    'ARK_API_KEY' | 'ARK_MODEL_ID' | 'MODEL_ID' | 'API_BASE_URL' | 'INTERNAL_API_TOKEN' | 'KOOK_BOT_TOKEN'
   >,
 ): RegearImageRecognitionPrecheckResult {
   const eventData = (event as any)?.d || event
@@ -157,7 +159,6 @@ export function precheckRegearImageRecognitionInput(
       hasModelId: Boolean(modelId),
     }
   }
-
   const apiBaseUrl = typeof env.API_BASE_URL === 'string' ? env.API_BASE_URL.trim() : ''
   const internalApiToken =
     typeof env.INTERNAL_API_TOKEN === 'string' ? env.INTERNAL_API_TOKEN.trim() : ''
@@ -176,7 +177,7 @@ export function precheckRegearImageRecognitionInput(
   const guildId = (eventData as KookMessageEventData | undefined)?.extra?.guild_id
   const targetId = (eventData as KookMessageEventData | undefined)?.target_id
   const msgUserid = (eventData as KookMessageEventData | undefined)?.extra?.author?.id
-  const msgUsername = (eventData as KookMessageEventData | undefined)?.extra?.author?.username
+  const msgUsername = (eventData as KookMessageEventData | undefined)?.extra?.author?.nickname
 
   return {
     ok: true,
@@ -206,6 +207,8 @@ async function createRegearApply(
   msgChannel?: string
   imageUrl: string
   applyDetail: KillEventParsed
+  idx: number
+  total: number
   },
 ): Promise<{ id: string } | null> {
   let res: Response
@@ -227,6 +230,8 @@ async function createRegearApply(
         applyDetail: params.applyDetail,
         applyMeta: {
           imageUrl: params.imageUrl,
+          idx: params.idx,
+          total: params.total
         },
       }),
     })
@@ -265,7 +270,7 @@ export function createRegearImageRecognitionConsumer(
 
   return {
     consumer_id: 'regear-image-recognition',
-    async handle(event, env: Bindings) {
+    async handle(event, env: Bindings, retry: boolean) {
       try {
         const precheck = precheckRegearImageRecognitionInput(event, env)
 
@@ -295,7 +300,7 @@ export function createRegearImageRecognitionConsumer(
         const processedKey = `regear-image-recognition:processed:${precheck.msgId}`
         try {
           const existed = await env.FILTER_CONFIGS.get(processedKey)
-          if (existed) {
+          if (existed && !retry) {
             resolvedDeps.console.log(
               `[regear-image-recognition] skip processed msg_id=${precheck.msgId} guild_id=${guildId} target_id=${targetId}`,
             )
@@ -309,8 +314,20 @@ export function createRegearImageRecognitionConsumer(
             e,
           )
         }
+        const kook = new RestClient({ token: env.KOOK_BOT_TOKEN.trim() })
+        await kook.addReaction({
+          msg_id: precheck.msgId,
+          emoji: '▶️',
+        })
+        Promise.all(Array.from({length: precheck.imageUrls.length}, (_, i ) => i+1).map(async (i) => {
+          return kook.addReaction({
+            msg_id: precheck.msgId,
+            emoji: num2emoji(i),
+          })
+        }))
 
-        for (const imageUrl of precheck.imageUrls) {
+        for (const [i, imageUrl] of precheck.imageUrls.entries()) {
+          
           let parsed: KillEventParsed
           try {
             parsed = await resolvedDeps.parseKillEventFromImage(imageUrl, precheck.apiKey, precheck.modelId)
@@ -326,10 +343,11 @@ export function createRegearImageRecognitionConsumer(
 
           if (!isKillEventValid(parsed)) {
             resolvedDeps.console.warn(
-              `[regear-image-recognition] invalid recognition msg_id=${precheck.msgId} imageUrl=${imageUrl} victimName=${parsed?.victimName} timestamp=${parsed?.timestamp}`,
+              `[regear-image-recognition] invalid recognition msg_id=${precheck.msgId} imageUrl=${imageUrl} victimName=${parsed?.victimName} victimGuild=${parsed?.victimGuild} timestamp=${parsed?.timestamp}`,
             )
             continue
           }
+          console.log(`[regear-image-recognition] success ${parsed}`)
 
           const created = await createRegearApply(resolvedDeps, {
             apiBaseUrl: precheck.apiBaseUrl,
@@ -341,6 +359,8 @@ export function createRegearImageRecognitionConsumer(
             msgChannel: precheck.targetId,
             imageUrl,
             applyDetail: parsed,
+            idx: i,
+            total: precheck.imageUrls.length,
           })
 
           if (created) {
@@ -357,7 +377,6 @@ export function createRegearImageRecognitionConsumer(
                 e,
               )
             }
-            break
           }
         }
       } catch (e) {
@@ -368,3 +387,37 @@ export function createRegearImageRecognitionConsumer(
 }
 
 export const regearImageRecognitionConsumer = createRegearImageRecognitionConsumer()
+
+function num2emoji(num: number) {
+  if (num === 1) {
+    return '1️⃣'
+  }
+  if (num === 2) {
+    return '2️⃣'
+  }
+  if (num === 3) {
+    return '3️⃣'
+  }
+  if (num === 4) {
+    return '4️⃣'
+  }
+  if (num === 5) {
+    return '5️⃣'
+  }
+  if (num === 6) {
+    return '6️⃣'
+  }
+  if (num === 7) {
+    return '7️⃣'
+  }
+  if (num === 8) {
+    return '8️⃣'
+  }
+  if (num === 9) {
+    return '9️⃣'
+  }
+  if (num === 10) {
+    return '🔟'
+  }
+  return '❓'
+}

@@ -11,7 +11,7 @@ export interface FilterRule {
 
 export interface Consumer {
   consumer_id: string;
-  handle(event: any, env: any): Promise<void>;
+  handle(event: any, env: any, retry: boolean): Promise<void>;
 }
 
 export class ConsumerRegistry {
@@ -77,7 +77,7 @@ export async function dispatchEvent(event: any, env: any) {
       const consumer = registry.get(rule.consumer_id);
       if (consumer) {
         try {
-          await consumer.handle(event, env);
+          await consumer.handle(event, env, false);
         } catch (e: any) {
           console.error(
             JSON.stringify({

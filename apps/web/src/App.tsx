@@ -14,6 +14,7 @@ import Admin from './pages/admin/AdminPage';
 import Settings from './pages/settings/SettingsPage';
 import GameDataTestPage from './pages/test/GameDataTestPage';
 import KookMessageBrowserPage from './pages/test/KookMessageBrowserPage';
+import ImageRecognitionTestPage from './pages/test/ImageRecognitionTestPage';
 import { ToastProvider } from './components/ui/Toast';
 import { ConfirmProvider } from './components/ui/Confirm';
 
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/settings" element={<ProtectedRoute><AppShell><Settings /></AppShell></ProtectedRoute>} />
             <Route path="/test/game-data" element={<ProtectedRoute><AppShell><GameDataTestPage /></AppShell></ProtectedRoute>} />
             <Route path="/test/kook-messages" element={<ProtectedRoute><AppShell><KookMessageBrowserPage /></AppShell></ProtectedRoute>} />
+            <Route path="/test/image-recognition" element={<ProtectedRoute><AppShell><ImageRecognitionTestPage /></AppShell></ProtectedRoute>} />
             <Route path="/admin" element={<AdminRoute><AppShell><Admin /></AppShell></AdminRoute>} />
           </Routes>
         </Router>

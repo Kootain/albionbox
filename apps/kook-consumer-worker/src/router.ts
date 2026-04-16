@@ -1,11 +1,18 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { RestClient } from "@kookapp/js-sdk";
 import { registry } from "./consumer.js";
 import type { Bindings } from "./bindings.js";
+import { regearImageRecognitionConsumer } from "./consumers/regear_image_recognition.js";
+import { messageToEvent } from "@albionbox/shared/kook/convert";
+import { MessageToEventContextSchema, MessageSchema } from "@albionbox/shared/kook/types";
 
 const app = new Hono<{ Bindings: Bindings }>();
+
+// Enable CORS for the API
+app.use("/api/*", cors());
 
 function getKookClient(token: string) {
   // Using generic RestClient since that's exported by @kookapp/js-sdk
@@ -13,6 +20,25 @@ function getKookClient(token: string) {
     token,
   });
 }
+
+const MessageToEventBodySchema = z.object({
+  message: MessageSchema,
+  context: MessageToEventContextSchema.optional(),
+});
+
+app.post(
+  "/api/consumer/message_to_event",
+  zValidator("json", MessageToEventBodySchema),
+  async (c) => {
+    const { message, context } = c.req.valid("json");
+    
+    const event = messageToEvent(message, context);
+    
+    await regearImageRecognitionConsumer.handle(event, c.env, true);
+    
+    return c.json({ success: true, event });
+  }
+);
 
 // ----------------- Task 4: KOOK API Integration -----------------
 
@@ -22,7 +48,7 @@ app.get("/api/kook/guilds", async (c) => {
   if (!token) return c.json({ error: "Missing KOOK_BOT_TOKEN" }, 500);
   const client = getKookClient(token);
   try {
-    const res = await client.request("/api/v3/guild/list", "GET");
+    const res = await client.listGuilds();
     return c.json(res.data);
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
@@ -39,7 +65,7 @@ app.get(
     const { guild_id } = c.req.valid("query");
     const client = getKookClient(token);
     try {
-      const res = await client.request("/api/v3/channel/list", "GET", {
+      const res = await client.listChannels({
         guild_id,
       });
       return c.json(res.data);
@@ -59,7 +85,7 @@ app.get(
     const { guild_id } = c.req.valid("query");
     const client = getKookClient(token);
     try {
-      const res = await client.request("/api/v3/guild/user-list", "GET", {
+      const res = await client.listGuildMembers({
         guild_id,
       });
       return c.json(res.data);
@@ -79,7 +105,7 @@ app.get(
     const { guild_id } = c.req.valid("query");
     const client = getKookClient(token);
     try {
-      const res = await client.request("/api/v3/guild-role/list", "GET", {
+      const res = await client.listGuildRoles({
         guild_id,
       });
       return c.json(res.data);

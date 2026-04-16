@@ -10,8 +10,10 @@ import { regearRouter } from './modules/regear'
 import { regearApplyRouter } from './modules/regear_apply/router'
 import { kookRouter } from './modules/kook'
 import { runRegearApplyAutoBinder } from './modules/cron_regear_apply_binder'
+import { internalAuthMiddleware } from './modules/internal/auth.middleware'
+import type { AppContext } from './context'
 
-const app = new Hono<{ Bindings: Env }>()
+const app = new Hono<AppContext>()
 
 let seeded = false
 
@@ -79,6 +81,24 @@ const routes = app
   .route('/guilds', regearRouter)
   .route('/regear_applies', regearApplyRouter)
   .route('/kook', kookRouter)
+  .get('/__scheduled', async (c) => {
+    const startedAt = Date.now()
+    try {
+      const result = await runRegearApplyAutoBinder(c.env, true)
+      return c.json({
+        ok: true,
+        durationMs: Date.now() - startedAt,
+        result,
+      })
+    } catch (e) {
+      const err = e as any
+      return c.json({
+        ok: false,
+        durationMs: Date.now() - startedAt,
+        error: { name: err?.name, message: err?.message ?? String(e) },
+      }, 500)
+    }
+  })
 
 export type AppType = typeof routes
 
