@@ -1,0 +1,6 @@
+- [x] `GET /regear_applies` 已实现，并支持 msgGuild/status/msgChannel/msgUserid/victimName/limit/offset 筛选与分页，返回包含 total。
+- [x] 工会大盘新增「补装审批」Tab，并且可正常切换与渲染。
+- [x] 补装审批 Tab 支持按状态/频道/msgUserID/victimName 过滤，并默认写死 msgGuild=1248349507148974 参与查询。
+- [x] 列表按 createTime 倒序展示，包含至少 createTime/status/msgChannel/msgUserid/victimName/msgUsername/regearId 字段。
+- [x] `apps/web` 构建通过（tsc + vite build）。
+- [x] `apps/api` TypeScript 检查通过（使用仓库既有命令）。

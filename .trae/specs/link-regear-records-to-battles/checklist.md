@@ -1,0 +1,6 @@
+- [x] `regears` 表新增 `battle_id` 列，并且对应 Drizzle schema 已更新且可正常生成类型。
+- [x] 创建 regear ticket API 请求体已切换为 `battleEvents` 映射，并且能正确创建 `regear_ticket_battles` 与带 `battle_id` 的 `regears` 记录。
+- [x] 所有前端 `api.guilds[':guildId'].regear.tickets.$post` 调用点已更新为新参数结构。
+- [x] 前端预览 records 能携带 `battleId` 并据此构建 `battleEvents`（battle_id -> event_id[]）传入创建接口。
+- [x] `apps/web` 构建通过（tsc + vite build）。
+- [x] `apps/api` TypeScript 检查通过（使用仓库既有命令）。

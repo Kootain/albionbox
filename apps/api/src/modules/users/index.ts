@@ -1,2 +1,2 @@
-export { default as usersApp } from './router';
-export * as usersService from './service';
+export { usersRouter } from './router'
+export { authMiddleware } from './auth.middleware'

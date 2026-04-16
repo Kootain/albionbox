@@ -1,47 +1,79 @@
-export const cx = (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(' ');
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
-export const formatDateTime = (value?: string | null) => {
-  if (!value) {
-    return '—';
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+export function parseApiError(data: unknown, fallback = 'An error occurred'): string {
+  if (!data || typeof data !== 'object') return fallback;
+  
+  const errData = data as Record<string, unknown>;
+  
+  // 1. Directly a string error
+  if (typeof errData.error === 'string') {
+    return errData.error;
   }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
+  
+  // 2. Hono zValidator error (ZodError)
+  if (errData.error && typeof errData.error === 'object' && errData.error !== null) {
+    const errorObj = errData.error as Record<string, unknown>;
+    if (errorObj.name === 'ZodError' && typeof errorObj.message === 'string') {
+      try {
+        const parsed = JSON.parse(errorObj.message);
+        if (Array.isArray(parsed)) {
+          return parsed.map((err: { message: string }) => err.message).join('; ');
+        }
+      } catch {
+        return errorObj.message;
+      }
+    }
+    
+    // 3. Object with a message property
+    if (typeof errorObj.message === 'string') {
+      return errorObj.message;
+    }
   }
+  
+  // 4. Message at the root
+  if (typeof errData.message === 'string') {
+    return errData.message;
+  }
+  
+  return fallback;
+}
 
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-};
+export function formatFame(fame: number | undefined | null): string {
+  if (fame == null || isNaN(fame)) return '0';
+  
+  if (fame >= 1_000_000) {
+    return (fame / 1_000_000).toFixed(2) + 'm';
+  } else if (fame >= 1_000) {
+    return (fame / 1_000).toFixed(2) + 'k';
+  }
+  return fame.toString();
+}
 
-export const formatServerLabel = (server: string) => {
-  if (server === 'asia') return '亚服';
-  if (server === 'europe') return '欧服';
-  if (server === 'america') return '美服';
-  return server;
-};
+export function getAlbionItemUrl(type: string | undefined | null, count = 1, quality = 1): string {
+  if (!type) return '';
+  // Use custom domain for items, add count/quality params only if greater than 1
+  let url = `https://img.albionbox.com/v1/item/${type}.png`;
+  const params = [];
+  if (count > 1) params.push(`count=${count}`);
+  if (quality > 1) params.push(`quality=${quality}`);
+  if (type.includes('TRASH')) {
+    params.push(`count=1`);
+    params.push(`quality=${quality}`);
+  }
+  
+  if (params.length > 0) {
+    url += `?${params.join('&')}`;
+  }
+  return url;
+}
 
-export const formatStatusLabel = (status: string) => {
-  const statusMap: Record<string, string> = {
-    pending: '待审核',
-    approved: '已通过',
-    rejected: '已拒绝',
-    active: '启用',
-    unbound: '已解绑',
-    open: '进行中',
-    completed: '已完成',
-    closed: '已关闭',
-    pending_submission: '待提交',
-    pending_review: '待审核',
-  };
+export function image(item: {Type: string, Count: number, Quality: number} | null): string {
+  if (!item) return '';
+  return getAlbionItemUrl(item.Type, item.Count, item.Quality);
+}
 
-  return statusMap[status] ?? status;
-};
-
-export const formatPermissionLabel = (value: string) => value.split(':').join(' / ');

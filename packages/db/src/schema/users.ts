@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { integer, sqliteTable, text, uniqueIndex, index } from 'drizzle-orm/sqlite-core'
 
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
@@ -6,63 +6,68 @@ export const users = sqliteTable('users', {
   emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
   passwordHash: text('password_hash'),
   passwordSalt: text('password_salt'),
-  passwordUpdatedAt: integer('password_updated_at', { mode: 'timestamp' }),
-  currentGameCharacterId: text('current_game_character_id'),
-  isAdmin: integer('is_admin', { mode: 'boolean' }).notNull().default(false),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-});
+  activeGameAccountId: text('active_game_account_id'),
+  sessionsVersion: integer('sessions_version').notNull().default(0),
+  createdAt: text('created_at').notNull(),
+})
 
-export const oauthAccounts = sqliteTable('oauth_accounts', {
+export const emailVerifications = sqliteTable('email_verifications', {
   id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  provider: text('provider', { enum: ['kook', 'discord'] }).notNull(),
-  providerAccountId: text('provider_account_id'),
-  providerAccountName: text('provider_account_name'),
-  status: text('status', { enum: ['active', 'unbound'] }).notNull().default('active'),
-  lastBoundAt: integer('last_bound_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  unboundAt: integer('unbound_at', { mode: 'timestamp' }),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-}, (table) => {
-  return {
-    unqOauthUserProvider: uniqueIndex('unq_oauth_user_provider').on(table.userId, table.provider),
-    unqOauthProviderAccount: uniqueIndex('unq_oauth_provider_account').on(table.provider, table.providerAccountId),
-  };
-});
+  userId: text('user_id').notNull().references(() => users.id),
+  token: text('token').notNull().unique(),
+  expiresAt: text('expires_at').notNull(),
+  verifiedAt: text('verified_at'),
+})
 
-export const gameCharacterBindingApplications = sqliteTable('game_character_binding_applications', {
+export const passwordResetTokens = sqliteTable('password_reset_tokens', {
   id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  server: text('server', { enum: ['asia', 'europe', 'america'] }).notNull(),
-  gameAccountId: text('game_account_id').notNull(),
-  gameCharacterName: text('game_character_name'),
-  bindingToken: text('binding_token').notNull(),
-  status: text('status', { enum: ['pending', 'approved', 'rejected'] }).notNull().default('pending'),
-  reviewedBy: text('reviewed_by').references(() => users.id, { onDelete: 'set null' }),
+  userId: text('user_id').notNull().references(() => users.id),
+  token: text('token').notNull().unique(),
+  expiresAt: text('expires_at').notNull(),
+  usedAt: text('used_at'),
+})
+
+export const gameAccounts = sqliteTable('game_accounts', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id),
+  username: text('username').notNull(),
+  albionPlayerId: text('albion_player_id').default(''),
+  server: text('server', { enum: ['asia', 'eu', 'us'] }).notNull(),
+  status: text('status', { enum: ['idle', 'verifing', 'verified'] }).notNull().default('idle'),
+  createdAt: text('created_at').notNull(),
+}, (table) => ([
+  index('game_accounts_user_id_idx').on(table.userId),
+  uniqueIndex('game_accounts_username_server_idx').on(table.username, table.server)
+]))
+
+export const bindingTokens = sqliteTable('binding_tokens', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  username: text('username').notNull(),
+  server: text('server', { enum: ['asia', 'eu', 'us'] }).notNull(),
+  token: text('token').notNull().unique(),
+  expiresAt: text('expires_at').notNull(),
+  usedAt: text('used_at'),
+  status: text('status', { enum: ['pending', 'rejected', 'accepted', 'cancelled'] }).notNull().default('pending'),
   reviewNote: text('review_note'),
-  reviewedAt: integer('reviewed_at', { mode: 'timestamp' }),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-}, (table) => {
-  return {
-    unqGameAccountBinding: uniqueIndex('unq_game_account_binding').on(table.userId, table.server, table.gameAccountId),
-    unqGameBindingToken: uniqueIndex('unq_game_binding_token').on(table.bindingToken),
-  };
-});
+}, (table) => ([
+  index('binding_tokens_user_id_idx').on(table.userId),
+  index('binding_tokens_username_server_userId_idx').on(table.username, table.server, table.userId),
+]))
 
-export const gameCharacters = sqliteTable('game_characters', {
+export const thirdPartyAccounts = sqliteTable('third_party_accounts', {
   id: text('id').primaryKey(),
-  applicationId: text('application_id').notNull().references(() => gameCharacterBindingApplications.id, { onDelete: 'cascade' }),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  server: text('server', { enum: ['asia', 'europe', 'america'] }).notNull(),
-  gameAccountId: text('game_account_id').notNull(),
-  characterName: text('character_name'),
-  approvedAt: integer('approved_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-}, (table) => {
-  return {
-    unqGameCharacterApplication: uniqueIndex('unq_game_character_application').on(table.applicationId),
-    unqGameCharacterAccount: uniqueIndex('unq_game_character_account').on(table.server, table.gameAccountId),
-  };
-});
+  userId: text('user_id').notNull().references(() => users.id),
+  provider: text('provider', { enum: ['kook', 'discord'] }).notNull(),
+  providerAccountId: text('provider_account_id').notNull(),
+  providerUsername: text('provider_username').notNull(),
+  providerAvatar: text('provider_avatar'),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  expiresAt: text('expires_at'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (table) => ([
+  uniqueIndex('third_party_provider_account_id_idx').on(table.provider, table.providerAccountId),
+  uniqueIndex('third_party_user_provider_idx').on(table.userId, table.provider)
+]))
