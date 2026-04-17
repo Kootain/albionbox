@@ -36,7 +36,9 @@
     "guild": "Guild",
     "admin": "Admin",
     "members": "Members",
-    "continue": "Continue"
+    "continue": "Continue",
+    "delete": "Delete",
+    "all": "All"
   },
   "auth": {
     "title": "Albion ERP",
@@ -199,7 +201,16 @@
         "victim_guild": "Victim Guild",
         "msg_user": "Msg User",
         "channel": "Channel",
-        "regear_id": "RegearID"
+        "regear_id": "RegearID",
+        "apply_id": "ApplyID"
+      },
+      "status": {
+        "binding": "Binding",
+        "bind_failed": "Bind Failed",
+        "pending_audit": "Pending Audit",
+        "pending_regear": "Pending Regear",
+        "reject": "Rejected",
+        "done": "Done"
       },
       "states": {
         "loading": "Loading...",
@@ -207,6 +218,7 @@
         "error": "Failed to load regear applies"
       },
       "supplement": {
+        "battle": "Battle",
         "hint": "Select a start time to fetch candidates grouped by battleId",
         "start": "Start Supplement",
         "generate": "Generate Ticket",
@@ -222,7 +234,8 @@
         "start_modal_title": "Start Supplement",
         "start_time": "Start Time",
         "detail_modal_title": "Battle Details",
-        "deleted": "Deleted"
+        "deleted": "Deleted",
+        "image": "View Apply Image"
       }
     },
     "settings": {

@@ -43,11 +43,13 @@ const updateSettingsHandler = factory.createHandlers(
     const setValues: any = { updatedAt: now }
     if (data.regearConfig !== undefined) setValues.regearConfig = data.regearConfig
     if (data.chestRooms !== undefined) setValues.chestRooms = data.chestRooms
+    if (data.kookGuildId !== undefined) setValues.kookGuildId = data.kookGuildId
 
     await db.insert(guildSettings).values({
       guildId,
       regearConfig: data.regearConfig || { allowedSlots: ['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Cape'] },
       chestRooms: data.chestRooms || [{ id: 'default', name: 'Main Room', width: 10, height: 10, assignments: [] }],
+      kookGuildId: data.kookGuildId,
       updatedAt: now,
     }).onConflictDoUpdate({
       target: guildSettings.guildId,

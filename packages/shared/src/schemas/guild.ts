@@ -62,6 +62,7 @@ export const UpdateGuildSettingsSchema = z.object({
       playerName: z.string(),
     })),
   })).optional(),
+  kookGuildId: z.string().optional().nullable(),
 })
 
 export type { Guild, GuildMember, Role, Permission, GuildMemberRole } from '@albionbox/db'

@@ -1,4 +1,4 @@
-import { type ReactNode, type ButtonHTMLAttributes } from 'react'
+import { type ReactNode, type ButtonHTMLAttributes, useEffect } from 'react'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
@@ -134,16 +134,32 @@ export function Modal({
   children: ReactNode
   className?: string
 }) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-      <div className={cn("bg-black-card border border-black-border rounded-2xl w-full max-w-md", className)}>
-        <div className="flex items-center justify-between p-6 border-b border-black-border">
+    <div 
+      className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div 
+        className={cn("bg-black-card border border-black-border rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col", className)}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-6 border-b border-black-border shrink-0">
           <h2 className="font-bold text-lg text-white">{title}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
             ✕
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="p-6 overflow-y-auto min-h-0">{children}</div>
       </div>
     </div>
   )

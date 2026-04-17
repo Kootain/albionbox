@@ -328,7 +328,7 @@ export function RegearTab({ guildId }: RegearTabProps) {
       let defaultPolicies = undefined;
       
       if (settingsRes.ok) {
-        const settings = await settingsRes.json();
+        const settings = await settingsRes.json() as any;
         if (settings.regearConfig?.allowedSlots) {
           defaultAllowedSlots = settings.regearConfig.allowedSlots;
         }

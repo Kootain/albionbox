@@ -1,4 +1,4 @@
-import { AlbionApiClient } from "@/lib/albion-sdk"
+import { AlbionApiClient } from "../lib/albion-sdk"
 import { AlbionOfficialBattle, AlbionOfficialEvent } from "@albionbox/shared"
 
 export type applyDetail = {

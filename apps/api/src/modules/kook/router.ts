@@ -4,6 +4,9 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { authMiddleware } from '../users'
 import type { AppContext } from '../../context'
+import { drizzle } from 'drizzle-orm/d1'
+import { guildSettings } from '@albionbox/db'
+import { eq } from 'drizzle-orm'
 
 const factory = createFactory<AppContext>()
 const router = new Hono<AppContext>()
@@ -97,7 +100,39 @@ const listChannelsHandler = factory.createHandlers(
   zValidator('param', z.object({ guildId: z.string().min(1) })),
   async (c) => {
     const { guildId } = c.req.valid('param')
-    return kookGet(c, '/channel/list', { guild_id: guildId })
+    const db = drizzle(c.env.DB)
+    const settings = await db.select({ kookGuildId: guildSettings.kookGuildId }).from(guildSettings).where(eq(guildSettings.guildId, guildId)).get()
+    
+    if (!settings?.kookGuildId) {
+      return c.json({ code: 0, message: "No kook guild bound", data: { items: [] } })
+    }
+
+    const res = await kookGet(c, '/channel/list', { guild_id: settings.kookGuildId })
+    const data = await res.json() as any
+    if (data?.data?.items) {
+      data.data.items = data.data.items.map((item: any) => ({ ...item, name: `[Kook] ${item.name}` }))
+    }
+    return c.json(data)
+  }
+)
+
+const listGuildUsersHandler = factory.createHandlers(
+  zValidator('param', z.object({ guildId: z.string().min(1) })),
+  async (c) => {
+    const { guildId } = c.req.valid('param')
+    const db = drizzle(c.env.DB)
+    const settings = await db.select({ kookGuildId: guildSettings.kookGuildId }).from(guildSettings).where(eq(guildSettings.guildId, guildId)).get()
+    
+    if (!settings?.kookGuildId) {
+      return c.json({ code: 0, message: "No kook guild bound", data: { items: [] } })
+    }
+
+    const res = await kookGet(c, '/guild/user-list', { guild_id: settings.kookGuildId })
+    const data = await res.json() as any
+    if (data?.data?.items) {
+      data.data.items = data.data.items.map((item: any) => ({ ...item, nickname: `[Kook] ${item.nickname || item.username}`, username: `[Kook] ${item.username}` }))
+    }
+    return c.json(data)
   }
 )
 
@@ -208,6 +243,7 @@ const routes = router
   .use('*', authMiddleware)
   .get('/guilds', ...listGuildsHandler)
   .get('/guilds/:guildId/channels', ...listChannelsHandler)
+  .get('/guilds/:guildId/users', ...listGuildUsersHandler)
   .get('/channels/:channelId/messages', ...listMessagesHandler)
   .post('/messages/:msgId/reactions', ...addReactionHandler)
   .delete('/messages/:msgId/reactions', ...deleteReactionHandler)

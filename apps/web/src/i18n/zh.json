@@ -36,7 +36,9 @@
     "guild": "所属公会",
     "admin": "管理后台",
     "members": "成员",
-    "continue": "继续"
+    "continue": "继续",
+    "delete": "删除",
+    "all": "全部"
   },
   "auth": {
     "title": "Albion ERP",
@@ -199,7 +201,16 @@
         "victim_guild": "公会",
         "msg_user": "申请人",
         "channel": "频道",
-        "regear_id": "补装工单"
+        "regear_id": "补装工单",
+        "apply_id": "申请ID"
+      },
+      "status": {
+        "binding": "绑定中",
+        "bind_failed": "绑定失败",
+        "pending_audit": "待审核",
+        "pending_regear": "待补装",
+        "reject": "已拒绝",
+        "done": "已完成"
       },
       "states": {
         "loading": "加载中...",
@@ -207,6 +218,7 @@
         "error": "加载补装申请失败"
       },
       "supplement": {
+        "battle": "战斗",
         "hint": "选择开始时间后拉取候选记录，并按 battleId 聚合",
         "start": "开始补装",
         "generate": "生成补装工单",
@@ -222,7 +234,8 @@
         "start_modal_title": "开始补装",
         "start_time": "开始时间",
         "detail_modal_title": "战斗详情",
-        "deleted": "已删除"
+        "deleted": "已删除",
+        "image": "查看申请图片"
       }
     },
     "settings": {

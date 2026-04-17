@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Filter, Crosshair, Image as ImageIcon, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { BattleType, ApplyStatus } from '@albionbox/shared';
+import { BattleType, ApplyStatus, AlbionOfficialEvent } from '@albionbox/shared';
 import { Button, Input, Modal, Badge } from '@/components/ui';
 import { useConfirm } from '@/components/ui/Confirm';
 import { useToast } from '@/components/ui/Toast';
 import { BattleDetail } from './battle-report-components/BattleDetail';
+import { KillDetailModal } from './battle-report-components/KillDetailModal';
 
 type RegearApply = {
   id: string;
@@ -62,6 +63,18 @@ export function RegearApprovalTab({
   const [error, setError] = useState('');
   const [data, setData] = useState<RegearApply[]>([]);
 
+  const [timeFormat, setTimeFormat] = useState<string>('UTC');
+  const [channelsMap, setChannelsMap] = useState<Record<string, string>>({});
+  const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+  const [selectedDeathRecord, setSelectedDeathRecord] = useState<AlbionOfficialEvent | null>(null);
+
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const [showChannelSuggestions, setShowChannelSuggestions] = useState(false);
+  const [showUserSuggestions, setShowUserSuggestions] = useState(false);
+  const channelBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [supplementStartOpen, setSupplementStartOpen] = useState(false);
   const [supplementStartTimeLocal, setSupplementStartTimeLocal] = useState(() => {
     const d = new Date(Date.now() - 60 * 60 * 1000);
@@ -78,6 +91,54 @@ export function RegearApprovalTab({
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / LIMIT)), [total]);
 
   useEffect(() => {
+    let mounted = true;
+    async function fetchKookData() {
+      // Channels
+      const channelsCacheKey = `kook_channels_${guildId}`;
+      const cachedChannels = localStorage.getItem(channelsCacheKey);
+      if (cachedChannels) {
+        setChannelsMap(JSON.parse(cachedChannels));
+      } else {
+        try {
+          const res = await (api as any).kook.guilds[':guildId'].channels.$get({ param: { guildId } });
+          const data = await res.json() as any;
+          if (data?.data?.items && Array.isArray(data.data.items)) {
+            const map: Record<string, string> = {};
+            data.data.items.forEach((c: any) => { map[c.id] = c.name; });
+            if (mounted) setChannelsMap(map);
+            localStorage.setItem(channelsCacheKey, JSON.stringify(map));
+          }
+        } catch (e) {
+          console.error('Failed to fetch KOOK channels', e);
+        }
+      }
+
+      // Users
+      const usersCacheKey = `kook_users_${guildId}`;
+      const cachedUsers = localStorage.getItem(usersCacheKey);
+      if (cachedUsers) {
+        setUsersMap(JSON.parse(cachedUsers));
+      } else {
+        try {
+          const res = await (api as any).kook.guilds[':guildId'].users.$get({ param: { guildId } });
+          const data = await res.json() as any;
+          if (data?.data?.items && Array.isArray(data.data.items)) {
+            const map: Record<string, string> = {};
+            data.data.items.forEach((u: any) => { map[u.id] = u.nickname || u.username; });
+            if (mounted) setUsersMap(map);
+            localStorage.setItem(usersCacheKey, JSON.stringify(map));
+          }
+        } catch (e) {
+          console.error('Failed to fetch KOOK users', e);
+        }
+      }
+    }
+
+    if (guildId) fetchKookData();
+    return () => { mounted = false; };
+  }, [guildId]);
+
+  useEffect(() => {
     setPage(1);
   }, [status, channel, msgUserID, victimName]);
 
@@ -89,12 +150,20 @@ export function RegearApprovalTab({
       setError('');
       try {
         const offset = (page - 1) * LIMIT;
+        
+        // Resolve names back to IDs if they match exactly
+        const resolveId = (input: string, map: Record<string, string>) => {
+          if (!input) return undefined;
+          const entry = Object.entries(map).find(([id, name]) => name === input);
+          return entry ? entry[0] : input;
+        };
+
         const res = await api.regear_applies.$get({
           query: {
             msgGuild: DEFAULT_MSG_GUILD,
             status: status || undefined,
-            msgChannel: channel || undefined,
-            msgUserid: msgUserID || undefined,
+            msgChannel: resolveId(channel, channelsMap),
+            msgUserid: resolveId(msgUserID, usersMap),
             victimName: victimName || undefined,
             limit: String(LIMIT),
             offset: String(offset),
@@ -140,6 +209,24 @@ export function RegearApprovalTab({
     });
     return copy;
   }, [supplementBattles]);
+
+  const filteredChannels = useMemo(() => {
+    const q = channel.trim().toLowerCase();
+    const entries = Object.entries(channelsMap);
+    const out = q
+      ? entries.filter(([id, name]) => id.toLowerCase().includes(q) || name.toLowerCase().includes(q))
+      : entries;
+    return out.slice(0, q ? 50 : 20);
+  }, [channel, channelsMap]);
+
+  const filteredUsers = useMemo(() => {
+    const q = msgUserID.trim().toLowerCase();
+    const entries = Object.entries(usersMap);
+    const out = q
+      ? entries.filter(([id, name]) => id.toLowerCase().includes(q) || name.toLowerCase().includes(q))
+      : entries;
+    return out.slice(0, q ? 50 : 20);
+  }, [msgUserID, usersMap]);
 
   const loadSupplementCandidates = async (startTimeIso: string) => {
     if (supplementLoading) return;
@@ -264,12 +351,12 @@ export function RegearApprovalTab({
 
   const statusOptions: { value: string; label: string }[] = [
     { value: '', label: t('common.all', { defaultValue: 'All' }) },
-    { value: ApplyStatus.BINDING, label: 'binding' },
-    { value: ApplyStatus.BIND_FAILED, label: 'bind_failed' },
-    { value: ApplyStatus.PENDING_AUDIT, label: 'pending_audit' },
-    { value: ApplyStatus.PENDING_REGEAR, label: 'pending_regear' },
-    { value: ApplyStatus.REJECT, label: 'reject' },
-    { value: ApplyStatus.DONE, label: 'done' },
+    { value: ApplyStatus.BINDING, label: t('guild_dashboard.regear_approval.status.binding', { defaultValue: 'binding' }) },
+    { value: ApplyStatus.BIND_FAILED, label: t('guild_dashboard.regear_approval.status.bind_failed', { defaultValue: 'bind_failed' }) },
+    { value: ApplyStatus.PENDING_AUDIT, label: t('guild_dashboard.regear_approval.status.pending_audit', { defaultValue: 'pending_audit' }) },
+    { value: ApplyStatus.PENDING_REGEAR, label: t('guild_dashboard.regear_approval.status.pending_regear', { defaultValue: 'pending_regear' }) },
+    { value: ApplyStatus.REJECT, label: t('guild_dashboard.regear_approval.status.reject', { defaultValue: 'reject' }) },
+    { value: ApplyStatus.DONE, label: t('guild_dashboard.regear_approval.status.done', { defaultValue: 'done' }) },
   ];
 
   const getStatusBadge = (s: ApplyStatus) => {
@@ -284,7 +371,7 @@ export function RegearApprovalTab({
 
     return (
       <span className={cn('px-2 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg border', cls)}>
-        {s}
+        {t(`guild_dashboard.regear_approval.status.${s}`, { defaultValue: s })}
       </span>
     );
   };
@@ -293,7 +380,58 @@ export function RegearApprovalTab({
     if (!iso) return '-';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
-    return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    if (timeFormat === 'UTC') {
+      return `${d.getUTCFullYear()}/${pad(d.getUTCMonth() + 1)}/${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+    }
+    return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const getBattleTimeRange = (applies: RegearApply[]) => {
+    if (!applies || applies.length === 0) return '';
+    const times = applies.map(a => new Date(a.createTime).getTime()).filter(t => !Number.isNaN(t));
+    if (times.length === 0) return '';
+    const minTime = new Date(Math.min(...times));
+    const maxTime = new Date(Math.max(...times));
+    
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const formatPart = (d: Date) => {
+      if (timeFormat === 'UTC') return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+      return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+    
+    if (minTime.getTime() === maxTime.getTime()) {
+      return formatTime(minTime.toISOString());
+    }
+    
+    // Check if same day
+    const isSameDay = timeFormat === 'UTC' 
+      ? minTime.getUTCFullYear() === maxTime.getUTCFullYear() && minTime.getUTCMonth() === maxTime.getUTCMonth() && minTime.getUTCDate() === maxTime.getUTCDate()
+      : minTime.getFullYear() === maxTime.getFullYear() && minTime.getMonth() === maxTime.getMonth() && minTime.getDate() === maxTime.getDate();
+      
+    if (isSameDay) {
+      return `${formatTime(minTime.toISOString())} - ${formatPart(maxTime)}`;
+    }
+    return `${formatTime(minTime.toISOString())} - ${formatTime(maxTime.toISOString())}`;
+  };
+
+  const handleShowDeathDetails = async (row: RegearApply) => {
+    if (!row.eventId) {
+      toast.error('Event ID is missing. Cannot fetch battle details.');
+      return;
+    }
+    
+    try {
+      const res = await api.guilds.test.albion.events[':id'].$get({ 
+        param: { id: row.eventId },
+        query: { server: 'asia' }
+      });
+      if (!res.ok) throw new Error('Failed to fetch event data');
+      const eventData = await res.json() as AlbionOfficialEvent;
+      setSelectedDeathRecord(eventData);
+    } catch (e) {
+      toast.error('Failed to fetch death details');
+    }
   };
 
   return (
@@ -371,40 +509,142 @@ export function RegearApprovalTab({
               </select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
               <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">
                 {t('guild_dashboard.regear_approval.filters.channel', { defaultValue: 'Channel' })}
               </label>
-              <input
-                value={channel}
-                onChange={(e) => setChannel(e.target.value)}
-                className="w-full bg-black-bg border border-black-border rounded-xl py-3 px-4 text-white placeholder:text-slate-700 focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold transition-all text-sm"
-                placeholder="msgChannel"
-              />
+              <div className="relative">
+                <input
+                  value={channel}
+                  onChange={(e) => {
+                    setChannel(e.target.value);
+                    setShowChannelSuggestions(true);
+                  }}
+                  onFocus={() => {
+                    if (channelBlurTimeoutRef.current) clearTimeout(channelBlurTimeoutRef.current);
+                    setShowChannelSuggestions(true);
+                  }}
+                  onBlur={() => {
+                    channelBlurTimeoutRef.current = setTimeout(() => setShowChannelSuggestions(false), 200);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') setShowChannelSuggestions(false);
+                  }}
+                  className="w-full bg-black-bg border border-black-border rounded-xl py-3 pl-4 pr-10 text-white placeholder:text-slate-700 focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold transition-all text-sm"
+                  placeholder={t('guild_dashboard.regear_approval.filters.channel', { defaultValue: 'Channel' })}
+                />
+                {channel && (
+                  <button
+                    onClick={() => {
+                      setChannel('');
+                      setShowChannelSuggestions(false);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              {showChannelSuggestions && filteredChannels.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-black-card border border-black-border rounded-xl shadow-2xl overflow-hidden max-h-80 overflow-y-auto">
+                  {filteredChannels.map(([id, name]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        setChannel(name);
+                        setShowChannelSuggestions(false);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center justify-between transition-colors border-b border-black-border last:border-0"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-white truncate">{name}</div>
+                        <div className="text-[10px] text-slate-500 font-mono truncate">{id}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
               <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">
                 {t('guild_dashboard.regear_approval.filters.msg_userid', { defaultValue: 'MsgUserID' })}
               </label>
-              <input
-                value={msgUserID}
-                onChange={(e) => setMsgUserID(e.target.value)}
-                className="w-full bg-black-bg border border-black-border rounded-xl py-3 px-4 text-white placeholder:text-slate-700 focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold transition-all text-sm"
-                placeholder="msgUserid"
-              />
+              <div className="relative">
+                <input
+                  value={msgUserID}
+                  onChange={(e) => {
+                    setMsgUserID(e.target.value);
+                    setShowUserSuggestions(true);
+                  }}
+                  onFocus={() => {
+                    if (userBlurTimeoutRef.current) clearTimeout(userBlurTimeoutRef.current);
+                    setShowUserSuggestions(true);
+                  }}
+                  onBlur={() => {
+                    userBlurTimeoutRef.current = setTimeout(() => setShowUserSuggestions(false), 200);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') setShowUserSuggestions(false);
+                  }}
+                  className="w-full bg-black-bg border border-black-border rounded-xl py-3 pl-4 pr-10 text-white placeholder:text-slate-700 focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold transition-all text-sm"
+                  placeholder={t('guild_dashboard.regear_approval.filters.msg_userid', { defaultValue: 'MsgUserID' })}
+                />
+                {msgUserID && (
+                  <button
+                    onClick={() => {
+                      setMsgUserID('');
+                      setShowUserSuggestions(false);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              {showUserSuggestions && filteredUsers.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-black-card border border-black-border rounded-xl shadow-2xl overflow-hidden max-h-80 overflow-y-auto">
+                  {filteredUsers.map(([id, name]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        setMsgUserID(name);
+                        setShowUserSuggestions(false);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center justify-between transition-colors border-b border-black-border last:border-0"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-white truncate">{name}</div>
+                        <div className="text-[10px] text-slate-500 font-mono truncate">{id}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
               <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">
                 {t('guild_dashboard.regear_approval.filters.victim_name', { defaultValue: 'Victim' })}
               </label>
-              <input
-                value={victimName}
-                onChange={(e) => setVictimName(e.target.value)}
-                className="w-full bg-black-bg border border-black-border rounded-xl py-3 px-4 text-white placeholder:text-slate-700 focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold transition-all text-sm"
-                placeholder="victimName"
-              />
+              <div className="relative">
+                <input
+                  value={victimName}
+                  onChange={(e) => setVictimName(e.target.value)}
+                  className="w-full bg-black-bg border border-black-border rounded-xl py-3 pl-4 pr-10 text-white placeholder:text-slate-700 focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold transition-all text-sm"
+                  placeholder={t('guild_dashboard.regear_approval.filters.victim_name', { defaultValue: 'Victim' })}
+                />
+                {victimName && (
+                  <button
+                    onClick={() => setVictimName('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         ) : (
@@ -441,14 +681,19 @@ export function RegearApprovalTab({
           <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
               <tr className="border-b border-black-border bg-black-bg/50">
-                <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.time', { defaultValue: 'Time' })}</th>
+                <th 
+                  className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer hover:text-white transition-colors"
+                  onClick={() => setTimeFormat(timeFormat === 'UTC' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC')}
+                >
+                  {t('guild_dashboard.regear_approval.table.time', { defaultValue: 'Time' })} ({timeFormat})
+                </th>
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.status', { defaultValue: 'Status' })}</th>
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.victim', { defaultValue: 'Victim' })}</th>
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.victim_guild', { defaultValue: 'Victim Guild' })}</th>
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.msg_user', { defaultValue: 'Msg User' })}</th>
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.channel', { defaultValue: 'Channel' })}</th>
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.regear_id', { defaultValue: 'RegearID' })}</th>
-                <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">ApplyID</th>
+                <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">{t('guild_dashboard.battle_report.columns.action', { defaultValue: 'Action' })}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black-border/50">
@@ -478,13 +723,53 @@ export function RegearApprovalTab({
                   <td className="py-4 px-4 text-xs text-slate-400">{row.victimGuild || '-'}</td>
                   <td className="py-4 px-4">
                     <div className="flex flex-col">
-                      <span className="text-xs text-slate-200 font-bold">{row.msgUsername || '-'}</span>
+                      <span className="text-xs text-slate-200 font-bold">{row.msgUsername || usersMap[row.msgUserid || ''] || '-'}</span>
                       <span className="text-[10px] text-slate-600 font-mono">{row.msgUserid || '-'}</span>
                     </div>
                   </td>
-                  <td className="py-4 px-4 text-xs text-slate-400 font-mono">{row.msgChannel || '-'}</td>
+                  <td className="py-4 px-4 text-xs text-slate-400 font-mono">
+                    {channelsMap[row.msgChannel || ''] || row.msgChannel || '-'}
+                  </td>
                   <td className="py-4 px-4 text-xs text-slate-400 font-mono">{row.regearId || '-'}</td>
-                  <td className="py-4 px-4 text-xs text-slate-600 font-mono">{row.id}</td>
+                  <td className="py-4 px-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button 
+                        onClick={() => handleShowDeathDetails(row)}
+                        className="p-1.5 bg-black-bg border border-black-border hover:border-gold/30 text-slate-400 hover:text-gold rounded transition-colors inline-flex items-center justify-center"
+                        title={t('guild_dashboard.regear_approval.supplement.detail', { defaultValue: '详情' })}
+                      >
+                        <Crosshair className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (row.applyMeta) {
+                            try {
+                              const meta = JSON.parse(row.applyMeta);
+                              if (meta.imageUrl) {
+                                try {
+                                  const urlObj = new URL(meta.imageUrl);
+                                  const proxyUrl = `https://img.albionbox.com/kook${urlObj.pathname}${urlObj.search}`;
+                                  setSelectedImage(proxyUrl);
+                                } catch {
+                                  setSelectedImage(meta.imageUrl);
+                                }
+                              } else {
+                                toast.error('No image URL found in apply record');
+                              }
+                            } catch (e) {
+                              toast.error('Failed to parse apply meta');
+                            }
+                          } else {
+                            toast.error('No apply record meta available');
+                          }
+                        }}
+                        className="p-1.5 bg-black-bg border border-black-border hover:border-gold/30 text-slate-400 hover:text-gold rounded transition-colors inline-flex items-center justify-center"
+                        title={t('guild_dashboard.regear_approval.supplement.image', { defaultValue: '查看申请图片' })}
+                      >
+                        <ImageIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -510,8 +795,11 @@ export function RegearApprovalTab({
                 <div key={battle.battleId} className="bg-black-bg border border-black-border rounded-xl p-4 space-y-3">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <div className="text-sm font-black text-white">
-                        Battle #{battle.battleId}
+                      <div className="text-sm font-black text-white flex items-center gap-2">
+                        <span>{t('guild_dashboard.regear_approval.supplement.battle', { defaultValue: 'Battle' })} #{battle.battleId}</span>
+                        <span className="text-[10px] text-slate-500 bg-black-border/50 px-2 py-0.5 rounded-full uppercase tracking-widest font-mono">
+                          {getBattleTimeRange(battle.applies)}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         {(battle.types.length === 0 ? [t('guild_dashboard.regear_approval.supplement.no_tag', { defaultValue: '无标签' })] : battle.types).map((tag) => (
@@ -613,6 +901,30 @@ export function RegearApprovalTab({
           className="max-w-6xl"
         >
           <BattleDetail battleIds={[detailBattleId]} onBack={() => setDetailBattleId(null)} isStandalone />
+        </Modal>
+      )}
+
+      {selectedDeathRecord && (
+        <KillDetailModal record={selectedDeathRecord} onClose={() => setSelectedDeathRecord(null)} />
+      )}
+
+      {selectedImage && (
+        <Modal
+          title={t('guild_dashboard.regear_approval.supplement.image', { defaultValue: '查看申请图片' })}
+          onClose={() => setSelectedImage(null)}
+          className="max-w-4xl"
+        >
+          <div className="flex items-center justify-center p-4 bg-black/50 rounded-xl overflow-hidden min-h-[50vh]">
+            <img 
+              src={selectedImage} 
+              alt="Apply Record" 
+              className="max-w-full max-h-[80vh] object-contain rounded-lg"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = 'https://placehold.co/800x600/1e1e1e/64748b?text=Image+Load+Failed';
+              }}
+            />
+          </div>
         </Modal>
       )}
     </div>

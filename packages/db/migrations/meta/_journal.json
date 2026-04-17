@@ -43,6 +43,13 @@
       "when": 1776252374981,
       "tag": "0005_great_blue_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1776404946745,
+      "tag": "0006_kind_logan",
+      "breakpoints": true
     }
   ]
 }

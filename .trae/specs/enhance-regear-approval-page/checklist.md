@@ -1,0 +1,5 @@
+- [x] Time toggle column header correctly displays actual timezone (e.g., `Asia/Shanghai`) instead of generic "Local".
+- [x] `/kook/guilds/:guildId/users` API endpoint implemented and returning correct user list.
+- [x] Frontend Kook API calls (channels and users) correctly resolve and use the data.
+- [x] Death Details Modal (crosshair) successfully fetches actual event data by `eventId` and renders correctly.
+- [x] Apply Record (image) button exists, extracts `imageUrl` from `applyMeta`, and opens in a new tab.

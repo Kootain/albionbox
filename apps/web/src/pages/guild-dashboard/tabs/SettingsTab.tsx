@@ -36,6 +36,8 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
   const [rooms, setRooms] = useState<ChestRoom[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
 
+  const [kookGuildId, setKookGuildId] = useState<string>('');
+
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<AlbionSearchResultPlayer[]>([]);
@@ -54,7 +56,8 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
       try {
         const res = await api.guilds[':id'].settings.$get({ param: { id: guildId } });
         if (res.ok) {
-          const data = await res.json();
+          const data = await res.json() as any;
+          if (data.kookGuildId) setKookGuildId(data.kookGuildId);
           if (data.regearConfig) {
             if (data.regearConfig.allowedSlots) setAllowedSlots(data.regearConfig.allowedSlots);
             if (data.regearConfig.defaultPLevel) setDefaultPLevel(data.regearConfig.defaultPLevel);
@@ -87,7 +90,8 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
     currentRooms = rooms,
     currentPLevel = defaultPLevel,
     currentNoRegear = noRegearPlayers,
-    currentLevelGroups = levelGroups
+    currentLevelGroups = levelGroups,
+    currentKookGuildId = kookGuildId
   ) => {
     if (!guildId) return;
     setIsSaving(true);
@@ -95,6 +99,7 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
       const res = await api.guilds[':id'].settings.$put({
         param: { id: guildId },
         json: {
+          kookGuildId: currentKookGuildId || null,
           regearConfig: { 
             allowedSlots: currentSlots,
             defaultPLevel: currentPLevel,
@@ -271,6 +276,30 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
       </div>
 
       <div className="space-y-10">
+        {/* Kook Config */}
+        <section className="space-y-4">
+          <h3 className="text-lg font-bold text-white uppercase tracking-tight">{t('guild_dashboard.settings.kook_config', { defaultValue: 'Kook Configuration' })}</h3>
+          <p className="text-sm text-slate-400">{t('guild_dashboard.settings.kook_config_desc', { defaultValue: 'Bind your Kook Guild ID to resolve user names and channel names correctly.' })}</p>
+          
+          <div className="flex items-center gap-4 max-w-md">
+            <input
+              type="text"
+              value={kookGuildId}
+              onChange={(e) => setKookGuildId(e.target.value)}
+              placeholder="e.g. 1234567890"
+              className="flex-1 bg-black-bg border border-black-border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-gold transition-colors text-sm font-mono"
+            />
+            <button
+              onClick={() => handleSave()}
+              className="px-4 py-3 bg-gold/10 hover:bg-gold/20 text-gold border border-gold/30 rounded-xl font-bold uppercase tracking-widest text-sm transition-colors"
+            >
+              {t('common.save', { defaultValue: 'Save' })}
+            </button>
+          </div>
+        </section>
+
+        <hr className="border-black-border" />
+
         {/* Regear Rules Config */}
         <section className="space-y-4">
           <h3 className="text-lg font-bold text-white uppercase tracking-tight">{t('guild_dashboard.settings.regear_rules', { defaultValue: 'Default Regear Slots' })}</h3>
