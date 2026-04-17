@@ -43,7 +43,7 @@ export function RegearApprovalTab({
   onRegearPreview,
 }: {
   guildId: string;
-  onRegearPreview: (battleIds: string[]) => void;
+  onRegearPreview: (battleIds: string[], needApply?: boolean) => void;
 }) {
   const { t } = useTranslation();
   const { confirm } = useConfirm();
@@ -94,13 +94,16 @@ export function RegearApprovalTab({
     let mounted = true;
     async function fetchKookData() {
       // Channels
+      const settingsRes = await api.guilds[':id'].settings.$get({ param: { id: guildId } });
+      const settings = await settingsRes.json();
       const channelsCacheKey = `kook_channels_${guildId}`;
       const cachedChannels = localStorage.getItem(channelsCacheKey);
       if (cachedChannels) {
         setChannelsMap(JSON.parse(cachedChannels));
       } else {
         try {
-          const res = await (api as any).kook.guilds[':guildId'].channels.$get({ param: { guildId } });
+          
+          const res = await (api as any).kook.guilds[':guildId'].channels.$get({ param: { guildId: settings?.kookGuildId } });
           const data = await res.json() as any;
           if (data?.data?.items && Array.isArray(data.data.items)) {
             const map: Record<string, string> = {};
@@ -120,7 +123,7 @@ export function RegearApprovalTab({
         setUsersMap(JSON.parse(cachedUsers));
       } else {
         try {
-          const res = await (api as any).kook.guilds[':guildId'].users.$get({ param: { guildId } });
+          const res = await api.kook.guilds[':guildId'].users.$get({ param: { guildId: settings?.kookGuildId || '' } });
           const data = await res.json() as any;
           if (data?.data?.items && Array.isArray(data.data.items)) {
             const map: Record<string, string> = {};
@@ -194,17 +197,21 @@ export function RegearApprovalTab({
 
   const sortedSupplementBattles = useMemo(() => {
     const copy = [...supplementBattles];
-    const isMass = (types: BattleType[]) => types.includes(BattleType.MASS);
-    const isPreferred = (types: BattleType[]) => types.length === 0 && !isMass(types);
     copy.sort((a, b) => {
-      const ap = isPreferred(a.types) ? 0 : 1;
-      const bp = isPreferred(b.types) ? 0 : 1;
-      if (ap !== bp) return ap - bp;
+      // Find the earliest createTime in battle a
+      const aTimes = a.applies.map(apply => new Date(apply.createTime).getTime()).filter(t => !Number.isNaN(t));
+      const aMinTime = aTimes.length > 0 ? Math.min(...aTimes) : 0;
+      
+      // Find the earliest createTime in battle b
+      const bTimes = b.applies.map(apply => new Date(apply.createTime).getTime()).filter(t => !Number.isNaN(t));
+      const bMinTime = bTimes.length > 0 ? Math.min(...bTimes) : 0;
 
-      const am = isMass(a.types) ? 1 : 0;
-      const bm = isMass(b.types) ? 1 : 0;
-      if (am !== bm) return am - bm;
-
+      // Sort descending by start time (newest battles first)
+      if (aMinTime !== bMinTime) {
+        return bMinTime - aMinTime;
+      }
+      
+      // Fallback to battleId sorting
       return Number(b.battleId) - Number(a.battleId);
     });
     return copy;
@@ -346,7 +353,7 @@ export function RegearApprovalTab({
       if (!ok) return;
     }
 
-    onRegearPreview(battleIds);
+    onRegearPreview(battleIds, true);
   };
 
   const statusOptions: { value: string; label: string }[] = [

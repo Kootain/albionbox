@@ -16,6 +16,7 @@ import type {
   rolePermissions,
   userPlatformRoles,
   guildMemberRoles,
+  regearApplies,
 } from './schema'
 
 export type User = typeof users.$inferSelect
@@ -31,6 +32,7 @@ export type GuildMember = typeof guildMembers.$inferSelect
 export type RegearTicket = typeof regearTickets.$inferSelect
 export type RegearTicketBattle = typeof regearTicketBattles.$inferSelect
 export type Regear = typeof regears.$inferSelect
+export type RegearApply = typeof regearApplies.$inferSelect
 export type RegearLog = typeof regearLogs.$inferSelect
 
 export type Permission = typeof permissions.$inferSelect

@@ -100,14 +100,14 @@ const listChannelsHandler = factory.createHandlers(
   zValidator('param', z.object({ guildId: z.string().min(1) })),
   async (c) => {
     const { guildId } = c.req.valid('param')
-    const db = drizzle(c.env.DB)
-    const settings = await db.select({ kookGuildId: guildSettings.kookGuildId }).from(guildSettings).where(eq(guildSettings.guildId, guildId)).get()
+    // const db = drizzle(c.env.DB)
+    // const settings = await db.select({ kookGuildId: guildSettings.kookGuildId }).from(guildSettings).where(eq(guildSettings.guildId, guildId)).get()
     
-    if (!settings?.kookGuildId) {
-      return c.json({ code: 0, message: "No kook guild bound", data: { items: [] } })
-    }
+    // if (!settings?.kookGuildId) {
+    //   return c.json({ code: 0, message: "No kook guild bound", data: { items: [] } })
+    // }
 
-    const res = await kookGet(c, '/channel/list', { guild_id: settings.kookGuildId })
+    const res = await kookGet(c, '/channel/list', { guild_id: guildId })
     const data = await res.json() as any
     if (data?.data?.items) {
       data.data.items = data.data.items.map((item: any) => ({ ...item, name: `[Kook] ${item.name}` }))
@@ -120,14 +120,14 @@ const listGuildUsersHandler = factory.createHandlers(
   zValidator('param', z.object({ guildId: z.string().min(1) })),
   async (c) => {
     const { guildId } = c.req.valid('param')
-    const db = drizzle(c.env.DB)
-    const settings = await db.select({ kookGuildId: guildSettings.kookGuildId }).from(guildSettings).where(eq(guildSettings.guildId, guildId)).get()
+    // const db = drizzle(c.env.DB)
+    // const settings = await db.select({ kookGuildId: guildSettings.kookGuildId }).from(guildSettings).where(eq(guildSettings.guildId, guildId)).get()
     
-    if (!settings?.kookGuildId) {
-      return c.json({ code: 0, message: "No kook guild bound", data: { items: [] } })
-    }
+    // if (!settings?.kookGuildId) {
+    //   return c.json({ code: 0, message: "No kook guild bound", data: { items: [] } })
+    // }
 
-    const res = await kookGet(c, '/guild/user-list', { guild_id: settings.kookGuildId })
+    const res = await kookGet(c, '/guild/user-list', { guild_id: guildId })
     const data = await res.json() as any
     if (data?.data?.items) {
       data.data.items = data.data.items.map((item: any) => ({ ...item, nickname: `[Kook] ${item.nickname || item.username}`, username: `[Kook] ${item.username}` }))
@@ -251,5 +251,9 @@ const routes = router
   .get('/guilds/emojis', ...listGuildEmojisHandler)
   .post('/guilds/emojis', ...createGuildEmojiHandler)
   .delete('/guilds/emojis', ...deleteGuildEmojiHandler)
+
+const adapterRouter = router
+  .use('*', authMiddleware)
+  .get('/guilds/channels')
 
 export { routes as kookRouter }

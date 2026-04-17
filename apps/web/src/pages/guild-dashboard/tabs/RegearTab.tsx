@@ -89,13 +89,14 @@ export function RegearTab({ guildId }: RegearTabProps) {
       }
     } else if (action === 'preview') {
       const battleIds = (location.state as any)?.battleIds as string[];
+      const needApply = (location.state as any)?.needApply as boolean;
       const battleIdsKey = battleIds?.join(',');
       
       if (battleIds && battleIds.length > 0) {
         if (lastFetchedPreviewIds.current !== battleIdsKey) {
           lastFetchedPreviewIds.current = battleIdsKey;
           lastFetchedTicketId.current = null;
-          fetchPreviewData(battleIds);
+          fetchPreviewData(battleIds, needApply);
         }
       } else {
         // No battle IDs provided for preview, revert to list
@@ -236,7 +237,7 @@ export function RegearTab({ guildId }: RegearTabProps) {
     });
   };
 
-  const fetchPreviewData = async (ids: string[]) => {
+  const fetchPreviewData = async (ids: string[], needApply?: boolean) => {
     if (!guildId) return;
     setPreviewDetail(null);
     setRealDetail(null);
@@ -261,7 +262,15 @@ export function RegearTab({ guildId }: RegearTabProps) {
         return events;
       };
 
-      const battleEventsArray = await Promise.all(ids.map(fetchEventsForBattle));
+      const [battleEventsArray, regearsRes, appliesRes] = await Promise.all([
+        Promise.all(ids.map(fetchEventsForBattle)),
+        api.guilds[':guildId'].regear.records['by-battles'].$post({ param: { guildId }, json: { battleIds: ids } }),
+        api.regear_applies['by-battles'].$post({ json: { battleIds: ids } })
+      ]);
+
+      const existingRegears = regearsRes.ok ? await regearsRes.json() as any[] : [];
+      const existingApplies = appliesRes.ok ? await appliesRes.json() as any[] : [];
+
       battleEventsArray.forEach(events => allEvents.push(...events));
 
       const rawBattleEventsMap: Record<string, AlbionOfficialEvent[]> = {};
@@ -290,11 +299,22 @@ export function RegearTab({ guildId }: RegearTabProps) {
           }
         });
 
-        recordsMap.set(String(ev.EventId), {
-          id: String(ev.EventId),
-          eventId: String(ev.EventId),
+        const eventIdStr = String(ev.EventId);
+        
+        const existingRegear = existingRegears.find(r => r.eventId === eventIdStr);
+        const isApplied = existingApplies.some(a => a.eventId === eventIdStr);
+        let status: any = 'pending_review';
+        if (existingRegear) {
+          status = existingRegear.status;
+        } else if (needApply) {
+          status = isApplied ? 'pending_review' : 'excluded';
+        }
+
+        recordsMap.set(eventIdStr, {
+          id: eventIdStr,
+          eventId: eventIdStr,
           battleId: String(ev.BattleId ?? ''),
-          status: 'pending_review',
+          status,
           deathTime: ev.TimeStamp,
           deathFame: victim.DeathFame,
           playerName: victim.Name,
@@ -340,6 +360,10 @@ export function RegearTab({ guildId }: RegearTabProps) {
         }
       }
 
+      const pendingReview = regearRecords.filter(r => r.status === 'pending_review').length;
+      const pendingRegear = regearRecords.filter(r => r.status === 'pending_regear').length;
+      const completedRegear = regearRecords.filter(r => r.status === 'completed').length;
+
       const newPreview: RegearOrderDetail = {
         order: {
           id: 'PREVIEW-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
@@ -349,10 +373,10 @@ export function RegearTab({ guildId }: RegearTabProps) {
           battleIds: Object.keys(filteredBattleEventsMap),
           stats: {
             totalDeaths: regearRecords.length,
-            reviewedDeaths: 0,
-            pendingReview: regearRecords.length,
-            pendingRegear: 0,
-            completedRegear: 0,
+            reviewedDeaths: regearRecords.length - pendingReview,
+            pendingReview,
+            pendingRegear,
+            completedRegear,
             // excludedRegear: 0,
             // rejectedRegear: 0,
           }
@@ -393,6 +417,7 @@ export function RegearTab({ guildId }: RegearTabProps) {
     if (!guildId) return;
     
     try {
+      const needApply = (location.state as any)?.needApply as boolean | undefined;
       const battleEvents = preview.battleEvents;
       if (!battleEvents || Object.keys(battleEvents).length === 0) {
         throw new Error('Missing battle events in preview. Please regenerate the preview.');
@@ -411,7 +436,8 @@ export function RegearTab({ guildId }: RegearTabProps) {
           battleEvents,
           players,
           server: 'asia', // TODO: Get from guild server context
-          config: preview.config
+          config: preview.config,
+          needApply,
         }
       });
 

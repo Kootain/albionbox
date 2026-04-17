@@ -59,9 +59,9 @@ export default function GuildDashboardPage() {
     }, { replace: true });
   };
 
-  const handleRegearPreview = (ids: string[]) => {
+  const handleRegearPreview = (ids: string[], needApply?: boolean) => {
     setActiveTab('regear');
-    navigate('/guild-dashboard?tab=regear&action=preview', { state: { battleIds: ids } });
+    navigate('/guild-dashboard?tab=regear&action=preview', { state: { battleIds: ids, needApply } });
   };
 
   const renderTabContent = () => {

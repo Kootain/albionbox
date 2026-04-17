@@ -3,17 +3,20 @@ import { createFactory } from 'hono/factory'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { drizzle } from 'drizzle-orm/d1'
-import { and, eq, inArray, isNull } from 'drizzle-orm'
-import { 
-  CreateRegearTicketSchema, 
-  UpdateRegearTicketSchema, 
-  UpdateRegearStatusSchema 
+import { and, ne, eq, inArray, isNull } from 'drizzle-orm'
+import {
+  CreateRegearTicketSchema,
+  UpdateRegearTicketSchema,
+  UpdateRegearStatusSchema
 } from '@albionbox/shared'
-import { 
-  regearTickets, 
+import {
+  regearTickets,
   regearTicketBattles,
-  regears, 
-  regearLogs 
+  regears,
+  regearLogs,
+  Regear,
+  regearApplies,
+  RegearApply
 } from '@albionbox/db'
 import { authMiddleware } from '../users'
 import { guildPermMiddleware } from '../permissions'
@@ -27,7 +30,7 @@ const createTicketHandler = factory.createHandlers(
   zValidator('json', CreateRegearTicketSchema),
   async (c) => {
     const guildId = c.req.param('guildId') as string
-    const { battleEvents, players, server, config } = c.req.valid('json')
+    const { battleEvents, players, server, config, needApply } = c.req.valid('json')
     const db = drizzle(c.env.DB)
 
     const eventToBattleId = new Map<string, string | null>()
@@ -65,24 +68,44 @@ const createTicketHandler = factory.createHandlers(
       }
     }
 
-    if (eventToBattleId.size > 0) {
-      const allEventIds = Array.from(eventToBattleId.keys())
-      const existing = await db.select({
+    const allEventIds = Array.from(eventToBattleId.keys())
+    const CHUNK_SIZE = 50
+    const existing: { eventId: string; ticketId: string }[] = []
+    const applies: RegearApply[] = []
+    const events2Apply: Record<string, RegearApply> = {}
+
+    for (let i = 0; i < allEventIds.length; i += CHUNK_SIZE) {
+      const chunk = allEventIds.slice(i, i + CHUNK_SIZE)
+
+      const chunkResults = await db.select({
         eventId: regears.eventId,
         ticketId: regearTickets.id,
       })
-      .from(regears)
-      .innerJoin(regearTickets, eq(regearTickets.id, regears.ticketId))
-      .where(and(
-        inArray(regears.eventId, allEventIds),
-        isNull(regears.deletedAt),
-        isNull(regearTickets.deletedAt),
-      ))
-      .all()
+        .from(regears)
+        .innerJoin(regearTickets, eq(regearTickets.id, regears.ticketId))
+        .where(and(
+          ne(regears.status, 'excluded'),
+          inArray(regears.eventId, chunk),
+          isNull(regears.deletedAt),
+          isNull(regearTickets.deletedAt),
+        )).all()
+      
+        const applyResults = await db.select().from(regearApplies)
+        .where(and(
+          inArray(regearApplies.eventId, chunk),
+          isNull(regearApplies.regearId)
+        ))
+        .all()
 
-      if (existing.length > 0) {
-        return c.json({ error: '部分 eventId 已存在于其他未删除的 Ticket', conflicts: existing }, 409)
-      }
+      existing.push(...chunkResults)
+      applies.push(...applyResults)
+      applyResults.forEach((apply) => {
+        events2Apply[apply.eventId||''] = apply
+      })
+
+      // if (existing.length > 0) {
+      //   return c.json({ error: '部分补装已在其他工单中处理中', conflicts: existing }, 409)
+      // }
     }
 
     const ticketId = crypto.randomUUID()
@@ -108,26 +131,43 @@ const createTicketHandler = factory.createHandlers(
     if (battlesToInsert.length > 0) {
       await db.insert(regearTicketBattles).values(battlesToInsert).execute()
     }
+    const regearsToInsert: Array<Regear> = []
 
-    const regearsToInsert = normalizedEventEntries.map(({ eventId, battleId }) => ({
-      id: crypto.randomUUID(),
-      ticketId,
-      eventId,
-      battleId,
-      status: 'pending_review' as const,
-      server,
-      playerName: players?.[eventId] ?? '',
-      createdAt: now,
-      updatedAt: now,
-    }))
+    normalizedEventEntries.forEach(({ eventId, battleId }) => {
+      if (existing.some((e) => e.eventId === eventId)) {
+        return
+      }
+
+      const r: Regear = {
+        id: crypto.randomUUID(),
+        ticketId,
+        eventId,
+        battleId,
+        status: 'pending_review',
+        server,
+        playerName: players?.[eventId] ?? '',
+        createdAt: now,
+        updatedAt: now,
+        comment: null,
+        deletedAt: null,
+      }
+      if (needApply) {
+        if (!events2Apply[eventId]) {
+          r.status = 'excluded'
+        }
+      }
+    
+      regearsToInsert.push(r)
+    })
 
     if (regearsToInsert.length > 0) {
-      // 每20个一批批量插入
-      const batchSize = 10
+      const batchSize = 5
       for (let i = 0; i < regearsToInsert.length; i += batchSize) {
         const batch = regearsToInsert.slice(i, i + batchSize)
         await db.insert(regears).values(batch).execute()
       }
+    } else {
+      return c.json({ error: '所有补装已在其他工单中处理' }, 400)
     }
     return c.json({ ticketId }, 201)
   }
@@ -189,7 +229,7 @@ const listTicketsHandler = factory.createHandlers(
       .all()
 
     const ticketIds = tickets.map(t => t.id)
-    
+
     let battles: typeof regearTicketBattles.$inferSelect[] = []
     let events: typeof regears.$inferSelect[] = []
 
@@ -203,7 +243,7 @@ const listTicketsHandler = factory.createHandlers(
       const pendingReview = ticketEvents.filter(e => e.status === 'pending_review').length
       const pendingRegear = ticketEvents.filter(e => e.status === 'pending_regear').length
       const completedRegear = ticketEvents.filter(e => e.status === 'completed').length
-      
+
       return {
         ...t,
         battleIds: battles.filter(b => b.ticketId === t.id).map(b => b.battleId),
@@ -256,7 +296,7 @@ const listRecordsHandler = factory.createHandlers(
     const playerName = c.req.query('playerName')
     const server = c.req.query('server')
     const status = c.req.query('status')
-    
+
     const db = drizzle(c.env.DB)
 
     const conditions = []
@@ -268,17 +308,51 @@ const listRecordsHandler = factory.createHandlers(
     const query = db.select({
       regear: regears,
     })
-    .from(regears)
-    .innerJoin(regearTickets, eq(regearTickets.id, regears.ticketId))
-    .where(and(
-      eq(regearTickets.guildId, guildId), 
-      isNull(regearTickets.deletedAt),
-      isNull(regears.deletedAt),
-      ...conditions
-    ))
+      .from(regears)
+      .innerJoin(regearTickets, eq(regearTickets.id, regears.ticketId))
+      .where(and(
+        eq(regearTickets.guildId, guildId),
+        isNull(regearTickets.deletedAt),
+        isNull(regears.deletedAt),
+        ...conditions
+      ))
 
     const records = await query.all()
     return c.json(records.map(r => r.regear))
+  }
+)
+
+const listRecordsByBattlesHandler = factory.createHandlers(
+  guildPermMiddleware(['guild:view']),
+  zValidator('json', z.object({
+    battleIds: z.array(z.string()).min(1)
+  })),
+  async (c) => {
+    const guildId = c.req.param('guildId') as string
+    const { battleIds } = c.req.valid('json')
+    const db = drizzle(c.env.DB)
+
+    const records = await db.select({
+      regear: regears,
+    })
+      .from(regears)
+      .innerJoin(regearTickets, eq(regearTickets.id, regears.ticketId))
+      .innerJoin(regearTicketBattles, eq(regearTicketBattles.ticketId, regearTickets.id))
+      .where(and(
+        eq(regearTickets.guildId, guildId),
+        isNull(regearTickets.deletedAt),
+        isNull(regears.deletedAt),
+        inArray(regearTicketBattles.battleId, battleIds)
+      ))
+      .all()
+
+    // Deduplicate by regear.id in case multiple battleIds point to same ticket
+    const uniqueRecords = new Map<string, typeof records[0]['regear']>()
+    for (const row of records) {
+      uniqueRecords.set(row.regear.id, row.regear)
+    }
+
+    return c.json(Array.from(uniqueRecords.values()))
   }
 )
 
@@ -335,7 +409,7 @@ const deleteTicketHandler = factory.createHandlers(
     const record = await db.select().from(regearTickets)
       .where(and(eq(regearTickets.id, ticketId), isNull(regearTickets.deletedAt)))
       .get()
-      
+
     if (!record) return c.json({ error: 'Ticket 不存在' }, 404)
 
     await db.update(regearTickets)
@@ -357,7 +431,7 @@ const deleteRecordHandler = factory.createHandlers(
     const record = await db.select().from(regears)
       .where(and(eq(regears.id, regearId), isNull(regears.deletedAt)))
       .get()
-      
+
     if (!record) return c.json({ error: '补装记录不存在' }, 404)
 
     const now = new Date().toISOString()
@@ -394,14 +468,14 @@ const checkBattlesTicketsHandler = factory.createHandlers(
       battleId: regearTicketBattles.battleId,
       ticketId: regearTickets.id,
     })
-    .from(regearTicketBattles)
-    .innerJoin(regearTickets, eq(regearTickets.id, regearTicketBattles.ticketId))
-    .where(and(
-      eq(regearTicketBattles.guildId, guildId),
-      inArray(regearTicketBattles.battleId, battleIds),
-      isNull(regearTickets.deletedAt)
-    ))
-    .all()
+      .from(regearTicketBattles)
+      .innerJoin(regearTickets, eq(regearTickets.id, regearTicketBattles.ticketId))
+      .where(and(
+        eq(regearTicketBattles.guildId, guildId),
+        inArray(regearTicketBattles.battleId, battleIds),
+        isNull(regearTickets.deletedAt)
+      ))
+      .all()
 
     const mapping = records.reduce((acc, curr) => {
       acc[curr.battleId] = curr.ticketId
@@ -421,6 +495,7 @@ const routes = router
   .put('/:guildId/regear/tickets/:ticketId', ...updateTicketHandler)
   .delete('/:guildId/regear/tickets/:ticketId', ...deleteTicketHandler)
   .get('/:guildId/regear/records', ...listRecordsHandler)
+  .post('/:guildId/regear/records/by-battles', ...listRecordsByBattlesHandler)
   .put('/:guildId/regear/records/:regearId/status', ...updateStatusHandler)
   .delete('/:guildId/regear/records/:regearId', ...deleteRecordHandler)
 

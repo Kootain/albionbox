@@ -5,6 +5,7 @@ export const CreateRegearTicketSchema = z.object({
   players: z.record(z.string(), z.string()).optional(),
   server: z.enum(['asia', 'eu', 'us']),
   config: z.record(z.string(), z.any()).default({}),
+  needApply: z.boolean().default(false),
 })
 
 export type CreateRegearTicketInput = z.infer<typeof CreateRegearTicketSchema>

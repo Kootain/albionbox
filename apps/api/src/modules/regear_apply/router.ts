@@ -1,8 +1,9 @@
 import { Hono, type MiddlewareHandler } from 'hono'
 import { createFactory } from 'hono/factory'
 import { zValidator } from '@hono/zod-validator'
+import { z } from 'zod'
 import { drizzle } from 'drizzle-orm/d1'
-import { and, count, desc, eq, like } from 'drizzle-orm'
+import { and, count, desc, eq, like, inArray, isNull } from 'drizzle-orm'
 import {
   CreateRegearApplySchema,
   UpdateApplyStatusSchema,
@@ -105,6 +106,27 @@ const listAppliesHandler = factory.createHandlers(
     }))
 
     return c.json({ items, total, limit, offset })
+  }
+)
+
+const listAppliesByBattlesHandler = factory.createHandlers(
+  authOrInternalMiddleware,
+  zValidator('json', z.object({
+    battleIds: z.array(z.string()).min(1)
+  })),
+  async (c) => {
+    const { battleIds } = c.req.valid('json')
+    const db = drizzle(c.env.DB)
+
+    const items = await db.select()
+      .from(regearApplies)
+      .where(and(
+        inArray(regearApplies.battleId, battleIds),
+        isNull(regearApplies.regearId)
+      ))
+      .all()
+
+    return c.json(items)
   }
 )
 
@@ -226,6 +248,7 @@ const updateDetailHandler = factory.createHandlers(
 const routes = router
   .post('/', authOrInternalMiddleware, ...createApplyHandler)
   .use('*', authMiddleware)
+  .post('/by-battles', ...listAppliesByBattlesHandler)
   .get('/supplement-candidates', ...listSupplementCandidatesHandler)
   .get('/', ...listAppliesHandler)
   .delete('/:id', ...deleteApplyHandler)

@@ -20,14 +20,17 @@ const getSettingsHandler = factory.createHandlers(
     const { id: guildId } = c.req.param() as Record<string, string>
     const db = drizzle(c.env.DB)
     
-    const settings = await db.select().from(guildSettings).where(eq(guildSettings.guildId, guildId)).get()
-    
-    return c.json(settings || {
-      guildId,
-      regearConfig: { allowedSlots: ['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Cape'] },
-      chestRooms: [{ id: 'default', name: 'Main Room', width: 10, height: 10, assignments: [] }],
-      updatedAt: new Date().toISOString()
-    })
+    let settings = await db.select().from(guildSettings).where(eq(guildSettings.guildId, guildId)).get()
+    if (!settings) {
+      settings =  {
+        guildId,
+        regearConfig: { allowedSlots: ['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Cape'] },
+        chestRooms: [{ id: 'default', name: 'Main Room', width: 10, height: 10, assignments: [] }],
+        updatedAt: new Date().toISOString(),
+        kookGuildId: null,
+      }
+    }
+    return c.json(settings)
   }
 )
 

@@ -1,0 +1,8 @@
+- [x] 在 `RegearApprovalTab` 中点击生成补装工单，传入 `needApply = true`。
+- [x] `GuildDashboardPage` 正确地将 `needApply` 传递给 `RegearTab`。
+- [x] 后端 `regearRouter` 提供 `POST /:guildId/regear/records/by-battles` 接口。
+- [x] 后端 `regearAppliesRouter` 提供 `POST /:guildId/regear-applies/by-battles` 接口。
+- [x] 前端 `RegearTab` 在 `fetchPreviewData` 时并发调用这两个新接口拉取数据。
+- [x] 当 `needApply = true` 时，没有申请单的记录状态默认推导为 `excluded`，有申请单的记录推导为 `pending_review`。已有 `regears` 记录状态能覆盖默认状态。
+- [x] 创建工单 `POST /:guildId/regear/tickets` 接口中，如果处于 `needApply` 模式，Payload 正确携带 `needApply: true`。
+- [x] `apps/web` 和 `apps/api` 的 TypeScript 编译通过。
