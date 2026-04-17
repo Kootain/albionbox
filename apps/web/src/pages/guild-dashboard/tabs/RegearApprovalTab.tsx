@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Filter, Crosshair, Image as ImageIcon, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Filter, Crosshair, Image as ImageIcon, X, Link as LinkIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -38,6 +38,8 @@ type SupplementBattle = {
 const DEFAULT_MSG_GUILD = '1248349507148974';
 const LIMIT = 20;
 
+import { useSearchParams } from 'react-router-dom';
+
 export function RegearApprovalTab({
   guildId,
   onRegearPreview,
@@ -46,6 +48,7 @@ export function RegearApprovalTab({
   onRegearPreview: (battleIds: string[], needApply?: boolean) => void;
 }) {
   const { t } = useTranslation();
+  const [, setSearchParams] = useSearchParams();
   const { confirm } = useConfirm();
   const toast = useToast();
 
@@ -696,6 +699,7 @@ export function RegearApprovalTab({
                 </th>
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.status', { defaultValue: 'Status' })}</th>
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.victim', { defaultValue: 'Victim' })}</th>
+                <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Map</th>
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.victim_guild', { defaultValue: 'Victim Guild' })}</th>
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.msg_user', { defaultValue: 'Msg User' })}</th>
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.channel', { defaultValue: 'Channel' })}</th>
@@ -722,11 +726,21 @@ export function RegearApprovalTab({
                     {t('guild_dashboard.regear_approval.states.empty', { defaultValue: 'No regear applies found' })}
                   </td>
                 </tr>
-              ) : data.map((row) => (
+              ) : data.map((row) => {
+                let mapName = '-';
+                try {
+                  if (row.applyDetail) {
+                    const detail = JSON.parse(row.applyDetail);
+                    mapName = detail.mapName || '-';
+                  }
+                } catch (e) {}
+
+                return (
                 <tr key={row.id} className="hover:bg-black-card/50 transition-colors">
                   <td className="py-4 px-4 text-sm text-slate-300">{formatTime(row.createTime)}</td>
                   <td className="py-4 px-4">{getStatusBadge(row.status)}</td>
                   <td className="py-4 px-4 text-sm text-slate-200 font-bold">{row.victimName || '-'}</td>
+                  <td className="py-4 px-4 text-xs text-slate-400">{mapName}</td>
                   <td className="py-4 px-4 text-xs text-slate-400">{row.victimGuild || '-'}</td>
                   <td className="py-4 px-4">
                     <div className="flex flex-col">
@@ -737,7 +751,29 @@ export function RegearApprovalTab({
                   <td className="py-4 px-4 text-xs text-slate-400 font-mono">
                     {channelsMap[row.msgChannel || ''] || row.msgChannel || '-'}
                   </td>
-                  <td className="py-4 px-4 text-xs text-slate-400 font-mono">{row.regearId || '-'}</td>
+                  <td className="py-4 px-4">
+                    {row.regearId ? (
+                      <button
+                        onClick={() => {
+                          const ticketIdStr = String(row.regearId).split('_')[0];
+                          if (ticketIdStr) {
+                            setSearchParams(prev => {
+                              prev.set('tab', 'regear');
+                              prev.set('ticketId', ticketIdStr);
+                              prev.delete('action');
+                              return prev;
+                            });
+                          }
+                        }}
+                        className="flex items-center justify-center p-1.5 bg-black-bg border border-black-border hover:border-gold/30 text-slate-400 hover:text-gold rounded transition-colors"
+                        title={t('guild_dashboard.regear_approval.supplement.view_ticket', { defaultValue: '查看工单' })}
+                      >
+                        <LinkIcon className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <span className="text-slate-600">-</span>
+                    )}
+                  </td>
                   <td className="py-4 px-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button 
@@ -778,7 +814,8 @@ export function RegearApprovalTab({
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
