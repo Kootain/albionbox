@@ -418,12 +418,23 @@ const updateStatusHandler = factory.createHandlers(
       if (status === 'completed') {
         const t = [
           kook.addReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
-          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }), 
+          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }),
+          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '🔄' }),
+          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '❌' }),
         ]
         if (applyMeta?.idx) {
-          t.push(kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: num2emoji(applyMeta.idx +1)}))
+          t.push(kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: num2emoji(applyMeta.idx + 1) }))
         }
         await Promise.all(t)
+      }
+      if (comment) {
+        kook.createMessage({
+          type: 9,
+          target_id: apply.msgChannel ?? '',
+          content: `(met)${apply.msgUserid}(met) ${comment ?? ''}`,
+          quote: apply?.msgId ?? '',
+          reply_msg_id: apply?.msgId ?? '',
+        })
       }
       if (status === 'rejected') {
         const t = [
