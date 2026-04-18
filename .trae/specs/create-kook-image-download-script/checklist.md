@@ -1,0 +1,6 @@
+- [x] `packages/shared/src/utils/test-kookimage-download.ts` 存在并可包含必要的导入。
+- [x] 脚本包含从 API 消息结构提取图片 URL 的逻辑。
+- [x] 脚本使用分页参数（`msg_id` 和 `flag`）完整获取目标频道的历史消息。
+- [x] 脚本能成功请求图片 URL 并将其保存到本地文件系统中。
+- [x] 脚本支持 `check [目录]` 参数，能够遍历检查该目录下文件的重复情况。
+- [x] 脚本能够准确通过 hash 验证文件并输出重复文件名对。
