@@ -154,6 +154,7 @@ const createTicketHandler = factory.createHandlers(
         createdAt: now,
         updatedAt: now,
         comment: null,
+        regearedSlots: null,
         deletedAt: null,
       }
       if (needApply) {
@@ -384,7 +385,7 @@ const updateStatusHandler = factory.createHandlers(
   async (c) => {
     const user = c.get('user')
     const regearId = c.req.param('regearId') as string
-    const { status, comment } = c.req.valid('json')
+    const { status, regearedSlots, comment } = c.req.valid('json')
     const db = drizzle(c.env.DB)
 
     const [record, apply] = await Promise.all([
@@ -401,21 +402,29 @@ const updateStatusHandler = factory.createHandlers(
       'completed': ['pending_regear'],
     }
 
-    if (!validTransitions[record.status]?.includes(status)) {
-      return c.json({ error: `无法将状态从 ${record.status} 流转到 ${status}` }, 400)
+    const isStatusUpdating = status !== undefined && status !== record.status
+
+    if (isStatusUpdating) {
+      if (!validTransitions[record.status]?.includes(status)) {
+        return c.json({ error: `无法将状态从 ${record.status} 流转到 ${status}` }, 400)
+      }
     }
 
     const now = new Date().toISOString()
+    const updateData: Partial<typeof regears.$inferInsert> = { updatedAt: now }
+    if (status !== undefined) updateData.status = status
+    if (comment !== undefined) updateData.comment = comment
+    if (regearedSlots !== undefined) updateData.regearedSlots = JSON.stringify(regearedSlots)
 
     await db.update(regears)
-      .set({ status, comment, updatedAt: now })
+      .set(updateData)
       .where(eq(regears.id, regearId))
       .execute()
     const kook = new RestClient({ token: c.env.KOOK_BOT_TOKEN })
 
     if (apply) {
       const applyMeta = safeJsonParse<ApplyMeta>(apply.applyMeta)
-      if (status === 'completed') {
+      if (isStatusUpdating && status === 'completed') {
         const t = [
           kook.addReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
           kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }),
@@ -436,7 +445,7 @@ const updateStatusHandler = factory.createHandlers(
           reply_msg_id: apply?.msgId ?? '',
         })
       }
-      if (status === 'rejected') {
+      if (isStatusUpdating && status === 'rejected') {
         const t = [
           kook.addReaction({ msg_id: apply?.msgId ?? '', emoji: '❌' }),
           kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }),
@@ -445,7 +454,7 @@ const updateStatusHandler = factory.createHandlers(
         ]
         await Promise.all(t)
       }
-      if (status === 'pending_regear') {
+      if (isStatusUpdating && status === 'pending_regear') {
         const t = [
           kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '❌' }),
           kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
@@ -454,7 +463,7 @@ const updateStatusHandler = factory.createHandlers(
         ]
         await Promise.all(t)
       }
-      if (status === 'pending_review') {
+      if (isStatusUpdating && status === 'pending_review') {
         const t = [
           kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '❌' }),
           kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
@@ -464,16 +473,23 @@ const updateStatusHandler = factory.createHandlers(
         await Promise.all(t)
       }
     }
-    await db.insert(regearLogs).values({
-      id: crypto.randomUUID(),
-      regearId,
-      action: `${record.status}->${status}`,
-      operatorId: user.id,
-      comment: comment ?? '',
-      createdAt: now,
-    }).execute()
+    
+    if (isStatusUpdating || comment || regearedSlots) {
+      const actionParts = []
+      if (isStatusUpdating) actionParts.push(`${record.status}->${status}`)
+      if (regearedSlots !== undefined) actionParts.push('updated_slots')
+      
+      await db.insert(regearLogs).values({
+        id: crypto.randomUUID(),
+        regearId,
+        action: actionParts.length > 0 ? actionParts.join(', ') : 'update',
+        operatorId: user.id,
+        comment: comment ?? '',
+        createdAt: now,
+      }).execute()
+    }
 
-    return c.json({ message: '状态更新成功' })
+    return c.json({ message: '更新成功' })
   }
 )
 

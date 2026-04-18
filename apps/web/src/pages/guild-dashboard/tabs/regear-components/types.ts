@@ -33,6 +33,7 @@ export interface RegearRecord {
   equipment: { slot: string; url: string; type: string }[];
   mainHandType?: string; // For Weapon Icon + Name
   guildId: string;
+  regearedSlots?: string[];
 }
 
 export interface RegearConfig {

@@ -1,0 +1,1 @@
+ALTER TABLE `regears` ADD `regeared_slots` text;

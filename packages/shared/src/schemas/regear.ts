@@ -20,7 +20,8 @@ export const UpdateRegearTicketSchema = z.object({
 export type UpdateRegearTicketInput = z.infer<typeof UpdateRegearTicketSchema>
 
 export const UpdateRegearStatusSchema = z.object({
-  status: z.enum(['pending_review', 'excluded', 'rejected', 'pending_regear', 'completed']),
+  status: z.enum(['pending_review', 'excluded', 'rejected', 'pending_regear', 'completed']).optional(),
+  regearedSlots: z.array(z.string()).optional(),
   comment: z.string().optional(),
 })
 

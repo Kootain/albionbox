@@ -1,0 +1,9 @@
+- [x] Database Schema: 检查 `packages/db/src/schema/regear.ts` 中 `regears` 表已包含 `regearedSlots: text('regeared_slots')`。
+- [x] DB Migration: 检查 `packages/db/migrations` 目录下是否有新的 `regeared_slots` 字段 SQL。
+- [x] Shared Schema: 检查 `packages/shared/src/schemas/regear.ts` 中 `UpdateRegearStatusSchema` 支持 `regearedSlots` 且 `status` 字段已设为可选。
+- [x] API Logic: 检查 `apps/api/src/modules/regear/router.ts` 中 `updateStatusHandler` 能正确保存 `regearedSlots`。
+- [x] Frontend State: 检查 `RegearTab.tsx` 和 `types.ts` 中的 `RegearRecord` 包含并能解析 `regearedSlots`。
+- [x] UI Functionality: 检查 `RegearDetail.tsx` 中的装备图标点击事件被正确处理（乐观更新+请求 API）。
+- [x] UI Display: 检查被勾选的装备图标能正确显示透明的绿色蒙层。
+- [x] UI Sync: 检查“补装物品统计”列表只使用上方的状态筛选器，并移除了原有的下方筛选按钮。
+- [x] Data Logic: 检查“补装物品统计”中已勾选的装备未被计入统计数量。

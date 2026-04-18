@@ -34,6 +34,7 @@ export const regears = sqliteTable('regears', {
   battleId: text('battle_id'),
   status: text('status', { enum: ['pending_review', 'excluded', 'rejected', 'pending_regear', 'completed'] }).notNull().default('pending_review'),
   comment: text('comment'),
+  regearedSlots: text('regeared_slots'),
   server: text('server', { enum: ['asia', 'eu', 'us'] }).notNull(),
   playerName: text('player_name').notNull().default(''),
   deletedAt: text('deleted_at'), // Soft delete timestamp

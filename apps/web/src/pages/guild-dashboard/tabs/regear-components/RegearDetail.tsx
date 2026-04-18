@@ -70,7 +70,6 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
   const RECORDS_PER_PAGE = 10;
   const ALL_STATUSES = ['pending_review', 'pending_regear', 'rejected', 'completed', 'excluded'] as const;
   const [statusFilter, setStatusFilter] = useState<RegearRecord['status'][]>([...ALL_STATUSES]);
-  const [equipmentStatusFilter, setEquipmentStatusFilter] = useState<RegearRecord['status'][]>(['pending_review', 'pending_regear', 'completed']);
   const [sortConfig, setSortConfig] = useState<{ key: 'playerName' | 'ip' | 'deathFame' | 'chest', direction: 'asc' | 'desc', chestMode?: 'row' | 'col' }>({ key: 'chest', direction: 'asc', chestMode: 'row' });
   const [chestRooms, setChestRooms] = useState<ChestRoom[]>([]);
 
@@ -184,7 +183,6 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
   // Aggregate Equipment
   const groupedEquipmentStats = useMemo(() => {
     let baseRecords = [...filteredAndSortedRecords];
-    baseRecords = baseRecords.filter(r => equipmentStatusFilter.includes(r.status));
 
     const groups: { title: string; subtitle?: string; records: RegearRecord[] }[] = [];
     if (equipmentGroupSize === 0 || baseRecords.length === 0) {
@@ -214,6 +212,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
       group.records.forEach(r => {
         r.equipment.forEach(eq => {
           if (!config.allowedSlots.includes(eq.slot)) return;
+          if (r.regearedSlots?.includes(eq.slot)) return;
 
           if (!agg.has(eq.slot)) {
             agg.set(eq.slot, new Map());
@@ -274,7 +273,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
 
       return { title: group.title, subtitle: group.subtitle, stats: result, recordCount: group.records.length, empty: Object.keys(result).length === 0 };
     });
-  }, [filteredAndSortedRecords, equipmentStatusFilter, equipmentGroupSize, config.allowedSlots, i18n.language, t]); // Depend on language and filter to trigger re-aggregation
+  }, [filteredAndSortedRecords, equipmentGroupSize, config.allowedSlots, i18n.language, t]); // Depend on language and filter to trigger re-aggregation
 
   const updateRecordStatus = async (recordId: string, status: RegearRecord['status'], comment?: string) => {
     try {
@@ -287,6 +286,34 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
     } catch (err) {
       console.error(err);
       // Fallback or show error notification
+    }
+  };
+
+  const handleToggleSlot = async (recordId: string, slot: string, isRegeared: boolean) => {
+    if (isPreview) return;
+
+    const record = records.find(r => r.id === recordId);
+    if (!record) return;
+
+    const currentSlots = record.regearedSlots || [];
+    const newSlots = isRegeared 
+      ? Array.from(new Set([...currentSlots, slot]))
+      : currentSlots.filter(s => s !== slot);
+
+    // Optimistic update
+    setRecords(prev => prev.map(r => r.id === recordId ? { ...r, regearedSlots: newSlots } : r));
+
+    try {
+      const res = await api.guilds[':guildId'].regear.records[':regearId'].status.$put({
+        param: { guildId, regearId: recordId },
+        json: { regearedSlots: newSlots }
+      });
+      if (!res.ok) throw new Error('Failed to update slot');
+    } catch (err) {
+      console.error(err);
+      // Revert on error
+      setRecords(prev => prev.map(r => r.id === recordId ? { ...r, regearedSlots: currentSlots } : r));
+      toast.error(t('common.save_failed', { defaultValue: 'Failed to update slot' }));
     }
   };
 
@@ -757,10 +784,27 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
                       {['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Cape'].map(slot => {
                         const eq = record.equipment.find(e => e.slot === slot);
                         const tierEnchant = eq ? getTierAndEnchant(eq.type) : '';
+                        const isChecked = record.regearedSlots?.includes(slot) || false;
+                        
                         return (
-                          <div key={slot} className="flex flex-col items-center">
-                            <div className="w-10 h-10 bg-black-bg border border-black-border rounded-lg flex items-center justify-center p-0.5" title={eq ? getItemDisplayName(eq.type) : t('guild_dashboard.regear_tab.empty')}>
-                              {eq ? <img src={eq.url} alt={slot} className="w-full h-full object-contain" /> : null}
+                          <div 
+                            key={slot} 
+                            className={cn("flex flex-col items-center relative", eq && !isPreview && "cursor-pointer")}
+                            onClick={() => {
+                              if (eq && !isPreview) {
+                                handleToggleSlot(record.id, slot, !isChecked);
+                              }
+                            }}
+                          >
+                            <div className={cn("w-10 h-10 border rounded-lg flex items-center justify-center p-0.5 overflow-hidden transition-colors relative", 
+                              isChecked ? "bg-emerald-500/10 border-emerald-500/50" : "bg-black-bg border-black-border hover:border-slate-600"
+                            )} title={eq ? getItemDisplayName(eq.type) : t('guild_dashboard.regear_tab.empty')}>
+                              {eq ? <img src={eq.url} alt={slot} className="w-full h-full object-contain relative z-0" /> : null}
+                              {isChecked && (
+                                <div className="absolute inset-0 bg-emerald-500/40 flex items-center justify-center z-10 backdrop-blur-[1px]">
+                                  <CheckCircle className="w-5 h-5 text-white shadow-sm drop-shadow-md" />
+                                </div>
+                              )}
                             </div>
                             <span className={cn("text-xs font-bold mt-1", tierEnchant ? "text-slate-300" : "text-transparent")}>
                               {tierEnchant || '-'}
@@ -886,44 +930,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
             </div>
             
             <div className="h-4 w-px bg-black-border hidden md:block"></div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => {
-                  setEquipmentStatusFilter(equipmentStatusFilter.length === ALL_STATUSES.length ? [] : [...ALL_STATUSES]);
-                }}
-              className={cn(
-                "px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg border transition-all",
-                equipmentStatusFilter.length === ALL_STATUSES.length
-                  ? "bg-emerald-500/20 text-emerald-500 border-emerald-500/50" 
-                  : "bg-black-card text-slate-500 border-black-border hover:border-slate-600 hover:text-slate-300"
-              )}
-            >
-              {t('guild_dashboard.battle_report.all', { defaultValue: 'All' })}
-            </button>
-            {ALL_STATUSES.map(status => {
-              const isActive = equipmentStatusFilter.includes(status);
-              return (
-                <button
-                  key={status}
-                  onClick={() => {
-                    setEquipmentStatusFilter(prev => 
-                      isActive ? prev.filter(s => s !== status) : [...prev, status]
-                    );
-                  }}
-                  className={cn(
-                    "px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg border transition-all",
-                    isActive 
-                      ? "bg-emerald-500/20 text-emerald-500 border-emerald-500/50" 
-                      : "bg-black-card text-slate-500 border-black-border hover:border-slate-600 hover:text-slate-300"
-                  )}
-                >
-                  {t(`guild_dashboard.regear_tab.status.${status}`)}
-                </button>
-              );
-            })}
           </div>
-        </div>
         </div>
         {groupedEquipmentStats.length === 0 || groupedEquipmentStats.every(g => g.empty) ? (
           <div className="text-center p-8 text-slate-500 font-bold uppercase tracking-widest text-sm">{t('guild_dashboard.regear_tab.no_items')}</div>

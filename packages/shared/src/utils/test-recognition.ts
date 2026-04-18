@@ -75,7 +75,7 @@ async function main() {
       params.flag = 'before';
     }
 
-    const msgRes = await client.request('/api/v3/message/list', 'GET', params);
+    const msgRes = await client.request('/api/v3/message/list', 'GET', params) as any;
     if (!msgRes.success) {
       console.error(`Failed to fetch messages on iteration ${pageCount}:`, msgRes.message);
       break;
@@ -172,7 +172,7 @@ async function main() {
     console.log(`\nProcessing image ${i + 1}/${imagesToProcess.length}: ${imageUrl}`);
     try {
       // Call API
-      const parsedData = await parseKillEventFromImage(imageUrl, ARK_API_KEY, MODEL_ID);
+      const parsedData = await parseKillEventFromImage(imageUrl, ARK_API_KEY ?? '', MODEL_ID ?? '');
       console.log('Result:', JSON.stringify(parsedData, null, 2));
       
       resultsData.push({ url: imageUrl, result: parsedData });
