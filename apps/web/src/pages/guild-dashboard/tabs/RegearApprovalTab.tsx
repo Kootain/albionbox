@@ -20,6 +20,7 @@ type RegearApply = {
   createTime: string;
   lastStatusTime: string;
   regearId?: string | null;
+  regearTicketId?: string | null;
   eventId?: string | null;
   battleId?: string | number | null;
   applyMeta?: string | null;
@@ -78,12 +79,6 @@ export function RegearApprovalTab({
   const channelBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [supplementStartOpen, setSupplementStartOpen] = useState(false);
-  const [supplementStartTimeLocal, setSupplementStartTimeLocal] = useState(() => {
-    const d = new Date(Date.now() - 60 * 60 * 1000);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  });
   const [supplementLoading, setSupplementLoading] = useState(false);
   const [supplementError, setSupplementError] = useState('');
   const [supplementBattles, setSupplementBattles] = useState<SupplementBattle[]>([]);
@@ -179,7 +174,10 @@ export function RegearApprovalTab({
         const json = await res.json() as { total: number; items: RegearApply[] };
         if (!mounted) return;
         setTotal(typeof json.total === 'number' ? json.total : 0);
-        setData(Array.isArray(json.items) ? json.items : []);
+        
+        const items = Array.isArray(json.items) ? json.items : [];
+        setData(items);
+
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.message ?? String(e));
@@ -238,13 +236,13 @@ export function RegearApprovalTab({
     return out.slice(0, q ? 50 : 20);
   }, [msgUserID, usersMap]);
 
-  const loadSupplementCandidates = async (startTimeIso: string) => {
+  const loadSupplementCandidates = async () => {
     if (supplementLoading) return;
     setSupplementLoading(true);
     setSupplementError('');
     try {
       const res = await api.regear_applies['supplement-candidates'].$get({
-        query: { msgGuild: DEFAULT_MSG_GUILD, startTime: startTimeIso },
+        query: { msgGuild: DEFAULT_MSG_GUILD },
       });
       if (!res.ok) throw new Error((await res.json().catch(() => null) as any)?.error ?? 'Failed to fetch supplement candidates');
       const applies = await res.json() as RegearApply[];
@@ -284,16 +282,11 @@ export function RegearApprovalTab({
     }
   };
 
-  const handleStartSupplement = async () => {
-    if (supplementLoading) return;
-    const d = new Date(supplementStartTimeLocal);
-    if (Number.isNaN(d.getTime())) {
-      toast.error(t('guild_dashboard.regear_approval.supplement.invalid_time', { defaultValue: '无效的开始时间' }));
-      return;
+  useEffect(() => {
+    if (view === 'supplement') {
+      loadSupplementCandidates();
     }
-    setSupplementStartOpen(false);
-    await loadSupplementCandidates(d.toISOString());
-  };
+  }, [view]);
 
   const updateBattleTypes = async (battleId: string, nextTypes: BattleType[]) => {
     const id = Number(battleId);
@@ -660,18 +653,9 @@ export function RegearApprovalTab({
         ) : (
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-              {t('guild_dashboard.regear_approval.supplement.hint', { defaultValue: '选择开始时间后拉取候选记录，并按 battleId 聚合' })}
+              {t('guild_dashboard.regear_approval.supplement.hint_new', { defaultValue: '拉取所有待审核记录，并按 battleId 聚合' })}
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setSupplementStartOpen(true)}
-                disabled={supplementLoading}
-                loading={supplementLoading}
-              >
-                {t('guild_dashboard.regear_approval.supplement.start', { defaultValue: '开始补装' })}
-              </Button>
               <Button
                 size="sm"
                 variant="primary"
@@ -703,7 +687,7 @@ export function RegearApprovalTab({
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.victim_guild', { defaultValue: 'Victim Guild' })}</th>
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.msg_user', { defaultValue: 'Msg User' })}</th>
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.channel', { defaultValue: 'Channel' })}</th>
-                <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.regear_id', { defaultValue: 'RegearID' })}</th>
+                <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.regear_ticket_id', { defaultValue: 'Ticket' })}</th>
                 <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">{t('guild_dashboard.battle_report.columns.action', { defaultValue: 'Action' })}</th>
               </tr>
             </thead>
@@ -752,18 +736,15 @@ export function RegearApprovalTab({
                     {channelsMap[row.msgChannel || ''] || row.msgChannel || '-'}
                   </td>
                   <td className="py-4 px-4">
-                    {row.regearId ? (
+                    {row.regearTicketId ? (
                       <button
                         onClick={() => {
-                          const ticketIdStr = String(row.regearId).split('_')[0];
-                          if (ticketIdStr) {
-                            setSearchParams(prev => {
-                              prev.set('tab', 'regear');
-                              prev.set('ticketId', ticketIdStr);
-                              prev.delete('action');
-                              return prev;
-                            });
-                          }
+                          setSearchParams(prev => {
+                            prev.set('tab', 'regear');
+                            prev.set('ticketId', String(row.regearTicketId));
+                            prev.delete('action');
+                            return prev;
+                          });
                         }}
                         className="flex items-center justify-center p-1.5 bg-black-bg border border-black-border hover:border-gold/30 text-slate-400 hover:text-gold rounded transition-colors"
                         title={t('guild_dashboard.regear_approval.supplement.view_ticket', { defaultValue: '查看工单' })}
@@ -912,30 +893,6 @@ export function RegearApprovalTab({
             </div>
           )}
         </div>
-      )}
-
-      {supplementStartOpen && (
-        <Modal
-          title={t('guild_dashboard.regear_approval.supplement.start_modal_title', { defaultValue: '开始补装' })}
-          onClose={() => setSupplementStartOpen(false)}
-        >
-          <div className="space-y-4">
-            <Input
-              label={t('guild_dashboard.regear_approval.supplement.start_time', { defaultValue: '开始时间' })}
-              type="datetime-local"
-              value={supplementStartTimeLocal}
-              onChange={(e) => setSupplementStartTimeLocal(e.target.value)}
-            />
-            <div className="flex items-center justify-end gap-2">
-              <Button variant="secondary" onClick={() => setSupplementStartOpen(false)}>
-                {t('common.cancel', { defaultValue: 'Cancel' })}
-              </Button>
-              <Button onClick={handleStartSupplement} loading={supplementLoading}>
-                {t('common.confirm', { defaultValue: 'Confirm' })}
-              </Button>
-            </div>
-          </div>
-        </Modal>
       )}
 
       {detailBattleId && (

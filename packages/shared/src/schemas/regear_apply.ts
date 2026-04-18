@@ -32,6 +32,7 @@ export const RegearApplySchema = z.object({
   createTime: z.string(),
   lastStatusTime: z.string(),
   regearId: z.string().optional(),
+  regearTicketId: z.string().optional(),
   eventId: z.string().optional(),
   battleId: z.string().optional(),
   applyMeta: z.string().optional(), // Expected JSON string or object depending on parsing, keeping as string
@@ -87,10 +88,17 @@ export type ListRegearAppliesResponse = z.infer<typeof ListRegearAppliesResponse
 
 export const ListRegearApplySupplementCandidatesQuerySchema = z.object({
   msgGuild: z.string().min(1),
-  startTime: z.string().min(1),
+  startTime: z.string().optional(),
 })
 
 export const ListRegearApplySupplementCandidatesResponseSchema = z.array(RegearApplySchema)
 
 export type ListRegearApplySupplementCandidatesQuery = z.infer<typeof ListRegearApplySupplementCandidatesQuerySchema>
 export type ListRegearApplySupplementCandidatesResponse = z.infer<typeof ListRegearApplySupplementCandidatesResponseSchema>
+
+
+export type ApplyMeta = {
+    imageUrl: string
+    idx: number
+    total: number
+}

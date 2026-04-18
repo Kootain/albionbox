@@ -1,17 +1,18 @@
 import { drizzle } from 'drizzle-orm/d1'
 import { and, asc, eq, isNull } from 'drizzle-orm'
-import { ApplyStatus, AlbionServer, type AlbionOfficialBattle, type AlbionOfficialEvent } from '@albionbox/shared'
+import { ApplyStatus, AlbionServer, safeJsonParse, ApplyMeta} from '@albionbox/shared'
 import { regearApplies } from '@albionbox/db'
-import { AlbionApiClient } from '../lib/albion-sdk'
-import { createKookRestClient } from '../lib/kook-sdk'
-import { resolveAlbionGuildIdByName } from './guilds/guilds.service'
-import { applyDetail, applyMeta, getBattlesBeforeTime, selectBattlesByTime, getBattlesEvents, match, parseUtcTimestamp } from './match'
+import { AlbionApiClient } from '../../lib/albion-sdk'
+import { createKookRestClient } from '../../lib/kook-sdk'
+import { resolveAlbionGuildIdByName } from '../guilds/guilds.service'
+import { applyDetail, getBattlesBeforeTime, selectBattlesByTime, getBattlesEvents, match, parseUtcTimestamp } from './reger_apply_match'
+import {num2emoji} from '@albionbox/shared'
 
 type RegearApplyRow = typeof regearApplies.$inferSelect
 
 interface Apply extends RegearApplyRow {
   detail: applyDetail
-  meta: applyMeta
+  meta: ApplyMeta
 }
 
 export async function runRegearApplyAutoBinder(
@@ -50,7 +51,7 @@ export async function runRegearApplyAutoBinder(
   const applyDetails: Apply[] = []
   for (const apply of applies) {
     const applyDetail = safeJsonParse<applyDetail>(apply.applyDetail)
-    const applyMeta = safeJsonParse<applyMeta>(apply.applyMeta)
+    const applyMeta = safeJsonParse<ApplyMeta>(apply.applyMeta)
     if (applyMeta == null || applyDetail == null || applyDetail.victimName == '' || applyDetail.killerName == '' || applyDetail.timestamp == '') {
       const now = new Date().toISOString()
       await db.update(regearApplies)
@@ -116,7 +117,7 @@ export async function runRegearApplyAutoBinder(
         await Promise.all([
           kook.deleteReaction({msg_id: apply.msgId, emoji: '▶️' }),
           kook.addReaction({msg_id: apply.msgId, emoji: '⏩' }),
-          kook.deleteReaction({msg_id: apply.msgId, emoji: num2emoji(apply.meta.idx+1)})
+          // kook.deleteReaction({msg_id: apply.msgId, emoji: num2emoji(apply.meta.idx+1)})
         ])
       } catch (e) {
         const err = e as any
@@ -149,50 +150,3 @@ function groupAppliesByGuild(applies: Apply[]) {
   return Array.from(map.values())
 }
 
-
-function safeJsonParse<T>(value: string | null): T | null {
-  if (!value) return null
-  try {
-    return JSON.parse(value) as T
-  } catch {
-    return null
-  }
-}
-
-function stringOrUndefined(v: unknown) {
-  return typeof v === 'string' && v.length > 0 ? v : undefined
-}
-
-function num2emoji(num: number) {
-  if (num === 1) {
-    return '1️⃣'
-  }
-  if (num === 2) {
-    return '2️⃣'
-  }
-  if (num === 3) {
-    return '3️⃣'
-  }
-  if (num === 4) {
-    return '4️⃣'
-  }
-  if (num === 5) {
-    return '5️⃣'
-  }
-  if (num === 6) {
-    return '6️⃣'
-  }
-  if (num === 7) {
-    return '7️⃣'
-  }
-  if (num === 8) {
-    return '8️⃣'
-  }
-  if (num === 9) {
-    return '9️⃣'
-  }
-  if (num === 10) {
-    return '🔟'
-  }
-  return '❓'
-}

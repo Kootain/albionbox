@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const CreateRegearTicketSchema = z.object({
   battleEvents: z.record(z.string().min(1), z.array(z.string().min(1)).min(1)).refine(v => Object.keys(v).length > 0, { message: 'battleEvents 不能为空' }),
   players: z.record(z.string(), z.string()).optional(),
+  applies: z.record(z.string(), z.string()).optional(), // eventId -> applyId
   server: z.enum(['asia', 'eu', 'us']),
   config: z.record(z.string(), z.any()).default({}),
   needApply: z.boolean().default(false),

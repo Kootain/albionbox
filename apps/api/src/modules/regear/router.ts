@@ -7,7 +7,10 @@ import { and, ne, eq, inArray, isNull } from 'drizzle-orm'
 import {
   CreateRegearTicketSchema,
   UpdateRegearTicketSchema,
-  UpdateRegearStatusSchema
+  UpdateRegearStatusSchema,
+  num2emoji,
+  ApplyMeta,
+  safeJsonParse
 } from '@albionbox/shared'
 import {
   regearTickets,
@@ -21,6 +24,8 @@ import {
 import { authMiddleware } from '../users'
 import { guildPermMiddleware } from '../permissions'
 import type { AppContext } from '../../context'
+import { KookClient, RestClient } from '@kookapp/js-sdk'
+import { ko } from 'zod/locales'
 
 const factory = createFactory<AppContext>()
 const router = new Hono<AppContext>()
@@ -89,8 +94,8 @@ const createTicketHandler = factory.createHandlers(
           isNull(regears.deletedAt),
           isNull(regearTickets.deletedAt),
         )).all()
-      
-        const applyResults = await db.select().from(regearApplies)
+
+      const applyResults = await db.select().from(regearApplies)
         .where(and(
           inArray(regearApplies.eventId, chunk),
           isNull(regearApplies.regearId)
@@ -100,7 +105,7 @@ const createTicketHandler = factory.createHandlers(
       existing.push(...chunkResults)
       applies.push(...applyResults)
       applyResults.forEach((apply) => {
-        events2Apply[apply.eventId||''] = apply
+        events2Apply[apply.eventId || ''] = apply
       })
 
       // if (existing.length > 0) {
@@ -156,7 +161,7 @@ const createTicketHandler = factory.createHandlers(
           r.status = 'excluded'
         }
       }
-    
+
       regearsToInsert.push(r)
     })
 
@@ -165,6 +170,23 @@ const createTicketHandler = factory.createHandlers(
       for (let i = 0; i < regearsToInsert.length; i += batchSize) {
         const batch = regearsToInsert.slice(i, i + batchSize)
         await db.insert(regears).values(batch).execute()
+      }
+
+      if (applies) {
+        for (const r of regearsToInsert) {
+          const applyId = events2Apply[r.eventId]?.id
+          if (applyId) {
+            await db.update(regearApplies)
+              .set({
+                regearId: r.id,
+                regearTicketId: ticketId,
+                status: 'pending_regear',
+                lastStatusTime: now,
+              })
+              .where(eq(regearApplies.id, applyId))
+              .execute()
+          }
+        }
       }
     } else {
       return c.json({ error: '所有补装已在其他工单中处理' }, 400)
@@ -365,7 +387,10 @@ const updateStatusHandler = factory.createHandlers(
     const { status, comment } = c.req.valid('json')
     const db = drizzle(c.env.DB)
 
-    const record = await db.select().from(regears).where(and(eq(regears.id, regearId), isNull(regears.deletedAt))).get()
+    const [record, apply] = await Promise.all([
+      await db.select().from(regears).where(and(eq(regears.id, regearId), isNull(regears.deletedAt))).get(),
+      await db.select().from(regearApplies).where(eq(regearApplies.regearId, regearId)).get(),
+    ])
     if (!record) return c.json({ error: '补装记录不存在' }, 404)
 
     const validTransitions: Record<string, string[]> = {
@@ -386,7 +411,48 @@ const updateStatusHandler = factory.createHandlers(
       .set({ status, comment, updatedAt: now })
       .where(eq(regears.id, regearId))
       .execute()
+    const kook = new RestClient({ token: c.env.KOOK_BOT_TOKEN })
 
+    if (apply) {
+      const applyMeta = safeJsonParse<ApplyMeta>(apply.applyMeta)
+      if (status === 'completed') {
+        const t = [
+          kook.addReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
+          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }), 
+        ]
+        if (applyMeta?.idx) {
+          t.push(kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: num2emoji(applyMeta.idx +1)}))
+        }
+        await Promise.all(t)
+      }
+      if (status === 'rejected') {
+        const t = [
+          kook.addReaction({ msg_id: apply?.msgId ?? '', emoji: '❌' }),
+          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }),
+          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '🔄' }),
+          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
+        ]
+        await Promise.all(t)
+      }
+      if (status === 'pending_regear') {
+        const t = [
+          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '❌' }),
+          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
+          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }),
+          kook.addReaction({ msg_id: apply?.msgId ?? '', emoji: '🔄' }),
+        ]
+        await Promise.all(t)
+      }
+      if (status === 'pending_review') {
+        const t = [
+          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '❌' }),
+          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
+          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '🔄' }),
+          kook.addReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }),
+        ]
+        await Promise.all(t)
+      }
+    }
     await db.insert(regearLogs).values({
       id: crypto.randomUUID(),
       regearId,

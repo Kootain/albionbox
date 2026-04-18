@@ -141,18 +141,21 @@ const listSupplementCandidatesHandler = factory.createHandlers(
       .orderBy(desc(regearApplies.createTime))
       .all()
 
-    const filtered = itemsRaw.filter((r) => {
-      if (!r.applyDetail) return false
-      let parsed: unknown = null
-      try {
-        parsed = JSON.parse(r.applyDetail)
-      } catch {
-        return false
-      }
+    let filtered = itemsRaw
+    if (startTime) {
+      filtered = itemsRaw.filter((r) => {
+        if (!r.applyDetail) return false
+        let parsed: unknown = null
+        try {
+          parsed = JSON.parse(r.applyDetail)
+        } catch {
+          return false
+        }
 
-      const timestamp = (parsed as { timestamp?: unknown } | null)?.timestamp
-      return typeof timestamp === 'string' && timestamp > startTime
-    })
+        const timestamp = (parsed as { timestamp?: unknown } | null)?.timestamp
+        return typeof timestamp === 'string' && timestamp > startTime
+      })
+    }
 
     const items = filtered.map((r) => ({
       ...r,
@@ -161,6 +164,7 @@ const listSupplementCandidatesHandler = factory.createHandlers(
       msgGuild: r.msgGuild ?? undefined,
       msgChannel: r.msgChannel ?? undefined,
       regearId: r.regearId ?? undefined,
+      regearTicketId: r.regearTicketId ?? undefined,
       eventId: r.eventId ?? undefined,
       battleId: r.battleId ?? undefined,
       applyMeta: r.applyMeta ?? undefined,

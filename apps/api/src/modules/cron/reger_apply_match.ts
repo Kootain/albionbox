@@ -1,4 +1,4 @@
-import { AlbionApiClient } from "../lib/albion-sdk"
+import { AlbionApiClient } from "@/lib/albion-sdk"
 import { AlbionOfficialBattle, AlbionOfficialEvent } from "@albionbox/shared"
 
 export type applyDetail = {
@@ -12,12 +12,6 @@ export type applyDetail = {
     timestamp: string
     mapName: string
     assists: number
-}
-
-export type applyMeta = {
-    imageUrl: string
-    idx: number
-    total: number
 }
 
 export function parseUtcTimestamp(value: string): Date | null {

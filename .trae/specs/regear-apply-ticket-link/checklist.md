@@ -1,0 +1,5 @@
+- [x] `packages/db/src/schema/regear_apply.ts` 中包含了 `regearTicketId: text('regear_ticket_id')`。
+- [x] `packages/shared/src/schemas/regear_apply.ts` 包含了对应的 schema 定义。
+- [x] `CreateRegearTicketSchema` 增加 `applies: z.record(z.string(), z.string()).optional()` 支持传递映射关系。
+- [x] `apps/api/src/modules/regear/router.ts` 中，创建 regears 后能够成功将 apply 记录的 `regear_id` 和 `regear_ticket_id` 进行更新，并更新其状态为 pending_audit。
+- [x] 运行 `pnpm tsc --noEmit` 在 apps/api 成功，无类型错误。

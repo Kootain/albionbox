@@ -163,7 +163,7 @@
       "battle_report": "战报",
       "members": "人员",
       "regear": "补装",
-      "regear_approval": "补装审批",
+      "regear_approval": "补装申请",
       "orders": "订单",
       "activities": "活动",
       "attendance": "考勤",
@@ -182,7 +182,7 @@
       "recent_losses": "近期战损"
     },
     "regear_approval": {
-      "title": "补装审批",
+      "title": "补装申请",
       "desc": "查看并筛选从聊天消息生成的补装申请",
       "views": {
         "applies": "申请列表",

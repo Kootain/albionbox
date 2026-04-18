@@ -2,6 +2,7 @@ import { parseKillEventFromImage, type KillEventParsed } from '@albionbox/shared
 import type { Consumer } from '../consumer.js'
 import type { Bindings } from '../bindings.js'
 import { RestClient } from '@kookapp/js-sdk'
+import { num2emoji } from '@albionbox/shared'
 
 export type KookMessageEventData = {
   msg_id?: string
@@ -387,37 +388,3 @@ export function createRegearImageRecognitionConsumer(
 }
 
 export const regearImageRecognitionConsumer = createRegearImageRecognitionConsumer()
-
-function num2emoji(num: number) {
-  if (num === 1) {
-    return '1️⃣'
-  }
-  if (num === 2) {
-    return '2️⃣'
-  }
-  if (num === 3) {
-    return '3️⃣'
-  }
-  if (num === 4) {
-    return '4️⃣'
-  }
-  if (num === 5) {
-    return '5️⃣'
-  }
-  if (num === 6) {
-    return '6️⃣'
-  }
-  if (num === 7) {
-    return '7️⃣'
-  }
-  if (num === 8) {
-    return '8️⃣'
-  }
-  if (num === 9) {
-    return '9️⃣'
-  }
-  if (num === 10) {
-    return '🔟'
-  }
-  return '❓'
-}

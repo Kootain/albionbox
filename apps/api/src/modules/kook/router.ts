@@ -4,9 +4,6 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { authMiddleware } from '../users'
 import type { AppContext } from '../../context'
-import { drizzle } from 'drizzle-orm/d1'
-import { guildSettings } from '@albionbox/db'
-import { eq } from 'drizzle-orm'
 
 const factory = createFactory<AppContext>()
 const router = new Hono<AppContext>()

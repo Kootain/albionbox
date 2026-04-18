@@ -1,0 +1,6 @@
+- [x] 前端界面显示的文案由“补装审批”修改为了“补装申请”。
+- [x] 补装候选视图中，“开始补装”按钮及其对应的时间筛选弹窗被完全移除。
+- [x] 切换到补装候选视图时，自动拉取并展示所有状态为 `pending_audit` 的申请单（无时间过滤）。
+- [x] `apps/api` 的 `supplement-candidates` 接口现在可以处理无 `startTime` 的请求并返回全量待审核数据。
+- [x] `packages/shared` 类型定义同步更新（`startTime` optional 或移除）。
+- [x] `apps/web` 和 `apps/api` 执行 TypeScript 编译 `npx tsc --noEmit` 通过。

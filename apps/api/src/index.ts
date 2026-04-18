@@ -9,7 +9,7 @@ import { battleRecordsRouter } from './modules/battle_records'
 import { regearRouter } from './modules/regear'
 import { regearApplyRouter } from './modules/regear_apply/router'
 import { kookRouter } from './modules/kook'
-import { runRegearApplyAutoBinder } from './modules/cron_regear_apply_binder'
+import { runRegearApplyAutoBinder } from './modules/cron/cron_regear_apply_binder'
 import { internalAuthMiddleware } from './modules/internal/auth.middleware'
 import type { AppContext } from './context'
 

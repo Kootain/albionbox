@@ -1,0 +1,1 @@
+ALTER TABLE `regear_applies` ADD `regear_ticket_id` text;

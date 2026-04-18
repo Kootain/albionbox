@@ -50,6 +50,13 @@
       "when": 1776404946745,
       "tag": "0006_kind_logan",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1776468443761,
+      "tag": "0007_freezing_dorian_gray",
+      "breakpoints": true
     }
   ]
 }

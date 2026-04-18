@@ -56,7 +56,7 @@ async function runOnce(label: string, eventData: KookMessageEventData, env: Bind
   })
 
   console.log(`\n=== ${label} ===`)
-  await consumer.handle({ d: eventData }, env)
+  await consumer.handle({ d: eventData }, env, false)
 }
 
 async function main() {
