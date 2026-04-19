@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import TTUploader from 'tt-uploader';
 import { createVideo } from '../lib/api';
 import { Role } from '../types';
+import { createVolcengineUploader, createCloudflareUploader, VideoUploader } from '../lib/uploader';
 
 export interface UploadItem {
   id: string;
@@ -44,26 +44,6 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     setQueue(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
   }, []);
 
-  const fetchStsToken = async () => {
-    try {
-      const res = await fetch('https://volc-auth.albionbox.com/api/vod/upload-token');
-      if (res.ok) {
-        const data = await res.json() as any;
-        return data.data.token;
-      }
-    } catch (err) {
-      console.warn("Could not fetch token from remote worker, using fallback mock token");
-    }
-    
-    return {
-      CurrentTime: new Date().toISOString(),
-      ExpiredTime: new Date(Date.now() + 3600000).toISOString(),
-      SessionToken: 'mock-session-token',
-      AccessKeyID: 'mock-ak',
-      SecretAccessKey: 'mock-sk'
-    };
-  };
-
   const processQueue = useCallback(() => {
     const availableSlots = MAX_CONCURRENT - activeCountRef.current;
     if (availableSlots <= 0) return;
@@ -73,89 +53,55 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
 
     idleTasks.forEach(pendingTask => {
       const startTime = Date.now();
-      let lastProgressTime = startTime;
-      let lastProgressBytes = 0;
-      let currentSpeed = 0;
 
       updateTask(pendingTask.id, { status: 'uploading', progress: 0, error: undefined, startTime, uploadSpeed: 0 });
       activeCountRef.current += 1;
 
       (async () => {
         try {
-          const appId = import.meta.env.VITE_VOLC_APP_ID || '';
-          const spaceName = import.meta.env.VITE_VOLC_SPACE_NAME || '';
-
-          if (!appId || !spaceName) {
-            throw new Error('Missing Volcengine configuration');
-          }
-
-          const stsToken = await fetchStsToken();
-
-          const uploader = new TTUploader({
-            userId: 'albion-user-' + Math.floor(Math.random() * 10000),
-            appId: Number(appId),
-            videoConfig: { spaceName }
-          });
-
-          await new Promise<void>((resolve) => {
-            const fileKey = uploader.addFile({
-              file: pendingTask.file,
-              stsToken: stsToken,
-              type: 'video'
-            });
-
-            uploader.on('complete', async (info: any) => {
-              const vid = info.uploadResult?.Vid;
-              // Extract duration directly from the API response payload
-              const responseDuration = info.uploadResult?.SourceInfo?.Duration 
-                ? Math.round(info.uploadResult.SourceInfo.Duration) 
-                : pendingTask.duration;
-                
+          const provider = import.meta.env.VITE_UPLOAD_PROVIDER || 'volcengine';
+          
+          let uploader: VideoUploader;
+          
+          const options = {
+            file: pendingTask.file,
+            onProgress: (percent: number, speedBytesPerSec: number) => {
+              updateTask(pendingTask.id, { 
+                progress: percent,
+                uploadSpeed: speedBytesPerSec
+              });
+            },
+            onSuccess: async (vid: string, duration?: number) => {
+              const finalDuration = duration || pendingTask.duration;
               try {
                 await createVideo({
                   vid: vid,
                   username: pendingTask.username,
                   role: pendingTask.role,
                   date: pendingTask.date,
-                  duration: responseDuration,
+                  duration: finalDuration,
                 });
                 updateTask(pendingTask.id, { status: 'success', progress: 100, endTime: Date.now() });
                 if (onUploadedCallback) onUploadedCallback();
               } catch (err: any) {
                 console.error('Failed to save metadata', err);
                 updateTask(pendingTask.id, { status: 'error', error: 'Failed to save metadata', endTime: Date.now() });
-              } finally {
-                resolve();
               }
-            });
+            },
+            onError: (error: string) => {
+              console.error('Upload error', error);
+              updateTask(pendingTask.id, { status: 'error', error, endTime: Date.now() });
+            }
+          };
 
-            uploader.on('error', (info: any) => {
-              console.error('Upload error', info.extra);
-              updateTask(pendingTask.id, { status: 'error', error: info.extra?.message || 'Upload failed', endTime: Date.now() });
-              resolve();
-            });
+          if (provider === 'cloudflare') {
+            uploader = createCloudflareUploader(options);
+          } else {
+            uploader = createVolcengineUploader(options);
+          }
 
-            uploader.on('progress', (info: any) => {
-              const now = Date.now();
-              const currentBytes = (info.percent / 100) * pendingTask.file.size;
-              const timeDiff = (now - lastProgressTime) / 1000;
-              
-              if (timeDiff >= 1 || info.percent === 100) {
-                if (timeDiff > 0) {
-                  currentSpeed = (currentBytes - lastProgressBytes) / timeDiff;
-                }
-                lastProgressTime = now;
-                lastProgressBytes = currentBytes;
-              }
+          await uploader.start();
 
-              updateTask(pendingTask.id, { 
-                progress: Math.round(info.percent),
-                uploadSpeed: currentSpeed
-              });
-            });
-
-            uploader.start(fileKey);
-          });
         } catch (err: any) {
           console.error('Failed to process task', err);
           updateTask(pendingTask.id, { status: 'error', error: err.message || 'Failed to process task', endTime: Date.now() });

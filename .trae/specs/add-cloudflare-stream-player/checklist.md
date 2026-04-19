@@ -1,0 +1,5 @@
+- [x] `@cloudflare/stream-react` dependency is installed in `apps/replay`.
+- [x] `getVideosHandler` avoids calling `getPlayInfo` for Cloudflare `vid` (length 32) and returns `cloudflare:UID` as `videoUrl`.
+- [x] `PlayerModal.tsx` parses `cloudflare:` prefix to detect Cloudflare videos.
+- [x] `PlayerModal.tsx` handles both native `<video>` and `<Stream>` elements seamlessly using unified getter functions (`getMainPlayer()`, `getPipPlayer()`).
+- [x] Sync timeline logic, play/pause controls, volume, seeking, and opacity/visibility work smoothly for both Volcengine and Cloudflare videos.

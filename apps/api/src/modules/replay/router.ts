@@ -88,11 +88,16 @@ const getVideosHandler = factory.createHandlers(authMiddleware, async (c) => {
   const data = await Promise.all(videos.map(async (video) => {
     let videoUrl = null
     if (video.vid) {
-      videoUrl = await getPlayInfo(
-        video.vid,
-        c.env.VOLC_ACCESS_KEY_ID as string,
-        c.env.VOLC_SECRET_ACCESS_KEY as string
-      )
+      // Cloudflare stream-media-id is typically a 32-character hex string without 'v' prefix
+      if (video.vid.length === 32 && !video.vid.startsWith('v')) {
+        videoUrl = `cloudflare:${video.vid}`
+      } else {
+        videoUrl = await getPlayInfo(
+          video.vid,
+          c.env.VOLC_ACCESS_KEY_ID as string,
+          c.env.VOLC_SECRET_ACCESS_KEY as string
+        )
+      }
     }
 
     return {
@@ -310,8 +315,66 @@ const getGlobalHighlightsHandler = factory.createHandlers(authMiddleware, async 
   return c.json({ data })
 })
 
+const getCloudflareDirectUploadUrlHandler = factory.createHandlers(authMiddleware, async (c) => {
+  const accountId = c.env.CLOUDFLARE_ACCOUNT_ID
+  const apiToken = c.env.CLOUDFLARE_API_TOKEN
+
+  if (!accountId || !apiToken) {
+    return c.json({ error: 'Cloudflare configuration is missing on server' }, 500)
+  }
+
+  const endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/stream?direct_user=true`
+
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${apiToken}`,
+    'Tus-Resumable': '1.0.0',
+  }
+  
+  const uploadLength = c.req.header('Upload-Length') || c.req.header('upload-length')
+  if (uploadLength) headers['Upload-Length'] = uploadLength
+  
+  let uploadMetadata = c.req.header('Upload-Metadata') || c.req.header('upload-metadata') || ''
+  
+  if (!uploadMetadata.toLowerCase().includes('maxdurationseconds')) {
+    // Default max duration to 2 hours (7200 seconds)
+    // This prevents Cloudflare from pre-allocating the default 4 hours (240 mins) of quota,
+    // which can cause "Storage capacity exceeded" errors if the account has less than 240 mins left.
+    const maxDurationEncoded = btoa('7200')
+    if (uploadMetadata) {
+      uploadMetadata += `,maxdurationseconds ${maxDurationEncoded}`
+    } else {
+      uploadMetadata = `maxdurationseconds ${maxDurationEncoded}`
+    }
+  }
+  
+  if (uploadMetadata) headers['Upload-Metadata'] = uploadMetadata
+
+  console.log('Sending request to Cloudflare with headers:', headers)
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers,
+  })
+
+  const destination = response.headers.get('Location')
+
+  if (!destination) {
+    const errorText = await response.text()
+    console.error('Cloudflare Error:', errorText)
+    return c.json({ error: 'Failed to create direct upload', details: errorText }, 500)
+  }
+
+  const mediaId = response.headers.get('stream-media-id')
+
+  return c.json({
+    uploadUrl: destination,
+    streamMediaId: mediaId,
+  }, 200)
+})
+
 const routes = router
   .post('/', ...createVideoHandler)
+  .post('/cloudflare-direct-upload', ...getCloudflareDirectUploadUrlHandler)
   .get('/highlights/global', ...getGlobalHighlightsHandler)
   .get('/', ...getVideosHandler)
   .put('/:id/sync', ...syncVideoHandler)

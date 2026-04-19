@@ -1,0 +1,7 @@
+- [x] `@volcengine/veplayer` dependency is installed in `apps/replay`.
+- [x] `<VolcPlayer>` component exposes a unified React ref interface (`play`, `pause`, `currentTime`, `duration`, `paused`, `volume`, `muted`).
+- [x] `VePlayer` instances are successfully initialized, attached to a DOM node, and destroyed on unmount.
+- [x] `VePlayer.setLicenseConfig` is correctly handled for local or configured `VITE_VEPLAYER_LICENSE_URL`.
+- [x] Native `<video>` elements in `PlayerModal.tsx` are fully replaced by `<VolcPlayer>` for Volcengine videos.
+- [x] Sync timeline logic, play/pause controls, volume, seeking, and opacity/visibility work smoothly for both Volcengine and Cloudflare videos using the new unified API structure.
+- [x] `.env.example` documents the `VITE_VEPLAYER_LICENSE_URL`.

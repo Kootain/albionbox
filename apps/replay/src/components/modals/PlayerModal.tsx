@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Stream } from '@cloudflare/stream-react';
+import VolcPlayer from '../ui/VolcPlayer';
 import { VideoRecord, Highlight, Comment } from '../../types';
 import { X, Play, Pause, Volume2, VolumeX, RefreshCw, Clock, Edit2, Trash2 } from 'lucide-react';
 import { syncVideoTime, createHighlight, createComment, deleteHighlight, updateComment, deleteComment, getGlobalHighlights } from '../../lib/api';
@@ -25,14 +27,25 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
   const [error, setError] = useState('');
   
   // Player state
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const pipVideoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<any>(null);
+  const pipVideoRef = useRef<any>(null);
+  const mainStreamRef = useRef<any>(null);
+  const pipStreamRef = useRef<any>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(true); // Default to true since we autoplay
   const [volume, setVolume] = useState(1);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const getMainPlayer = () => mainStreamRef.current || videoRef.current;
+  const getPipPlayer = () => pipStreamRef.current || pipVideoRef.current;
+
+  const isCloudflareMain = blobUrl?.startsWith('cloudflare:');
+  const mainCloudflareUid = isCloudflareMain ? blobUrl?.replace('cloudflare:', '') : null;
+
+  const isCloudflarePip = pipBlobUrl?.startsWith('cloudflare:');
+  const pipCloudflareUid = isCloudflarePip ? pipBlobUrl?.replace('cloudflare:', '') : null;
   
   // Highlight and Comments State
   const [activeHighlight, setActiveHighlight] = useState<Highlight | null>(null);
@@ -85,10 +98,11 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
 
   // Sync Volume to video tag
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.volume = volume;
+    const mainPlayer = getMainPlayer();
+    if (mainPlayer) {
+      mainPlayer.volume = volume;
     }
-  }, [volume]);
+  }, [volume, blobUrl]);
 
   // Load main video blob
   useEffect(() => {
@@ -149,65 +163,74 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
 
   // Video Events
   const togglePlay = () => {
-    if (videoRef.current) {
-      if (videoRef.current.paused) {
-        videoRef.current.play();
+    const mainPlayer = getMainPlayer();
+    const pipPlayer = getPipPlayer();
+    
+    if (mainPlayer) {
+      if (mainPlayer.paused) {
+        try { Promise.resolve(mainPlayer.play()).catch(() => {}); } catch(e) {}
         setIsPlaying(true);
-        if (pipVideoRef.current && pipVideo) pipVideoRef.current.play().catch(() => {});
+        if (pipPlayer && pipVideo) {
+          try { Promise.resolve(pipPlayer.play()).catch(() => {}); } catch(e) {}
+        }
       } else {
-        videoRef.current.pause();
+        mainPlayer.pause();
         setIsPlaying(false);
-        if (pipVideoRef.current && pipVideo) pipVideoRef.current.pause();
+        if (pipPlayer && pipVideo) pipPlayer.pause();
       }
     }
   };
 
   const handleTimeUpdate = () => {
-    if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
+    const mainPlayer = getMainPlayer();
+    if (mainPlayer) {
+      setCurrentTime(mainPlayer.currentTime);
       syncPipVideo();
     }
   };
 
   const syncPipVideo = () => {
-    if (!videoRef.current || !pipVideoRef.current || !mainVideo.absoluteStartTime || !pipVideo?.absoluteStartTime) return;
+    const mainPlayer = getMainPlayer();
+    const pipPlayer = getPipPlayer();
     
-    const mainCurrentTime = videoRef.current.currentTime;
+    if (!mainPlayer || !pipPlayer || !mainVideo.absoluteStartTime || !pipVideo?.absoluteStartTime) return;
+    
+    const mainCurrentTime = mainPlayer.currentTime;
     const currentGlobalTime = mainVideo.absoluteStartTime + mainCurrentTime * 1000;
     const pipTargetTime = (currentGlobalTime - pipVideo.absoluteStartTime) / 1000;
     
     // Fallback to pipVideo.duration if the video element hasn't loaded metadata yet
-    const pipDur = pipVideoRef.current.duration || pipVideo.duration || 1800;
+    const pipDur = pipPlayer.duration || pipVideo.duration || 1800;
     
-    // Only check bounds if we have a valid duration
     if (pipTargetTime < 0) {
       // Before pip video starts
-      pipVideoRef.current.style.opacity = '0.3';
-      pipVideoRef.current.currentTime = 0;
-      if (!pipVideoRef.current.paused) pipVideoRef.current.pause();
+      if (pipContainerRef.current) pipContainerRef.current.style.opacity = '0.3';
+      pipPlayer.currentTime = 0;
+      if (!pipPlayer.paused) pipPlayer.pause();
     } else if (!isNaN(pipDur) && pipTargetTime > pipDur) {
       // After pip video ends
-      pipVideoRef.current.style.opacity = '0.3';
-      pipVideoRef.current.currentTime = pipDur;
-      if (!pipVideoRef.current.paused) pipVideoRef.current.pause();
+      if (pipContainerRef.current) pipContainerRef.current.style.opacity = '0.3';
+      pipPlayer.currentTime = pipDur;
+      if (!pipPlayer.paused) pipPlayer.pause();
     } else {
       // During pip video
-      pipVideoRef.current.style.opacity = '1';
+      if (pipContainerRef.current) pipContainerRef.current.style.opacity = '1';
       // Only seek if diff is too large to avoid stuttering
-      if (Math.abs(pipVideoRef.current.currentTime - pipTargetTime) > 0.5) {
-        pipVideoRef.current.currentTime = pipTargetTime;
+      if (Math.abs(pipPlayer.currentTime - pipTargetTime) > 0.5) {
+        pipPlayer.currentTime = pipTargetTime;
       }
-      if (!videoRef.current.paused && pipVideoRef.current.paused) {
-        pipVideoRef.current.play().catch(() => {});
-      } else if (videoRef.current.paused && !pipVideoRef.current.paused) {
-        pipVideoRef.current.pause();
+      if (!mainPlayer.paused && pipPlayer.paused) {
+        try { Promise.resolve(pipPlayer.play()).catch(() => {}); } catch(e) {}
+      } else if (mainPlayer.paused && !pipPlayer.paused) {
+        pipPlayer.pause();
       }
     }
   };
 
   const handleLoadedMetadata = () => {
-    if (videoRef.current) {
-      setDuration(videoRef.current.duration);
+    const mainPlayer = getMainPlayer();
+    if (mainPlayer) {
+      setDuration(mainPlayer.duration);
     }
   };
 
@@ -258,14 +281,16 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
         handleSwapPovRef.current();
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        if (videoRef.current) {
-          const newTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 10);
+        const mainPlayer = getMainPlayer();
+        if (mainPlayer) {
+          const newTime = Math.min(mainPlayer.duration || 0, mainPlayer.currentTime + 10);
           seekTo(newTime);
         }
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        if (videoRef.current) {
-          const newTime = Math.max(0, videoRef.current.currentTime - 10);
+        const mainPlayer = getMainPlayer();
+        if (mainPlayer) {
+          const newTime = Math.max(0, mainPlayer.currentTime - 10);
           seekTo(newTime);
         }
       }
@@ -276,8 +301,9 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
   }, []);
 
   const seekTo = (time: number) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = time;
+    const mainPlayer = getMainPlayer();
+    if (mainPlayer) {
+      mainPlayer.currentTime = time;
       setCurrentTime(time);
     }
   };
@@ -305,10 +331,12 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
 
   // Highlights Logics
   const startAddingHighlight = () => {
-    if (videoRef.current && !videoRef.current.paused) {
-      videoRef.current.pause();
+    const mainPlayer = getMainPlayer();
+    const pipPlayer = getPipPlayer();
+    if (mainPlayer && !mainPlayer.paused) {
+      mainPlayer.pause();
       setIsPlaying(false);
-      if (pipVideoRef.current && pipVideo) pipVideoRef.current.pause();
+      if (pipPlayer && pipVideo) pipPlayer.pause();
     }
     setIsAddingHighlight(true);
     setActiveHighlight(null);
@@ -316,10 +344,12 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
   };
 
   const openSync = () => {
-    if (videoRef.current && !videoRef.current.paused) {
-      videoRef.current.pause();
+    const mainPlayer = getMainPlayer();
+    const pipPlayer = getPipPlayer();
+    if (mainPlayer && !mainPlayer.paused) {
+      mainPlayer.pause();
       setIsPlaying(false);
-      if (pipVideoRef.current && pipVideo) pipVideoRef.current.pause();
+      if (pipPlayer && pipVideo) pipPlayer.pause();
     }
     setIsAddingHighlight(false);
     setActiveHighlight(null);
@@ -334,10 +364,12 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
   };
 
   const handleSwapPov = () => {
-    if (!pipVideo || !mainVideo.absoluteStartTime || !pipVideo.absoluteStartTime || !videoRef.current || !pipVideoRef.current) return;
+    const mainPlayer = getMainPlayer();
+    const pipPlayer = getPipPlayer();
+    if (!pipVideo || !mainVideo.absoluteStartTime || !pipVideo.absoluteStartTime || !mainPlayer || !pipPlayer) return;
     
     // Remember current global time
-    const currentGlobalTime = mainVideo.absoluteStartTime + videoRef.current.currentTime * 1000;
+    const currentGlobalTime = mainVideo.absoluteStartTime + mainPlayer.currentTime * 1000;
     
     // Swap states
     const newMain = pipVideo;
@@ -351,13 +383,12 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
     setPipBlobUrl(newPipUrl);
 
     // After state update, we need to set the new main video's currentTime
-    // Since React state update is async, we can do it in a useEffect or use a small timeout.
-    // Wait, the easiest way is to use setTimeout or handle it after render.
     requestAnimationFrame(() => {
       setTimeout(() => {
-        if (videoRef.current && newMain.absoluteStartTime) {
+        const newMainPlayer = getMainPlayer();
+        if (newMainPlayer && newMain.absoluteStartTime) {
           const targetTime = (currentGlobalTime - newMain.absoluteStartTime) / 1000;
-          videoRef.current.currentTime = Math.max(0, targetTime);
+          newMainPlayer.currentTime = Math.max(0, targetTime);
         }
       }, 50);
     });
@@ -621,18 +652,39 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
 
           {/* Video Wrapper */}
           <div className="flex-1 min-h-0 relative flex items-center justify-center overflow-hidden" onClick={togglePlay}>
-            <video
-              ref={videoRef}
-              src={blobUrl || undefined}
-              className="w-full h-full object-contain"
-              onTimeUpdate={handleTimeUpdate}
-              onSeeked={syncPipVideo}
-              onLoadedMetadata={handleLoadedMetadata}
-              onEnded={() => setIsPlaying(false)}
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-              autoPlay={true}
-            />
+            {isCloudflareMain ? (
+              <div className="w-full h-full relative pointer-events-none">
+                <Stream
+                  streamRef={mainStreamRef}
+                  src={mainCloudflareUid!}
+                  className="w-full h-full object-contain"
+                  onTimeUpdate={handleTimeUpdate}
+                  onSeeked={syncPipVideo}
+                  onLoadedMetaData={handleLoadedMetadata}
+                  onEnded={() => setIsPlaying(false)}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  controls={false}
+                  autoplay={true}
+                />
+              </div>
+            ) : (
+              <div className="w-full h-full relative pointer-events-none">
+                <VolcPlayer
+                  ref={videoRef}
+                  src={blobUrl || ''}
+                  className="w-full h-full object-contain"
+                  onTimeUpdate={handleTimeUpdate}
+                  onSeeked={syncPipVideo}
+                  onLoadedMetaData={handleLoadedMetadata}
+                  onEnded={() => setIsPlaying(false)}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  controls={false}
+                  autoplay={true}
+                />
+              </div>
+            )}
 
             {/* PIP Video */}
             {pipVideo && pipBlobUrl && (
@@ -656,14 +708,29 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
                 <div className="absolute top-1 left-2 z-10 text-[10px] font-bold text-white bg-black/50 px-1 rounded pointer-events-none">
                   {pipVideo.username}
                 </div>
-                <video
-                  ref={pipVideoRef}
-                  src={pipBlobUrl}
-                  className="w-full h-full object-cover pointer-events-none"
-                  muted
-                  onLoadedMetadata={syncPipVideo}
-                  onCanPlay={syncPipVideo}
-                />
+                {isCloudflarePip ? (
+                  <Stream
+                    streamRef={pipStreamRef}
+                    src={pipCloudflareUid!}
+                    className="w-full h-full object-cover pointer-events-none"
+                    muted={true}
+                    onLoadedMetaData={syncPipVideo}
+                    onCanPlay={syncPipVideo}
+                    controls={false}
+                    autoplay={false}
+                  />
+                ) : (
+                  <VolcPlayer
+                    ref={pipVideoRef}
+                    src={pipBlobUrl}
+                    className="w-full h-full object-cover pointer-events-none"
+                    muted={true}
+                    onLoadedMetaData={syncPipVideo}
+                    onCanPlay={syncPipVideo}
+                    controls={false}
+                    autoplay={false}
+                  />
+                )}
               </div>
             )}
           </div>

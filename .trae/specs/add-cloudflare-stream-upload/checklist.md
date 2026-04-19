@@ -1,0 +1,6 @@
+- [x] `tus-js-client` dependency is installed in `apps/replay`.
+- [x] A generic uploader abstraction is created, keeping Volcengine's TTUploader functionality intact.
+- [x] `createCloudflareUploader` correctly uses `tus.Upload` to upload a video, handling chunks and extracting the `stream-media-id` via `res.getHeader("stream-media-id")`.
+- [x] `useUploadQueue` correctly instantiates the Cloudflare or Volcengine uploader based on `VITE_UPLOAD_PROVIDER`.
+- [x] Upload metrics (progress %, bytes, time) and the final metadata save (`createVideo`) function work seamlessly across both providers.
+- [x] Required environment variables for Cloudflare Stream are documented or added to `.env.example`.

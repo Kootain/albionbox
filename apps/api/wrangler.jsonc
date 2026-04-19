@@ -20,7 +20,9 @@
       "KOOK_BOT_TOKEN",
       "INTERNAL_API_TOKEN",
       "VOLC_ACCESS_KEY_ID",
-      "VOLC_SECRET_ACCESS_KEY"
+      "VOLC_SECRET_ACCESS_KEY",
+      "CLOUDFLARE_API_TOKEN",
+      "CLOUDFLARE_ACCOUNT_ID"
     ],
   },
   "kv_namespaces": [
@@ -74,7 +76,7 @@
       "vars": {
         "API_BASE_URL": "http://127.0.0.1:8787",
         "APP_BASE_URL": "http://127.0.0.1:5174",
-        "WEB_ORIGIN": "http://127.0.0.1:5174,http://127.0.0.1:3000",
+        "WEB_ORIGIN": "http://127.0.0.1:5174,http://localhost:3000",
         "KOOK_CLIENT_ID": "",
         "KOOK_CLIENT_SECRET": ""
       },
@@ -85,7 +87,9 @@
           "KOOK_BOT_TOKEN",
           "INTERNAL_API_TOKEN",
           "VOLC_ACCESS_KEY_ID",
-          "VOLC_SECRET_ACCESS_KEY"
+          "VOLC_SECRET_ACCESS_KEY",
+          "CLOUDFLARE_API_TOKEN",
+          "CLOUDFLARE_ACCOUNT_ID"
         ]
       },
       "kv_namespaces": [

@@ -16,7 +16,7 @@ interface Apply extends RegearApplyRow {
 }
 
 export async function runRegearApplyAutoBinder(
-  env: Env, omitFailed: boolean = false
+  env: any, omitFailed: boolean = false
 ) {
   const db = drizzle(env.DB)
   const limit = 300

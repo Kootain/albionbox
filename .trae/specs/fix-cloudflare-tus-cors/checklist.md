@@ -1,0 +1,5 @@
+- [x] The `apps/api/src/modules/replay/router.ts` returns `{ uploadUrl: '...', streamMediaId: '...' }` as a standard 200 OK JSON response instead of a 201 Created with a Location header.
+- [x] The frontend `apps/replay/src/lib/uploader.ts` manually fetches the `uploadUrl` from the backend API first, passing `Authorization: Bearer <token>` and `Upload-Length`.
+- [x] The `tus.Upload` instance is initialized using `uploadUrl` instead of `endpoint`.
+- [x] The `tus.Upload` instance has NO `Authorization` headers in its configuration.
+- [x] The custom `OPTIONS` handler and its associated `Access-Control-Expose-Headers` logic in the backend are removed, relying on the global CORS configuration.

@@ -57,7 +57,8 @@ app.use('*', async (c, next) => {
       return ''
     },
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Authorization', 'Content-Type'],
+    allowHeaders: ['Authorization', 'Content-Type', 'Tus-Resumable', 'Upload-Length', 'Upload-Metadata', 'Upload-Offset'],
+    exposeHeaders: ['Location', 'Upload-Offset', 'Upload-Length', 'Tus-Resumable', 'Stream-Media-Id'],
   })(c, next)
 })
 
