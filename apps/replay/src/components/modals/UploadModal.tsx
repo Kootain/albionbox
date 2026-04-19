@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { Role } from '../../types';
 import { X, UploadCloud } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
-import { useUploadQueue } from '../../hooks/useUploadQueue';
+import { useUploadQueue, UploadProvider } from '../../hooks/useUploadQueue';
 
 interface UploadModalProps {
   onClose: () => void;
@@ -20,6 +20,7 @@ export function UploadModal({ onClose, onUploaded }: UploadModalProps) {
   const [username, setUsername] = useState(() => localStorage.getItem('albion_bound_account') || '');
   const [role, setRole] = useState<Role>('DPS');
   const [date, setDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const [provider, setProvider] = useState<UploadProvider>('volcengine');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,7 +50,7 @@ export function UploadModal({ onClose, onUploaded }: UploadModalProps) {
     e.preventDefault();
     if (files.length === 0 || !username.trim()) return;
 
-    addTasks(files, { username, role, date });
+    addTasks(files, { username, role, date, provider });
     onClose();
   };
 
@@ -150,6 +151,34 @@ export function UploadModal({ onClose, onUploaded }: UploadModalProps) {
               onChange={(e) => setDate(e.target.value)}
               className="w-full bg-system-bg border border-system-border rounded px-3 py-2.5 text-white focus:outline-none focus:border-system-accent [color-scheme:dark] disabled:opacity-50"
             />
+          </div>
+
+          <div className="flex flex-col gap-2 mt-4">
+            <label className="text-[11px] font-bold text-system-dim uppercase tracking-[1px]">Provider</label>
+            <div className="flex items-center bg-system-bg border border-system-border rounded p-1">
+              <button
+                type="button"
+                onClick={() => setProvider('volcengine')}
+                className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wider rounded transition-colors ${
+                  provider === 'volcengine' 
+                    ? 'bg-system-accent text-black' 
+                    : 'text-system-dim hover:text-white'
+                }`}
+              >
+                火山引擎
+              </button>
+              <button
+                type="button"
+                onClick={() => setProvider('cloudflare')}
+                className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wider rounded transition-colors ${
+                  provider === 'cloudflare' 
+                    ? 'bg-system-accent text-black' 
+                    : 'text-system-dim hover:text-white'
+                }`}
+              >
+                Cloudflare
+              </button>
+            </div>
           </div>
 
           <button

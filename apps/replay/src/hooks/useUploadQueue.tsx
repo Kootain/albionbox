@@ -4,12 +4,15 @@ import { createVideo } from '../lib/api';
 import { Role } from '../types';
 import { createVolcengineUploader, createCloudflareUploader, VideoUploader } from '../lib/uploader';
 
+export type UploadProvider = 'volcengine' | 'cloudflare';
+
 export interface UploadItem {
   id: string;
   file: File;
   role: Role;
   date: string;
   username: string;
+  provider: UploadProvider;
   duration?: number;
   progress: number;
   status: 'idle' | 'uploading' | 'success' | 'error';
@@ -21,7 +24,7 @@ export interface UploadItem {
 
 interface UploadQueueContextType {
   queue: UploadItem[];
-  addTasks: (files: File[], meta: { username: string; role: Role; date: string }) => void;
+  addTasks: (files: File[], meta: { username: string; role: Role; date: string; provider: UploadProvider }) => void;
   removeTask: (id: string) => void;
   clearTasks: () => void;
   onUploadedCallback?: () => void;
@@ -59,7 +62,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
 
       (async () => {
         try {
-          const provider = import.meta.env.VITE_UPLOAD_PROVIDER || 'volcengine';
+          const provider = pendingTask.provider;
           
           let uploader: VideoUploader;
           
@@ -117,13 +120,14 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     processQueue();
   }, [queue, processQueue]);
 
-  const addTasks = useCallback((files: File[], meta: { username: string; role: Role; date: string }) => {
+  const addTasks = useCallback((files: File[], meta: { username: string; role: Role; date: string; provider: UploadProvider }) => {
     const newItems: UploadItem[] = files.map(file => ({
       id: uuidv4(),
       file,
       role: meta.role,
       date: meta.date,
       username: meta.username,
+      provider: meta.provider,
       progress: 0,
       status: 'idle'
     }));
