@@ -9,6 +9,7 @@ import { battleRecordsRouter } from './modules/battle_records'
 import { regearRouter } from './modules/regear'
 import { regearApplyRouter } from './modules/regear_apply/router'
 import { kookRouter } from './modules/kook'
+import { replayRouter } from './modules/replay'
 import { runRegearApplyAutoBinder } from './modules/cron/cron_regear_apply_binder'
 import { internalAuthMiddleware } from './modules/internal/auth.middleware'
 import type { AppContext } from './context'
@@ -81,6 +82,7 @@ const routes = app
   .route('/guilds', regearRouter)
   .route('/regear_applies', regearApplyRouter)
   .route('/kook', kookRouter)
+  .route('/replay', replayRouter)
   .get('/__scheduled', async (c) => {
     const startedAt = Date.now()
     try {

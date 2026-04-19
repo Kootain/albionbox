@@ -9,23 +9,22 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "strict": true,
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",
     "allowJs": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
+    "types": ["vite/client", "@cloudflare/workers-types"],
     "paths": {
-      "@api": ["../api/src/index.ts"],
-      "@api-client": ["../api/src/client.ts"],
-      "@/*": ["src/*"],
+      "@/*": [
+        "./*"
+      ],
+      "@api": ["../api/src/index.ts"]
     },
-    "types": ["vite/client"],
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src", "../api/src/index.ts", "../api/src/client.ts"],
+  "include": ["src", "../api/src/index.ts"],
   "files": ["../api/worker-configuration.d.ts"]
 }

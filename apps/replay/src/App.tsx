@@ -1,17 +1,14 @@
-import { Routes, Route } from 'react-router-dom'
-import { AppShell } from './components/AppShell'
-import { UploadPage } from './pages/UploadPage'
-import { ViewVideosPage } from './pages/ViewVideosPage'
+import React from 'react';
+import { LanguageProvider } from './i18n/LanguageContext';
+import { UploadQueueProvider } from './hooks/useUploadQueue';
+import { DashboardPage } from './pages/dashboard/DashboardPage';
 
-function App() {
+export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<AppShell />}>
-        <Route index element={<UploadPage />} />
-        <Route path="videos" element={<ViewVideosPage />} />
-      </Route>
-    </Routes>
-  )
+    <LanguageProvider>
+      <UploadQueueProvider>
+        <DashboardPage />
+      </UploadQueueProvider>
+    </LanguageProvider>
+  );
 }
-
-export default App

@@ -8,6 +8,8 @@ declare namespace Cloudflare {
 	interface LocalEnv {
 		KV: KVNamespace;
 		DB: D1Database;
+        VOLC_ACCESS_KEY_ID: string;
+		VOLC_SECRET_ACCESS_KEY: string;
 		API_BASE_URL: "http://127.0.0.1:8787";
 		APP_BASE_URL: "http://127.0.0.1:5174";
 		WEB_ORIGIN: "http://127.0.0.1:5174";
@@ -21,6 +23,8 @@ declare namespace Cloudflare {
 	interface Env {
 		KV: KVNamespace;
 		DB: D1Database;
+		VOLC_ACCESS_KEY_ID: string;
+		VOLC_SECRET_ACCESS_KEY: string;
 		API_BASE_URL: "http://127.0.0.1:8787" | "https://api.albionbox.com";
 		APP_BASE_URL: "http://127.0.0.1:5174" | "https://erp-test.albionbox.com";
 		WEB_ORIGIN: "http://127.0.0.1:5174" | "https://erp-test.albionbox.com";

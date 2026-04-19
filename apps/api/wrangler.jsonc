@@ -8,7 +8,7 @@
   // ],
   "vars": {
     "APP_BASE_URL": "https://erp-test.albionbox.com",
-    "WEB_ORIGIN": "https://erp-test.albionbox.com",
+    "WEB_ORIGIN": "https://erp-test.albionbox.com,https://atv-replay.albionbox.com",
     "API_BASE_URL": "https://api.albionbox.com",
     "KOOK_CLIENT_ID": "",
     "KOOK_CLIENT_SECRET": ""
@@ -18,7 +18,9 @@
       "RESEND_API_KEY",
       "ADMIN_EMAILS",
       "KOOK_BOT_TOKEN",
-      "INTERNAL_API_TOKEN"
+      "INTERNAL_API_TOKEN",
+      "VOLC_ACCESS_KEY_ID",
+      "VOLC_SECRET_ACCESS_KEY"
     ],
   },
   "kv_namespaces": [
@@ -72,7 +74,7 @@
       "vars": {
         "API_BASE_URL": "http://127.0.0.1:8787",
         "APP_BASE_URL": "http://127.0.0.1:5174",
-        "WEB_ORIGIN": "http://127.0.0.1:5174",
+        "WEB_ORIGIN": "http://127.0.0.1:5174,http://127.0.0.1:3000",
         "KOOK_CLIENT_ID": "",
         "KOOK_CLIENT_SECRET": ""
       },
@@ -81,7 +83,9 @@
           "RESEND_API_KEY",
           "ADMIN_EMAILS",
           "KOOK_BOT_TOKEN",
-          "INTERNAL_API_TOKEN"
+          "INTERNAL_API_TOKEN",
+          "VOLC_ACCESS_KEY_ID",
+          "VOLC_SECRET_ACCESS_KEY"
         ]
       },
       "kv_namespaces": [

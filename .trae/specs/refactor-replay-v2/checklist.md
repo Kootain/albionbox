@@ -1,0 +1,11 @@
+- [x] `src/types/index.ts` 被正确放置，项目中所有依赖原 `types.ts` 的路径已修正。
+- [x] `src/i18n/LanguageContext.tsx` 迁移并生效，无多语言加载失败的问题。
+- [x] 录像加载、删除、缓存初始化的逻辑已成功抽离并使用在 `src/hooks/useVideos.ts`，功能不受影响。
+- [x] `src/components/layout/AppShell.tsx` 能够正确显示 Header 和全局悬浮的 Upload 按钮。
+- [x] `src/components/modals/UploadModal.tsx` 和 `PlayerModal.tsx` 能正常弹出，上传及播放功能正常运作。
+- [x] `src/pages/dashboard/DashboardPage.tsx` 已创建并承载原 `Dashboard.tsx` 及 `App.tsx` 的业务主体逻辑。
+- [x] 单个视频卡片的渲染 UI 已成功抽离到 `src/pages/dashboard/components/VideoCard.tsx`。
+- [x] 按日期/角色分组渲染的代码块成功抽离到 `src/pages/dashboard/components/VideoGroup.tsx`。
+- [x] `src/App.tsx` 文件已精简，仅包含 Provider 与挂载布局页面的职责。
+- [x] 终端运行 `cd apps/replay-v2 && tsc --noEmit` 没有任何报错，即类型导入路径全部正确。
+- [x] 整个重构过程中，界面样式（包含悬浮状态、多语言切换、布局间距）和功能（新增、Mock渲染、删除）与重构前保持100%完全一致。

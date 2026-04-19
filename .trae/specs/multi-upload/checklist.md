@@ -1,0 +1,6 @@
+- [x] `UploadModal` 支持选取或拖入多文件，UI 会提示 "X files selected" 或展示列表。
+- [x] 点击 "Upload" 按钮后，Modal 关闭，不会阻塞页面。
+- [x] 页面右下角渲染了 `UploadProgressToast`，实时展示每一个任务的进度和状态。
+- [x] 火山引擎 TTUploader 被移至队列中执行，并正确调用后端 `createVideo` 创建记录。
+- [x] 任务全部成功或失败后，提示框保留并提供“关闭/清除”按钮，且调用了 `refreshVideos` 刷新页面列表。
+- [x] `npx tsc --noEmit` 没有任何报错。

@@ -1,0 +1,10 @@
+- [x] `packages/db/src/schema/replay.ts` 被创建，`replayVideos`, `replayHighlights`, `replayComments` 定义完整并带索引与级联。
+- [x] `packages/db/src/schema/index.ts` 已经导出了 `replay` 模型。
+- [x] `packages/shared/src/schemas/replay.ts` 已创建，包含相关的 Zod Schemas。
+- [x] `packages/shared/src/schemas/index.ts` 已经导出了相关的 Schemas。
+- [x] `apps/api/src/modules/replay/router.ts` 已被创建并实现了增删改查的基础接口。
+- [x] 视频 (`videos`) 接口正确支持写入 `absoluteStartTime` (绝对时间)。
+- [x] 高亮 (`highlights`) 接口正确支持 `timestamp` (相对) 和 `absoluteTime` (绝对) 的存储。
+- [x] 评论 (`comments`) 接口支持关联 `highlight_id` 写入。
+- [x] `apps/api/src/index.ts` 中已注册 `app.route('/replay', replayRouter)`。
+- [x] 数据库生成的迁移命令 (`drizzle-kit generate`) 和类型检查 (`tsc --noEmit`) 能无错运行。

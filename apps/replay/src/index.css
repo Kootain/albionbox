@@ -1,16 +1,50 @@
 @import "tailwindcss";
 
 @theme {
-  --color-gold: #ff9900;
-  --color-gold-hover: #e68a00;
-  --color-black-bg: #0a0a0a;
-  --color-black-sidebar: #121212;
-  --color-black-card: #1a1a1a;
-  --color-black-border: #2a2a2a;
+  --color-system-bg: #111111;
+  --color-system-surface: #181c20;
+  --color-system-surface-hover: #262a2f;
+  --color-system-accent: #ff9800;
+  --color-system-accent-dark: #e68a00;
+  --color-system-text: #f5f5f5;
+  --color-system-dim: #8b8b8b;
+  --color-system-border: #2e2e33;
+  --color-role-dps: #ff4d4d;
+  --color-role-tank: #4d88ff;
+  --color-role-healer: #4dff88;
+  --color-role-support: #ff4dff;
+  --color-system-glass: rgba(24, 28, 32, 0.9);
 }
 
-@layer base {
-  body {
-    @apply bg-black-bg text-slate-200;
-  }
+body {
+  background-color: var(--color-system-bg);
+  color: var(--color-system-text);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
 }
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-system-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-system-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-system-dim);
+}
+
+/* Base text shadow util */
+.text-shadow-sm {
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+

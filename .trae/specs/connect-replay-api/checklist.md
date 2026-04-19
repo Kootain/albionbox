@@ -1,0 +1,5 @@
+- [x] 后端通过火山引擎 VOD OpenAPI (`GetPlayInfo`) 使用 `vid` 换取了实际播放地址。
+- [x] Cloudflare Worker 成功实现了基于 HMAC-SHA256 的火山引擎 API 签名逻辑。
+- [x] 返回的 JSON 列表中，每个视频记录的 `videoUrl` 已被正确赋值为火山的 `MainPlayUrl`。
+- [x] `PlayerModal.tsx` 移除了 `https://volc-auth-worker.kootain.workers.dev/api/vod/play?vid=...` 的兜底硬编码，直接使用 `mainVideo.videoUrl`。
+- [x] 确保运行了 `npx tsc --noEmit`，未引入任何新类型报错。

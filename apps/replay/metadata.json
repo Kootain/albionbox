@@ -1,0 +1,6 @@
+{
+  "name": "Albion VOD Review",
+  "description": "An Albion Online video review tool for uploading gaming footage, organizing by role/date, and adding timestamped collaborative highlights.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

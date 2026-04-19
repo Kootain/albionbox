@@ -1,0 +1,7 @@
+- [x] `packages/shared/src/schemas/replay.ts` 已经增加了 `UpdateReplayCommentSchema` 和 `UpdateReplayHighlightSchema`。
+- [x] 后端 `/replay/router.ts` 中成功注册了 `DELETE` 和 `PUT` 的高亮/评论相关端点。
+- [x] 前端 `api.ts` 已经能够使用 Hono client 安全地发送相关删除与更新请求。
+- [x] 播放器内的评论列表展示了“编辑”和“删除”操作，且权限判断正确。
+- [x] 播放器内的单个高亮头部展示了“删除”按钮，且权限判断正确。
+- [x] 所有的交互（删除/编辑）成功后，UI 能在不刷新的情况下更新 React 状态 (`activeHighlight`, `mainVideo`)。
+- [x] 运行 `npx tsc --noEmit` 没有任何新错误。

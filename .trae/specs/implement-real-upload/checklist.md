@@ -1,0 +1,7 @@
+- [x] `apps/replay-v2/package.json` 包含 `tt-uploader` 依赖，并且执行 `npm install` 成功。
+- [x] `VideoRecord` 模型已新增 `vid?: string`。
+- [x] `UploadModal.tsx` 成功集成了 `TTUploader`，移除了原本的本地 IndexedDB 存储逻辑 (`storeVideoBlob`)。
+- [x] 上传时会正确请求鉴权接口 `fetchStsToken`，并通过 VOD SDK 进行真实上传。
+- [x] 上传过程中 UI 能实时反馈 `progress`（进度条），且表单处于锁定/不可用状态，防止重复提交或意外关闭。
+- [x] 上传成功后，视频元数据（含新获得的 `vid`）正确保存在 `saveVideoMetadata`，弹窗自动关闭。
+- [x] TypeScript 类型检查（`tsc --noEmit`）通过，无由于 `tt-uploader` 引发的类型错误。

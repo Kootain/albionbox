@@ -1,0 +1,7 @@
+- [x] API 增加了 `GET /highlights/global` 端点，支持按绝对时间查询。
+- [x] 前端 `api.ts` 添加了 `getGlobalHighlights`。
+- [x] 播放器 `PlayerModal.tsx` 在有 `absoluteStartTime` 时正确请求并拼接了全局高亮。
+- [x] 播放器时间轴上的高亮分为两种颜色：本视频（橙色）与其他视频（蓝色）。
+- [x] 高亮的视觉样式进行了优化。
+- [x] 全局高亮弹出的 popover 能看到来源 username。
+- [x] 运行 `npx tsc --noEmit` 没有任何报错。

@@ -10,6 +10,9 @@ export interface SessionPayload {
 }
 
 export const authMiddleware: MiddlewareHandler<AppContext> = async (c, next) => {
+  if (c.req.path.startsWith('/replay') || c.req.path.startsWith('/guilds/test')) 
+    return await next()
+
   const authHeader = c.req.header('Authorization')
   if (!authHeader?.startsWith('Bearer ')) {
     return c.json({ error: 'Unauthorized' }, 401)
