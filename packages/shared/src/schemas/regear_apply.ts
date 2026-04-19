@@ -72,7 +72,7 @@ export const ListRegearAppliesQuerySchema = z.object({
   msgChannel: z.string().min(1).optional(),
   msgUserid: z.string().min(1).optional(),
   victimName: z.string().min(1).optional(),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  limit: z.coerce.number().int().min(1).max(1000).optional().default(20),
   offset: z.coerce.number().int().min(0).optional().default(0),
 })
 
