@@ -10,9 +10,13 @@ export interface UploadItem {
   role: Role;
   date: string;
   username: string;
+  duration?: number;
   progress: number;
   status: 'idle' | 'uploading' | 'success' | 'error';
   error?: string;
+  startTime?: number;
+  endTime?: number;
+  uploadSpeed?: number;
 }
 
 interface UploadQueueContextType {
@@ -42,7 +46,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
 
   const fetchStsToken = async () => {
     try {
-      const res = await fetch('https://volc-auth-worker.kootain.workers.dev/api/vod/upload-token');
+      const res = await fetch('https://volc-auth.albionbox.com/api/vod/upload-token');
       if (res.ok) {
         const data = await res.json() as any;
         return data.data.token;
@@ -68,7 +72,12 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     if (idleTasks.length === 0) return;
 
     idleTasks.forEach(pendingTask => {
-      updateTask(pendingTask.id, { status: 'uploading', progress: 0, error: undefined });
+      const startTime = Date.now();
+      let lastProgressTime = startTime;
+      let lastProgressBytes = 0;
+      let currentSpeed = 0;
+
+      updateTask(pendingTask.id, { status: 'uploading', progress: 0, error: undefined, startTime, uploadSpeed: 0 });
       activeCountRef.current += 1;
 
       (async () => {
@@ -97,18 +106,24 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
 
             uploader.on('complete', async (info: any) => {
               const vid = info.uploadResult?.Vid;
+              // Extract duration directly from the API response payload
+              const responseDuration = info.uploadResult?.SourceInfo?.Duration 
+                ? Math.round(info.uploadResult.SourceInfo.Duration) 
+                : pendingTask.duration;
+                
               try {
                 await createVideo({
                   vid: vid,
                   username: pendingTask.username,
                   role: pendingTask.role,
                   date: pendingTask.date,
+                  duration: responseDuration,
                 });
-                updateTask(pendingTask.id, { status: 'success', progress: 100 });
+                updateTask(pendingTask.id, { status: 'success', progress: 100, endTime: Date.now() });
                 if (onUploadedCallback) onUploadedCallback();
               } catch (err: any) {
                 console.error('Failed to save metadata', err);
-                updateTask(pendingTask.id, { status: 'error', error: 'Failed to save metadata' });
+                updateTask(pendingTask.id, { status: 'error', error: 'Failed to save metadata', endTime: Date.now() });
               } finally {
                 resolve();
               }
@@ -116,19 +131,34 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
 
             uploader.on('error', (info: any) => {
               console.error('Upload error', info.extra);
-              updateTask(pendingTask.id, { status: 'error', error: info.extra?.message || 'Upload failed' });
+              updateTask(pendingTask.id, { status: 'error', error: info.extra?.message || 'Upload failed', endTime: Date.now() });
               resolve();
             });
 
             uploader.on('progress', (info: any) => {
-              updateTask(pendingTask.id, { progress: Math.round(info.percent) });
+              const now = Date.now();
+              const currentBytes = (info.percent / 100) * pendingTask.file.size;
+              const timeDiff = (now - lastProgressTime) / 1000;
+              
+              if (timeDiff >= 1 || info.percent === 100) {
+                if (timeDiff > 0) {
+                  currentSpeed = (currentBytes - lastProgressBytes) / timeDiff;
+                }
+                lastProgressTime = now;
+                lastProgressBytes = currentBytes;
+              }
+
+              updateTask(pendingTask.id, { 
+                progress: Math.round(info.percent),
+                uploadSpeed: currentSpeed
+              });
             });
 
             uploader.start(fileKey);
           });
         } catch (err: any) {
           console.error('Failed to process task', err);
-          updateTask(pendingTask.id, { status: 'error', error: err.message || 'Failed to process task' });
+          updateTask(pendingTask.id, { status: 'error', error: err.message || 'Failed to process task', endTime: Date.now() });
         } finally {
           activeCountRef.current -= 1;
           processQueue(); // trigger next task

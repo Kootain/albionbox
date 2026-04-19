@@ -64,10 +64,24 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
   const currentUsername = localStorage.getItem('albion_bound_account') || 'Anonymous';
 
   const otherPovs = React.useMemo(() => {
-    return videos.filter(
-      v => v.date === mainVideo.date && v.absoluteStartTime && v.id !== mainVideo.id
-    );
-  }, [videos, mainVideo]);
+    return videos.filter(v => {
+      if (v.id === mainVideo.id) return false;
+      
+      // If both have absolute time, check for overlap
+      if (v.absoluteStartTime !== undefined && mainVideo.absoluteStartTime !== undefined && v.absoluteStartTime !== null && mainVideo.absoluteStartTime !== null) {
+        // absoluteStartTime is in milliseconds, duration is in seconds
+        const mainStart = Number(mainVideo.absoluteStartTime);
+        const mainEnd = mainStart + Number(duration || mainVideo.duration || 1800) * 1000;
+        
+        const vStart = Number(v.absoluteStartTime);
+        const vEnd = vStart + Number(v.duration || 1800) * 1000;
+        
+        return vStart < mainEnd && vEnd > mainStart;
+      }
+      
+      return false;
+    });
+  }, [videos, mainVideo, duration]);
 
   // Sync Volume to video tag
   useEffect(() => {
@@ -106,10 +120,11 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
       try {
         if (pipVideo.videoUrl) {
           setPipBlobUrl(pipVideo.videoUrl);
-          return;
+        } else {
+          setPipBlobUrl(null);
         }
       } catch (err) {
-        console.error('Failed to load pip video', err);
+        // ignore
       }
     };
     load();
@@ -117,11 +132,11 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
 
   // Load global highlights
   useEffect(() => {
-    if (!mainVideo.absoluteStartTime || !duration) return;
+    const start = mainVideo.absoluteStartTime;
+    if (!start || !duration) return;
     
     const fetchGlobalHighlights = async () => {
       try {
-        const start = mainVideo.absoluteStartTime!;
         const end = start + duration * 1000;
         const highlights = await getGlobalHighlights(start, end);
         setGlobalHighlights(highlights.filter(h => h.videoId !== mainVideo.id));
@@ -138,7 +153,7 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
       if (videoRef.current.paused) {
         videoRef.current.play();
         setIsPlaying(true);
-        if (pipVideoRef.current && pipVideo) pipVideoRef.current.play().catch(e => console.error(e));
+        if (pipVideoRef.current && pipVideo) pipVideoRef.current.play().catch(() => {});
       } else {
         videoRef.current.pause();
         setIsPlaying(false);
@@ -161,19 +176,29 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
     const currentGlobalTime = mainVideo.absoluteStartTime + mainCurrentTime * 1000;
     const pipTargetTime = (currentGlobalTime - pipVideo.absoluteStartTime) / 1000;
     
-    const pipDur = pipVideoRef.current.duration || 0;
-    if (pipTargetTime < 0 || pipTargetTime > pipDur) {
-      // Out of bounds
-      pipVideoRef.current.style.opacity = '0';
+    // Fallback to pipVideo.duration if the video element hasn't loaded metadata yet
+    const pipDur = pipVideoRef.current.duration || pipVideo.duration || 1800;
+    
+    // Only check bounds if we have a valid duration
+    if (pipTargetTime < 0) {
+      // Before pip video starts
+      pipVideoRef.current.style.opacity = '0.3';
+      pipVideoRef.current.currentTime = 0;
+      if (!pipVideoRef.current.paused) pipVideoRef.current.pause();
+    } else if (!isNaN(pipDur) && pipTargetTime > pipDur) {
+      // After pip video ends
+      pipVideoRef.current.style.opacity = '0.3';
+      pipVideoRef.current.currentTime = pipDur;
       if (!pipVideoRef.current.paused) pipVideoRef.current.pause();
     } else {
+      // During pip video
       pipVideoRef.current.style.opacity = '1';
       // Only seek if diff is too large to avoid stuttering
       if (Math.abs(pipVideoRef.current.currentTime - pipTargetTime) > 0.5) {
         pipVideoRef.current.currentTime = pipTargetTime;
       }
       if (!videoRef.current.paused && pipVideoRef.current.paused) {
-        pipVideoRef.current.play().catch(e => console.error("PIP Play Error:", e));
+        pipVideoRef.current.play().catch(() => {});
       } else if (videoRef.current.paused && !pipVideoRef.current.paused) {
         pipVideoRef.current.pause();
       }
@@ -636,6 +661,8 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
                   src={pipBlobUrl}
                   className="w-full h-full object-cover pointer-events-none"
                   muted
+                  onLoadedMetadata={syncPipVideo}
+                  onCanPlay={syncPipVideo}
                 />
               </div>
             )}
@@ -765,7 +792,7 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
               </span>
             </div>
             
-            <div className="flex items-center gap-[8px] sm:gap-[20px] relative overflow-x-auto custom-scrollbar pb-1 sm:pb-0 hide-scrollbar-sm">
+            <div className="flex items-center gap-[8px] sm:gap-[20px] relative flex-wrap sm:flex-nowrap pb-1 sm:pb-0">
               <div className="relative shrink-0">
                 <button 
                   onClick={() => {

@@ -1,0 +1,3 @@
+- [x] `PlayerModal` 中的 `otherPovs` 完全依赖 `absoluteStartTime` 和 `duration` 的数学重叠关系进行计算。
+- [x] 移除了过时的基于 `v.date === mainVideo.date` 的硬编码 fallback 逻辑。
+- [x] 运行 `npx tsc --noEmit` 没有任何报错。
