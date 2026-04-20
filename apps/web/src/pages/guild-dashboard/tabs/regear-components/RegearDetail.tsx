@@ -271,12 +271,22 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
 
   const updateRecordStatus = async (recordId: string, status: RegearRecord['status'], comment?: string) => {
     try {
+      const displayStatus = status;
+      // Convert UI status back to backend status for the API
+      const backendStatus = status === 'new_pending_review' ? 'pending_review' : status as any;
+      
+      // 预览时直接更新本地状态
+      if (isPreview) {
+        setRecords(prev => prev.map(r => r.id === recordId ? { ...r, status: displayStatus, reviewComment: comment !== undefined ? comment : r.reviewComment } : r));
+        return;
+      }
       const res = await api.guilds[':guildId'].regear.records[':regearId'].status.$put({
         param: { guildId, regearId: recordId },
-        json: { status, comment }
+        json: { status: backendStatus, comment }
       });
       if (!res.ok) throw new Error('Failed to update status');
-      setRecords(prev => prev.map(r => r.id === recordId ? { ...r, status, reviewComment: comment !== undefined ? comment : r.reviewComment } : r));
+      // For real records, status should just be the backend status since they are created now
+      setRecords(prev => prev.map(r => r.id === recordId ? { ...r, status: backendStatus, reviewComment: comment !== undefined ? comment : r.reviewComment } : r));
     } catch (err) {
       console.error(err);
       // Fallback or show error notification
@@ -428,11 +438,16 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
         // --- 1. Check No Regear Policy ---
         if (updatedConfig.policies?.noRegear?.players.some(p => p.id === record.playerId || p.name === record.playerName)) {
           const comment = t('guild_dashboard.regear_tab.auto_approval.excluded_by_policy', { defaultValue: 'Excluded by No Regear policy' });
-          const res = await api.guilds[':guildId'].regear.records[':regearId'].status.$put({
-            param: { guildId, regearId: record.id },
-            json: { status: 'excluded', comment }
-          });
-          if (res.ok) {
+          if (!isPreview) {
+            const res = await api.guilds[':guildId'].regear.records[':regearId'].status.$put({
+              param: { guildId, regearId: record.id },
+              json: { status: 'excluded', comment }
+            });
+            if (res.ok) {
+              const idx = updatedRecords.findIndex(r => r.id === record.id);
+              if (idx !== -1) updatedRecords[idx] = { ...updatedRecords[idx], status: 'excluded', reviewComment: comment };
+            }
+          } else {
             const idx = updatedRecords.findIndex(r => r.id === record.id);
             if (idx !== -1) updatedRecords[idx] = { ...updatedRecords[idx], status: 'excluded', reviewComment: comment };
           }
@@ -465,16 +480,21 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
           const comment = result.reason;
           
           // Update via API
-          const res = await api.guilds[':guildId'].regear.records[':regearId'].status.$put({
-            param: { guildId, regearId: record.id },
-            json: { status: newStatus, comment }
-          });
-          
-          if (res.ok) {
-            // Update local state copy
+          if (!isPreview) {
+            const res = await api.guilds[':guildId'].regear.records[':regearId'].status.$put({
+              param: { guildId, regearId: record.id },
+              json: { status: newStatus, comment }
+            });
+            if (res.ok) {
+              const idx = updatedRecords.findIndex(r => r.id === record.id);
+              if (idx !== -1) {
+                updatedRecords[idx] = { ...updatedRecords[idx], status: newStatus, reviewComment: comment };
+              }
+            }
+          } else {
             const idx = updatedRecords.findIndex(r => r.id === record.id);
             if (idx !== -1) {
-              updatedRecords[idx] = { ...updatedRecords[idx], status: newStatus, reviewComment: comment };
+              updatedRecords[idx] = { ...updatedRecords[idx], status: newStatus as RegearRecord['status'], reviewComment: comment };
             }
           }
         }
@@ -589,7 +609,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
               <ResponsiveContainer width="100%" height="100%" minWidth={180} minHeight={180}>
                 <PieChart>
                   <Pie
-                    data={pieChartData}
+                    data={pieChartData.filter(d => d.value > 0)}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -598,7 +618,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
                     dataKey="value"
                     stroke="none"
                   >
-                    {pieChartData.map((entry, index) => (
+                    {pieChartData.filter(d => d.value > 0).map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>

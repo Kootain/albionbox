@@ -309,6 +309,8 @@ export function RegearTab({ guildId }: RegearTabProps) {
           status = existingRegear.status;
         } else if (needApply) {
           status = existingApply ? 'new_pending_review' : 'excluded';
+        } else {
+          status = 'new_pending_review';
         }
 
         recordsMap.set(eventIdStr, {
