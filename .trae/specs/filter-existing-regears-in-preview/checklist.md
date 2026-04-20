@@ -1,0 +1,3 @@
+- [ ] `RegearTab.tsx` 中生成预览记录时，正确通过 `existingRegears.find(e => e.eventId === r.eventId)` 检查并过滤掉了非 `excluded` 状态的记录。
+- [ ] 创建工单的 API 端点 `apps/api/src/modules/regear/router.ts` 已经能够忽略或者拦截已存在的、非 `excluded` 状态的事件插入。
+- [ ] TypeScript 类型检查和 Vite 构建均通过。

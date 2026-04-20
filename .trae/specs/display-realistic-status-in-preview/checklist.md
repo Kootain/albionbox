@@ -1,0 +1,3 @@
+- [ ] `RegearTab.tsx` 生成预览记录时，**没有**丢弃任何同公会死亡事件，而是把已有 `regears` 记录的真实 `status` 和 `regearedSlots` 同步显示。
+- [ ] 创建工单 API (`apps/api/src/modules/regear/router.ts`) 能够正确通过 `existing.some(...)` 的判断拦截那些已经在系统中（状态不是 `excluded`）的死亡记录插入。
+- [ ] `apps/web` 构建通过（tsc + vite build）。

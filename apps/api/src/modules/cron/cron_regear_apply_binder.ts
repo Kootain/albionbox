@@ -6,7 +6,6 @@ import { AlbionApiClient } from '../../lib/albion-sdk'
 import { createKookRestClient } from '../../lib/kook-sdk'
 import { resolveAlbionGuildIdByName } from '../guilds/guilds.service'
 import { applyDetail, getBattlesBeforeTime, selectBattlesByTime, getBattlesEvents, match, parseUtcTimestamp } from './reger_apply_match'
-import {num2emoji} from '@albionbox/shared'
 
 type RegearApplyRow = typeof regearApplies.$inferSelect
 
@@ -117,7 +116,6 @@ export async function runRegearApplyAutoBinder(
         await Promise.all([
           kook.deleteReaction({msg_id: apply.msgId, emoji: '▶️' }),
           kook.addReaction({msg_id: apply.msgId, emoji: '⏩' }),
-          // kook.deleteReaction({msg_id: apply.msgId, emoji: num2emoji(apply.meta.idx+1)})
         ])
       } catch (e) {
         const err = e as any

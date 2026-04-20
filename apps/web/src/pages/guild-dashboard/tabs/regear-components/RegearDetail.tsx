@@ -1,6 +1,6 @@
 import { RegearOrderDetail, RegearRecord, RegearConfig, } from './types';
 import { format } from 'date-fns';
-import { ArrowLeft, Clock, ShieldAlert, CheckCircle, Package, Settings2, Sword, Loader2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, ArrowRight, Trash2 } from 'lucide-react';
+import { ArrowLeft, Clock, ShieldAlert, CheckCircle, Package, Settings2, Sword, Loader2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, ArrowRight, Trash2, X, Ban, Undo2, Crosshair } from 'lucide-react';
 import { cn, formatFame, getAlbionItemUrl } from '@/lib/utils';
 import { AlbionOfficialEvent, GameData } from '@albionbox/shared';
 import { useMemo, useState, useEffect } from 'react';
@@ -62,14 +62,15 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
   const [showBattlesModal, setShowBattlesModal] = useState(false);
   const [showAutoApproveModal, setShowAutoApproveModal] = useState(false);
   const [isAutoApproving, setIsAutoApproving] = useState(false);
-  const [equipmentGroupSize, setEquipmentGroupSize] = useState<number>(0);
+  const [isPaginatedStats, setIsPaginatedStats] = useState<boolean>(true);
   const [detailEventRecord, setDetailEventRecord] = useState<AlbionOfficialEvent | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
 
   const [recordsPage, setRecordsPage] = useState(1);
-  const RECORDS_PER_PAGE = 10;
-  const ALL_STATUSES = ['pending_review', 'pending_regear', 'rejected', 'completed', 'excluded'] as const;
+  const [recordsPerPage, setRecordsPerPage] = useState<number>(10);
+  const ALL_STATUSES = ['new_pending_review', 'pending_review', 'pending_regear', 'rejected', 'completed', 'excluded'] as const;
   const [statusFilter, setStatusFilter] = useState<RegearRecord['status'][]>([...ALL_STATUSES]);
+  const [playerNameFilter, setPlayerNameFilter] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: 'playerName' | 'ip' | 'deathFame' | 'chest', direction: 'asc' | 'desc', chestMode?: 'row' | 'col' }>({ key: 'chest', direction: 'asc', chestMode: 'row' });
   const [chestRooms, setChestRooms] = useState<ChestRoom[]>([]);
 
@@ -101,6 +102,11 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
       result = []; // If nothing selected, show nothing
     }
 
+    if (playerNameFilter.trim()) {
+      const query = playerNameFilter.trim().toLowerCase();
+      result = result.filter(r => r.playerName.toLowerCase().includes(query));
+    }
+
     result.sort((a, b) => {
       let comparison = 0;
       if (sortConfig.key === 'chest') {
@@ -130,9 +136,9 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
     });
 
     return result;
-  }, [records, statusFilter, sortConfig, chestRooms]);
+  }, [records, statusFilter, playerNameFilter, sortConfig, chestRooms]);
 
-  const totalRecordsPages = Math.max(1, Math.ceil(filteredAndSortedRecords.length / RECORDS_PER_PAGE));
+  const totalRecordsPages = Math.max(1, Math.ceil(filteredAndSortedRecords.length / recordsPerPage));
   
   // Ensure page is within bounds after filtering
   useEffect(() => {
@@ -142,13 +148,13 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
   }, [filteredAndSortedRecords.length, recordsPage, totalRecordsPages]);
 
   const currentRecords = useMemo(() => 
-    filteredAndSortedRecords.slice((recordsPage - 1) * RECORDS_PER_PAGE, recordsPage * RECORDS_PER_PAGE), 
-  [filteredAndSortedRecords, recordsPage]);
+    filteredAndSortedRecords.slice((recordsPage - 1) * recordsPerPage, recordsPage * recordsPerPage), 
+  [filteredAndSortedRecords, recordsPage, recordsPerPage]);
 
   const [commentModal, setCommentModal] = useState<{
     isOpen: boolean;
     recordId: string;
-    action: 'approve' | 'reject' | 'cancel_exclude';
+    action: 'reject' | 'cancel_exclude' | 'exclude' | 'rollback_to_review';
     title: string;
   } | null>(null);
   const [commentText, setCommentText] = useState('');
@@ -161,18 +167,20 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
   }, [detail]);
 
   const stats = useMemo(() => {
-    let excluded = 0, pendingReview = 0, rejected = 0, pendingRegear = 0, completed = 0;
+    let excluded = 0, newPendingReview = 0, pendingReview = 0, rejected = 0, pendingRegear = 0, completed = 0;
     records.forEach(r => {
       if (r.status === 'excluded') excluded++;
+      else if (r.status === 'new_pending_review') newPendingReview++;
       else if (r.status === 'pending_review') pendingReview++;
       else if (r.status === 'rejected') rejected++;
       else if (r.status === 'pending_regear') pendingRegear++;
       else if (r.status === 'completed') completed++;
     });
-    return { total: records.length, excluded, pendingReview, rejected, pendingRegear, completed };
+    return { total: records.length, excluded, newPendingReview, pendingReview, rejected, pendingRegear, completed };
   }, [records]);
 
   const pieChartData = useMemo(() => [
+    { name: t('guild_dashboard.regear_tab.status.new_pending_review', { defaultValue: '[New] Pending Review' }), value: stats.newPendingReview, color: '#3b82f6' }, // blue-500
     { name: t('guild_dashboard.regear_tab.status.pending_review'), value: stats.pendingReview, color: '#f59e0b' }, // amber-500
     { name: t('guild_dashboard.regear_tab.status.rejected'), value: stats.rejected, color: '#ef4444' }, // red-500
     { name: t('guild_dashboard.regear_tab.status.excluded'), value: stats.excluded, color: '#64748b' }, // slate-500
@@ -182,29 +190,15 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
 
   // Aggregate Equipment
   const groupedEquipmentStats = useMemo(() => {
-    let baseRecords = [...filteredAndSortedRecords];
+    let baseRecords = isPaginatedStats ? [...currentRecords] : [...filteredAndSortedRecords];
 
     const groups: { title: string; subtitle?: string; records: RegearRecord[] }[] = [];
-    if (equipmentGroupSize === 0 || baseRecords.length === 0) {
-      groups.push({ title: t('guild_dashboard.regear_tab.grouping.all_records', { defaultValue: 'All Records' }), records: baseRecords });
-    } else {
-      for (let i = 0; i < baseRecords.length; i += equipmentGroupSize) {
-        const chunk = baseRecords.slice(i, i + equipmentGroupSize);
-        let title = '';
-        let subtitle = '';
-        const uniquePlayers = Array.from(new Set(chunk.map(r => r.playerName)));
-        
-        if (equipmentGroupSize === 1) {
-          title = uniquePlayers.join(', ');
-        } else {
-          title = t('guild_dashboard.regear_tab.group_title', { defaultValue: 'Group {{index}}', index: Math.floor(i / equipmentGroupSize) + 1 }) + ` (${i + 1} - ${i + chunk.length})`;
-          if (uniquePlayers.length > 0) {
-            subtitle = uniquePlayers.join(', ');
-          }
-        }
-        groups.push({ title, subtitle, records: chunk });
-      }
-    }
+    groups.push({ 
+      title: isPaginatedStats 
+        ? t('guild_dashboard.regear_tab.grouping.paginated_records', { defaultValue: 'Current Page Records' }) 
+        : t('guild_dashboard.regear_tab.grouping.all_records', { defaultValue: 'All Records' }), 
+      records: baseRecords 
+    });
 
     return groups.map(group => {
       const agg = new Map<string, Map<string, { itemIdx: number, baseId: string, pLevel: number, count: number, name: string, iconUrl: string, sampleUniqueName: string }>>();
@@ -273,7 +267,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
 
       return { title: group.title, subtitle: group.subtitle, stats: result, recordCount: group.records.length, empty: Object.keys(result).length === 0 };
     });
-  }, [filteredAndSortedRecords, equipmentGroupSize, config.allowedSlots, i18n.language, t]); // Depend on language and filter to trigger re-aggregation
+  }, [filteredAndSortedRecords, currentRecords, isPaginatedStats, config.allowedSlots, i18n.language, t]); // Depend on language and filter to trigger re-aggregation
 
   const updateRecordStatus = async (recordId: string, status: RegearRecord['status'], comment?: string) => {
     try {
@@ -330,8 +324,13 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
     } else if (action === 'rollback_rejected') {
       updateRecordStatus(recordId, 'pending_review');
     } else if (action === 'approve') {
+      updateRecordStatus(recordId, 'pending_regear');
+    } else if (action === 'exclude') {
       setCommentText('');
-      setCommentModal({ isOpen: true, recordId, action: 'approve', title: t('guild_dashboard.regear_tab.comment_modal.title_approve', { defaultValue: 'Approve Record' }) });
+      setCommentModal({ isOpen: true, recordId, action: 'exclude', title: t('guild_dashboard.regear_tab.comment_modal.title_exclude', { defaultValue: 'Exclude Record' }) });
+    } else if (action === 'rollback_to_review') {
+      setCommentText('');
+      setCommentModal({ isOpen: true, recordId, action: 'rollback_to_review', title: t('guild_dashboard.regear_tab.comment_modal.title_rollback', { defaultValue: 'Rollback to Review' }) });
     } else if (action === 'reject') {
       setCommentText('');
       setCommentModal({ isOpen: true, recordId, action: 'reject', title: t('guild_dashboard.regear_tab.comment_modal.title_reject', { defaultValue: 'Reject Record' }) });
@@ -344,10 +343,12 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
   const submitComment = async () => {
     if (!commentModal) return;
     const { recordId, action } = commentModal;
-    if (action === 'approve') {
-      await updateRecordStatus(recordId, 'pending_regear', commentText);
-    } else if (action === 'reject') {
+    if (action === 'reject') {
       await updateRecordStatus(recordId, 'rejected', commentText);
+    } else if (action === 'exclude') {
+      await updateRecordStatus(recordId, 'excluded', commentText);
+    } else if (action === 'rollback_to_review') {
+      await updateRecordStatus(recordId, 'pending_review', commentText);
     } else if (action === 'cancel_exclude') {
       await updateRecordStatus(recordId, 'pending_review', commentText);
     }
@@ -420,7 +421,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
         detail.config = updatedConfig;
       }
 
-      const pendingRecords = records.filter(r => r.status === 'pending_review');
+      const pendingRecords = records.filter(r => r.status === 'pending_review' || r.status === 'new_pending_review');
       const updatedRecords = [...records];
       
       for (const record of pendingRecords) {
@@ -684,6 +685,18 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
                 );
               })}
             </div>
+            <div className="flex items-center">
+              <input
+                type="text"
+                value={playerNameFilter}
+                onChange={(e) => {
+                  setPlayerNameFilter(e.target.value);
+                  setRecordsPage(1); // Reset page on filter change
+                }}
+                placeholder={t('guild_dashboard.regear_tab.search_player', { defaultValue: 'Search player...' })}
+                className="w-48 px-3 py-1.5 text-xs bg-black-card text-white border border-black-border rounded-lg focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 placeholder:text-slate-500 transition-all"
+              />
+            </div>
           </div>
           <div className="flex items-center gap-2 self-end xl:self-auto">
             {!isPreview && (
@@ -824,43 +837,88 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
                       <button 
                         onClick={() => record.eventId && fetchKillDetail(record.eventId)}
                         disabled={!record.eventId || isDetailLoading}
-                        className="px-3 py-1.5 bg-black-card hover:bg-black-card/80 text-slate-400 border border-black-border hover:border-slate-500/50 hover:text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                        className="p-1.5 bg-black-bg border border-black-border hover:border-gold/30 text-slate-400 hover:text-gold rounded transition-colors inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={t('guild_dashboard.regear_tab.view_details', { defaultValue: 'Details' })}
                       >
-                        {t('guild_dashboard.regear_tab.view_details', { defaultValue: 'Details' })}
+                        <Crosshair className="w-4 h-4" />
                       </button>
-                      {record.status === 'pending_review' && (
+                      {(record.status === 'pending_review' || record.status === 'new_pending_review') && (
                         <>
-                          <button onClick={() => handleAction(record.id, 'approve')} className={cn("px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 hover:border-emerald-500/50 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors", isPreview && "opacity-50 cursor-not-allowed")}>
-                            {t('guild_dashboard.regear_tab.actions.approve', { defaultValue: 'Approve' })}
+                          <button 
+                            onClick={() => handleAction(record.id, 'approve')} 
+                            className={cn("p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 hover:border-emerald-500/50 rounded transition-colors inline-flex items-center justify-center", isPreview && "opacity-50 cursor-not-allowed")}
+                            title={t('guild_dashboard.regear_tab.actions.approve', { defaultValue: 'Approve' })}
+                          >
+                            <CheckCircle className="w-4 h-4" />
                           </button>
-                          <button onClick={() => handleAction(record.id, 'reject')} className={cn("px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 hover:border-rose-500/50 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors", isPreview && "opacity-50 cursor-not-allowed")}>
-                            {t('guild_dashboard.regear_tab.actions.reject', { defaultValue: 'Reject' })}
+                          <button 
+                            onClick={() => handleAction(record.id, 'reject')} 
+                            className={cn("p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 hover:border-rose-500/50 rounded transition-colors inline-flex items-center justify-center", isPreview && "opacity-50 cursor-not-allowed")}
+                            title={t('guild_dashboard.regear_tab.actions.reject', { defaultValue: 'Reject' })}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleAction(record.id, 'exclude')} 
+                            className={cn("p-1.5 bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 border border-slate-500/20 hover:border-slate-500/50 rounded transition-colors inline-flex items-center justify-center", isPreview && "opacity-50 cursor-not-allowed")}
+                            title={t('guild_dashboard.regear_tab.actions.exclude', { defaultValue: 'Exclude' })}
+                          >
+                            <Ban className="w-4 h-4" />
                           </button>
                         </>
                       )}
                       {record.status === 'pending_regear' && (
-                        <button onClick={() => handleAction(record.id, 'complete')} className={cn("px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 hover:border-emerald-500/50 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors", isPreview && "opacity-50 cursor-not-allowed")}>
-                          {t('guild_dashboard.regear_tab.actions.complete', { defaultValue: 'Complete' })}
-                        </button>
+                        <>
+                          <button 
+                            onClick={() => handleAction(record.id, 'complete')} 
+                            className={cn("p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 hover:border-emerald-500/50 rounded transition-colors inline-flex items-center justify-center", isPreview && "opacity-50 cursor-not-allowed")}
+                            title={t('guild_dashboard.regear_tab.actions.complete', { defaultValue: 'Complete' })}
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleAction(record.id, 'rollback_to_review')} 
+                            className={cn("p-1.5 bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 border border-slate-500/20 hover:border-slate-500/50 rounded transition-colors inline-flex items-center justify-center", isPreview && "opacity-50 cursor-not-allowed")}
+                            title={t('guild_dashboard.regear_tab.actions.rollback', { defaultValue: 'Rollback' })}
+                          >
+                            <Undo2 className="w-4 h-4" />
+                          </button>
+                        </>
                       )}
                       {record.status === 'completed' && (
-                        <button onClick={() => handleAction(record.id, 'rollback_completed')} className={cn("px-3 py-1.5 bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 border border-slate-500/20 hover:border-slate-500/50 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors", isPreview && "opacity-50 cursor-not-allowed")}>
-                          {t('guild_dashboard.regear_tab.actions.rollback', { defaultValue: 'Rollback' })}
+                        <button 
+                          onClick={() => handleAction(record.id, 'rollback_completed')} 
+                          className={cn("p-1.5 bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 border border-slate-500/20 hover:border-slate-500/50 rounded transition-colors inline-flex items-center justify-center", isPreview && "opacity-50 cursor-not-allowed")}
+                          title={t('guild_dashboard.regear_tab.actions.rollback', { defaultValue: 'Rollback' })}
+                        >
+                          <Undo2 className="w-4 h-4" />
                         </button>
                       )}
                       {record.status === 'excluded' && (
-                        <button onClick={() => handleAction(record.id, 'cancel_exclude')} className={cn("px-3 py-1.5 bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 border border-slate-500/20 hover:border-slate-500/50 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors", isPreview && "opacity-50 cursor-not-allowed")}>
-                          {t('guild_dashboard.regear_tab.actions.cancel_exclude', { defaultValue: 'Cancel Exclusion' })}
+                        <button 
+                          onClick={() => handleAction(record.id, 'cancel_exclude')} 
+                          className={cn("p-1.5 bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 border border-slate-500/20 hover:border-slate-500/50 rounded transition-colors inline-flex items-center justify-center", isPreview && "opacity-50 cursor-not-allowed")}
+                          title={t('guild_dashboard.regear_tab.actions.cancel_exclude', { defaultValue: 'Cancel Exclusion' })}
+                        >
+                          <Undo2 className="w-4 h-4" />
                         </button>
                       )}
                       {record.status === 'rejected' && (
                         <>
-                          <button onClick={() => handleAction(record.id, 'rollback_rejected')} className={cn("px-3 py-1.5 bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 border border-slate-500/20 hover:border-slate-500/50 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors", isPreview && "opacity-50 cursor-not-allowed")}>
-                            {t('guild_dashboard.regear_tab.actions.rollback', { defaultValue: 'Rollback' })}
+                          <button 
+                            onClick={() => handleAction(record.id, 'rollback_rejected')} 
+                            className={cn("p-1.5 bg-slate-500/10 hover:bg-slate-500/20 text-slate-400 border border-slate-500/20 hover:border-slate-500/50 rounded transition-colors inline-flex items-center justify-center", isPreview && "opacity-50 cursor-not-allowed")}
+                            title={t('guild_dashboard.regear_tab.actions.rollback', { defaultValue: 'Rollback' })}
+                          >
+                            <Undo2 className="w-4 h-4" />
                           </button>
                           {!isPreview && onDeleteRecord && (
-                            <button onClick={() => onDeleteRecord(record.id)} className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 hover:border-rose-500/50 text-[10px] font-black uppercase tracking-widest rounded-lg transition-colors">
-                              {t('common.delete', { defaultValue: 'Delete' })}
+                            <button 
+                              onClick={() => onDeleteRecord(record.id)} 
+                              className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 hover:border-rose-500/50 rounded transition-colors inline-flex items-center justify-center"
+                              title={t('common.delete', { defaultValue: 'Delete' })}
+                            >
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           )}
                         </>
@@ -870,7 +928,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
                 </tr>
               )})}
               {/* Pad empty rows to keep table height fixed */}
-              {Array.from({ length: Math.max(0, RECORDS_PER_PAGE - currentRecords.length) }).map((_, i) => (
+              {Array.from({ length: Math.max(0, recordsPerPage - currentRecords.length) }).map((_, i) => (
                 <tr key={`empty-${i}`} className="h-[102px]">
                   <td colSpan={7} className="py-4 px-4"></td>
                 </tr>
@@ -881,8 +939,27 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
         
         {/* Pagination at the bottom */}
         <div className="p-4 border-t border-black-border flex items-center justify-between bg-black-bg/50">
-          <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-            {t('guild_dashboard.regear_tab.total_records', { defaultValue: 'Total: ' })} {filteredAndSortedRecords.length}
+          <div className="flex items-center gap-4">
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+              {t('guild_dashboard.regear_tab.total_records', { defaultValue: 'Total: ' })} {filteredAndSortedRecords.length}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                {t('guild_dashboard.regear_tab.per_page', { defaultValue: 'Per Page:' })}
+              </span>
+              <select
+                value={recordsPerPage}
+                onChange={(e) => {
+                  setRecordsPerPage(Number(e.target.value));
+                  setRecordsPage(1);
+                }}
+                className="bg-black-card border border-black-border text-slate-300 text-xs font-bold rounded px-2 py-1 focus:outline-none focus:border-gold/50"
+              >
+                {[10, 20, 50, 100].map(size => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button 
@@ -914,21 +991,21 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
             {t('guild_dashboard.regear_tab.equipment_stats_title')}
           </h3>
           <div className="flex flex-wrap items-center gap-4">
-            {/* Grouping Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_tab.grouping.label', { defaultValue: 'Group By:' })}</span>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={equipmentGroupSize}
-                onChange={(e) => setEquipmentGroupSize(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-16 bg-black-card border border-black-border text-slate-300 text-xs font-bold rounded-lg px-2 py-1 focus:outline-none focus:border-gold/50"
-                placeholder="0"
-              />
-              <span className="text-[10px] font-bold text-slate-500">{t('guild_dashboard.regear_tab.grouping.unit', { defaultValue: 'records/group (0 for none)' })}</span>
-            </div>
-            
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <div className="relative">
+                <input 
+                  type="checkbox" 
+                  className="sr-only" 
+                  checked={isPaginatedStats}
+                  onChange={(e) => setIsPaginatedStats(e.target.checked)}
+                />
+                <div className={cn("block w-10 h-6 rounded-full transition-colors", isPaginatedStats ? "bg-emerald-500/50" : "bg-black-card border border-black-border")}></div>
+                <div className={cn("absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform", isPaginatedStats ? "transform translate-x-4" : "")}></div>
+              </div>
+              <span className="text-xs font-bold text-slate-400 group-hover:text-slate-300 uppercase tracking-widest transition-colors">
+                {t('guild_dashboard.regear_tab.grouping.paginated_toggle', { defaultValue: 'Paginated Display' })}
+              </span>
+            </label>
             <div className="h-4 w-px bg-black-border hidden md:block"></div>
           </div>
         </div>
@@ -942,19 +1019,12 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
               return (
                 <div key={groupIdx} className="space-y-6">
                   {/* Group Title */}
-                  {equipmentGroupSize > 0 && (
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-3">
-                        <h4 className="text-md font-black text-gold uppercase tracking-widest">{group.title}</h4>
-                        <div className="h-px flex-1 bg-black-border"></div>
-                      </div>
-                      {group.subtitle && (
-                        <div className="text-xs font-bold text-slate-500 tracking-wider pl-1 max-w-full truncate" title={group.subtitle}>
-                          {group.subtitle}
-                        </div>
-                      )}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                      <h4 className="text-md font-black text-gold uppercase tracking-widest">{group.title}</h4>
+                      <div className="h-px flex-1 bg-black-border"></div>
                     </div>
-                  )}
+                  </div>
                   
                   <div className="space-y-8">
                     {config.allowedSlots.map((slot) => {
@@ -1127,6 +1197,7 @@ function RecordStatusBadge({ status, comment }: { status: RegearRecord['status']
   
   const config = {
     excluded: { label: t('guild_dashboard.regear_tab.status.excluded'), color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
+    new_pending_review: { label: t('guild_dashboard.regear_tab.status.new_pending_review', { defaultValue: '[New] Pending Review' }), color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
     pending_review: { label: t('guild_dashboard.regear_tab.status.pending_review'), color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
     rejected: { label: t('guild_dashboard.regear_tab.status.rejected'), color: 'bg-red-500/10 text-red-500 border-red-500/20' },
     pending_regear: { label: t('guild_dashboard.regear_tab.status.pending_regear'), color: 'bg-rose-500/10 text-rose-500 border-rose-500/20' },

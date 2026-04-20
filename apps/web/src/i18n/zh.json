@@ -356,6 +356,7 @@
         "completed": "已完成",
         "excluded": "已排除",
         "pending_review": "待审核",
+        "new_pending_review": "[新]待审核",
         "rejected": "已驳回",
         "pending_regear": "待补装"
       },
@@ -411,6 +412,7 @@
       "actions": {
         "approve": "通过",
         "reject": "驳回",
+        "exclude": "排除",
         "complete": "完成补装",
         "rollback": "回滚",
         "cancel_exclude": "取消排除"
@@ -418,6 +420,8 @@
       "comment_modal": {
         "title_approve": "通过审核",
         "title_reject": "驳回审核",
+        "title_exclude": "排除记录",
+        "title_rollback": "回退到审核",
         "title_cancel_exclude": "取消排除",
         "placeholder": "输入审批评论（选填）...",
         "submit": "提交"
@@ -438,14 +442,12 @@
       "empty": "空",
       "group_title": "第 {{index}} 组",
       "grouping": {
-        "label": "分组大小:",
-        "unit": "条记录/组 (0为不分组)",
-        "none": "不分组",
-        "per_player": "按单人分组",
-        "batch_5": "5人一组",
-        "batch_10": "10人一组",
+        "paginated_toggle": "分页展示",
+        "paginated_records": "当前页面记录",
         "all_records": "全部记录"
       },
+      "search_player": "搜索玩家...",
+      "per_page": "每页数量:",
       "auto_approval": {
         "title": "自动审核规则",
         "desc": "配置规则以自动审批待处理的阵亡记录。",

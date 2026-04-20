@@ -17,7 +17,7 @@ export interface RegearOrder {
   };
 }
 
-export type RegearRecordStatus = 'excluded' | 'pending_review' | 'rejected' | 'pending_regear' | 'completed';
+export type RegearRecordStatus = 'excluded' | 'pending_review' | 'new_pending_review' | 'rejected' | 'pending_regear' | 'completed';
 
 export interface RegearRecord {
   id: string;

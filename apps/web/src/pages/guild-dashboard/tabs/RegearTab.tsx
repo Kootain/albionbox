@@ -302,13 +302,13 @@ export function RegearTab({ guildId }: RegearTabProps) {
 
         const eventIdStr = String(ev.EventId);
         
-        const existingRegear = existingRegears.find(r => r.eventId === eventIdStr);
-        const isApplied = existingApplies.some(a => a.eventId === eventIdStr);
-        let status: any = 'pending_review';
+        const existingRegear = existingRegears.find(r => r.eventId === eventIdStr && r.status !== 'excluded');
+        const existingApply = existingApplies.find(a => a.eventId === eventIdStr);
+        let status: any = 'new_pending_review';
         if (existingRegear) {
           status = existingRegear.status;
         } else if (needApply) {
-          status = isApplied ? 'pending_review' : 'excluded';
+          status = existingApply ? 'new_pending_review' : 'excluded';
         }
 
         recordsMap.set(eventIdStr, {
@@ -316,6 +316,7 @@ export function RegearTab({ guildId }: RegearTabProps) {
           eventId: eventIdStr,
           battleId: String(ev.BattleId ?? ''),
           status,
+          reviewComment: existingRegear?.comment || existingApply?.message,
           regearedSlots: typeof existingRegear?.regearedSlots === 'string' ? (()=>{try{return JSON.parse(existingRegear.regearedSlots)}catch(e){return []}})() : (existingRegear?.regearedSlots || []),
           deathTime: ev.TimeStamp,
           deathFame: victim.DeathFame,

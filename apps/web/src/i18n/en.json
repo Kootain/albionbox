@@ -353,11 +353,12 @@
       "create_btn": "Create Ticket",
       "status": {
         "active": "Active",
-        "excluded": "Excluded",
+        "completed": "Completed",
         "pending_review": "Pending Review",
+        "new_pending_review": "[New] Pending Review",
         "rejected": "Rejected",
         "pending_regear": "Pending Regear",
-        "completed": "Completed"
+        "excluded": "Excluded"
       },
       "stats": {
         "total_deaths": "Total Deaths",
@@ -411,6 +412,7 @@
       "actions": {
         "approve": "Approve",
         "reject": "Reject",
+        "exclude": "Exclude",
         "complete": "Complete",
         "rollback": "Rollback",
         "cancel_exclude": "Cancel Exclusion"
@@ -418,6 +420,8 @@
       "comment_modal": {
         "title_approve": "Approve Record",
         "title_reject": "Reject Record",
+        "title_exclude": "Exclude Record",
+        "title_rollback": "Rollback to Review",
         "title_cancel_exclude": "Cancel Exclusion",
         "placeholder": "Enter review comment (optional)...",
         "submit": "Submit"
@@ -438,14 +442,12 @@
       "empty": "Empty",
       "group_title": "Group {{index}}",
       "grouping": {
-        "label": "Group By:",
-        "unit": "records/group (0 for none)",
-        "none": "No Grouping",
-        "per_player": "1 Player / Group",
-        "batch_5": "5 Players / Group",
-        "batch_10": "10 Players / Group",
+        "paginated_toggle": "Paginated Display",
+        "paginated_records": "Current Page Records",
         "all_records": "All Records"
       },
+      "search_player": "Search player...",
+      "per_page": "Per Page:",
       "auto_approval": {
         "title": "Auto Approval Rules",
         "desc": "Configure rules to automatically approve pending death records.",
