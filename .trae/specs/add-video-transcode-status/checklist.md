@@ -1,0 +1,7 @@
+- [x] 数据库 schema 已成功更新并包含 `transcodeStatus` 字段。
+- [x] 后端正确生成了 Drizzle 迁移文件并已应用。
+- [x] `/volcengine-webhook` 接口能够正确接收 Volcano Engine 的 WorkflowComplete 事件，并调用 API 获取多分辨率的播放链接。
+- [x] 视频 API (`getVideosHandler`) 能够读取并正确返回解析后的多码率 URL (`transcodeStatus`) 字段。
+- [x] 前端类型 (`VideoRecord`) 已同步添加新字段。
+- [x] 前端在没有任何码率 URL 的情况下，正确在播放器位置显示“转码中...”提示，不再强制渲染空链接视频。
+- [x] 前端在转码完成并有多分辨率 URL 时，正确渲染视频，并在播放界面右下角展示支持的码率（如 720p, 360p）。

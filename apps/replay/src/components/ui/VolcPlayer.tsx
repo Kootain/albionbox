@@ -10,9 +10,11 @@ if (typeof VePlayer.setLicenseConfig === 'function' && licenseUrl) {
 
 export interface VolcPlayerProps {
   src: string;
+  volume?: number;
   muted?: boolean;
   controls?: boolean;
   autoplay?: boolean;
+  disableKeyboard?: boolean;
   onTimeUpdate?: () => void;
   onLoadedMetaData?: () => void;
   onCanPlay?: () => void;
@@ -20,6 +22,8 @@ export interface VolcPlayerProps {
   onPause?: () => void;
   onEnded?: () => void;
   onSeeked?: () => void;
+  onWaiting?: () => void;
+  onPlaying?: () => void;
   className?: string;
 }
 
@@ -31,14 +35,17 @@ export interface VolcPlayerRef {
   paused: boolean;
   volume: number;
   muted: boolean;
+  readyState: number;
 }
 
 const VolcPlayer = forwardRef<VolcPlayerRef, VolcPlayerProps>((props, ref) => {
   const {
     src,
+    volume,
     muted = false,
     controls = true,
     autoplay = false,
+    disableKeyboard,
     onTimeUpdate,
     onLoadedMetaData,
     onCanPlay,
@@ -46,6 +53,8 @@ const VolcPlayer = forwardRef<VolcPlayerRef, VolcPlayerProps>((props, ref) => {
     onPause,
     onEnded,
     onSeeked,
+    onWaiting,
+    onPlaying,
     className,
   } = props;
 
@@ -54,16 +63,25 @@ const VolcPlayer = forwardRef<VolcPlayerRef, VolcPlayerProps>((props, ref) => {
 
   useEffect(() => {
     if (!containerRef.current) return;
+    if (!src) return;
 
     // Initialize player
+    const ignores = ['sdkUnmutePlugin'];
+    if (disableKeyboard) {
+      ignores.push('keyboard', 'mobile', 'pc');
+    }
+
     const playerSdk = new VePlayer({
       root: containerRef.current,
       url: src,
+      volume,
       muted,
+      autoplayMuted: muted, // Enforce muted autoplay
       autoplay,
       controls,
       width: '100%',
       height: '100%',
+      ignores,
       vodLogOpts: {
         line_app_id: 123456, // Placeholder or required dummy value
         line_user_id: 'unknown',
@@ -81,6 +99,8 @@ const VolcPlayer = forwardRef<VolcPlayerRef, VolcPlayerProps>((props, ref) => {
     const handlePause = () => onPause?.();
     const handleEnded = () => onEnded?.();
     const handleSeeked = () => onSeeked?.();
+    const handleWaiting = () => onWaiting?.();
+    const handlePlaying = () => onPlaying?.();
 
     playerSdk.on('timeupdate', handleTimeUpdate);
     playerSdk.on('loadedmetadata', handleLoadedMetaData);
@@ -89,6 +109,18 @@ const VolcPlayer = forwardRef<VolcPlayerRef, VolcPlayerProps>((props, ref) => {
     playerSdk.on('pause', handlePause);
     playerSdk.on('ended', handleEnded);
     playerSdk.on('seeked', handleSeeked);
+    playerSdk.on('waiting', handleWaiting);
+    playerSdk.on('playing', handlePlaying);
+    
+    // Force muted state to override localStorage cache from VePlayer
+    playerSdk.on('ready', () => {
+      if (playerSdk.player) {
+        if (muted) {
+          playerSdk.player.muted = true;
+          playerSdk.player.volume = 0;
+        }
+      }
+    });
 
     return () => {
       // Destroy player instance
@@ -105,6 +137,15 @@ const VolcPlayer = forwardRef<VolcPlayerRef, VolcPlayerProps>((props, ref) => {
       }
     }
   }, [muted]);
+
+  // Sync volume prop if changed after init
+  useEffect(() => {
+    if (playerSdkRef.current && playerSdkRef.current.player && volume !== undefined) {
+      if (playerSdkRef.current.player.volume !== volume) {
+        playerSdkRef.current.player.volume = volume;
+      }
+    }
+  }, [volume]);
 
   useImperativeHandle(ref, () => ({
     play: () => playerSdkRef.current?.player?.play(),
@@ -138,6 +179,9 @@ const VolcPlayer = forwardRef<VolcPlayerRef, VolcPlayerProps>((props, ref) => {
       if (playerSdkRef.current?.player) {
         playerSdkRef.current.player.muted = value;
       }
+    },
+    get readyState() {
+      return playerSdkRef.current?.player?.readyState || 0;
     }
   }));
 

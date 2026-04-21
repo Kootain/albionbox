@@ -8,6 +8,7 @@ export const replayVideos = sqliteTable('replay_videos', {
   date: text('date').notNull(),
   role: text('role').notNull(),
   absoluteStartTime: integer('absolute_start_time'), // Absolute time of the video start (ms timestamp)
+  transcodeStatus: text('transcode_status', { mode: 'json' }).$type<Record<string, string>>(),
   createdAt: text('created_at').notNull(),
 }, (table) => ([
   index('replay_videos_username_idx').on(table.username),

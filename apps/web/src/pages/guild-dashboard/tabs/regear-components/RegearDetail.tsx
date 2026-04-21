@@ -68,8 +68,11 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
 
   const [recordsPage, setRecordsPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState<number>(10);
-  const ALL_STATUSES = ['new_pending_review', 'pending_review', 'pending_regear', 'rejected', 'completed', 'excluded'] as const;
-  const [statusFilter, setStatusFilter] = useState<RegearRecord['status'][]>([...ALL_STATUSES]);
+  const ALL_STATUSES = useMemo(() => isPreview 
+    ? ['new_pending_review', 'pending_review', 'pending_regear', 'rejected', 'completed', 'excluded'] as const 
+    : ['pending_review', 'pending_regear', 'rejected', 'completed', 'excluded'] as const
+  , [isPreview]);
+  const [statusFilter, setStatusFilter] = useState<RegearRecord['status'][]>(isPreview ? ['new_pending_review', 'pending_review', 'pending_regear', 'rejected', 'completed', 'excluded'] : ['pending_review', 'pending_regear', 'rejected', 'completed', 'excluded']);
   const [playerNameFilter, setPlayerNameFilter] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: 'playerName' | 'ip' | 'deathFame' | 'chest', direction: 'asc' | 'desc', chestMode?: 'row' | 'col' }>({ key: 'chest', direction: 'asc', chestMode: 'row' });
   const [chestRooms, setChestRooms] = useState<ChestRoom[]>([]);
@@ -170,14 +173,14 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
     let excluded = 0, newPendingReview = 0, pendingReview = 0, rejected = 0, pendingRegear = 0, completed = 0;
     records.forEach(r => {
       if (r.status === 'excluded') excluded++;
-      else if (r.status === 'new_pending_review') newPendingReview++;
-      else if (r.status === 'pending_review') pendingReview++;
+      else if (r.status === 'new_pending_review' && isPreview) newPendingReview++;
+      else if (r.status === 'pending_review' || r.status === 'new_pending_review') pendingReview++;
       else if (r.status === 'rejected') rejected++;
       else if (r.status === 'pending_regear') pendingRegear++;
       else if (r.status === 'completed') completed++;
     });
     return { total: records.length, excluded, newPendingReview, pendingReview, rejected, pendingRegear, completed };
-  }, [records]);
+  }, [records, isPreview]);
 
   const pieChartData = useMemo(() => [
     { name: t('guild_dashboard.regear_tab.status.new_pending_review', { defaultValue: '[New] Pending Review' }), value: stats.newPendingReview, color: '#3b82f6' }, // blue-500
@@ -862,7 +865,7 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
                       >
                         <Crosshair className="w-4 h-4" />
                       </button>
-                      {(record.status === 'pending_review' || record.status === 'new_pending_review') && (
+                      {(record.status === 'pending_review' || (isPreview && record.status === 'new_pending_review')) && (
                         <>
                           <button 
                             onClick={() => handleAction(record.id, 'approve')} 

@@ -1,0 +1,8 @@
+- [x] `regear_applies` 表增加了 `deletedAt` 字段，并且生成了对应的迁移文件。
+- [x] 所有的 `regear_applies` 查询列表接口均排除了软删除的数据。
+- [x] 实现了根据 `msgId` 软删除 `regear_applies` 的内部 API。
+- [x] 实现了根据 `msgId` 处理回应变更状态流转的内部 API（包括关联 `regear` 的状态变更逻辑，且更新了 `lastStatusTime`）。
+- [x] `kook-consumer-worker` 正确配置了 `ADMIN_USER_IDS` 环境变量。
+- [x] `message_deleted` Consumer 能够正确解析系统删除事件并调用 API 执行软删除。
+- [x] `reaction_changed` Consumer 能够正确拦截管理员的 ✅ 回应（添加和移除），并调用 API 更新状态。
+- [x] 两个新 Consumer 成功注册到了总线。

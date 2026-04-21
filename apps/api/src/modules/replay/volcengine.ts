@@ -26,7 +26,7 @@ function toHex(data: Uint8Array): string {
   return Array.from(data).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-export async function getPlayInfo(vid: string, akRaw: string, skRaw: string): Promise<string | null> {
+export async function getPlayInfo(vid: string, akRaw: string, skRaw: string): Promise<Record<string, string> | null> {
   const ak = akRaw.trim().replace(/^["']|["']$/g, '')
   const sk = skRaw.trim().replace(/^["']|["']$/g, '')
 
@@ -100,7 +100,13 @@ export async function getPlayInfo(vid: string, akRaw: string, skRaw: string): Pr
     const data = await res.json() as any
     const playInfoList = data?.Result?.PlayInfoList
     if (Array.isArray(playInfoList) && playInfoList.length > 0) {
-      return playInfoList[0].MainPlayUrl
+      const urls: Record<string, string> = {}
+      for (const info of playInfoList) {
+        if (info.Definition && info.MainPlayUrl) {
+          urls[info.Definition] = info.MainPlayUrl
+        }
+      }
+      return Object.keys(urls).length > 0 ? urls : null
     }
     return null
   } catch (error) {

@@ -23,6 +23,7 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
   
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [pipBlobUrl, setPipBlobUrl] = useState<string | null>(null);
+  const [selectedUrls, setSelectedUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -33,7 +34,10 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
   const pipStreamRef = useRef<any>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(true); // Default to true since we autoplay
-  const [volume, setVolume] = useState(1);
+  const [volume, setVolume] = useState(() => {
+    const saved = localStorage.getItem('albion_player_volume');
+    return saved !== null ? parseFloat(saved) : 1;
+  });
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -61,6 +65,8 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncTimeStr, setSyncTimeStr] = useState('');
   const [isPovListOpen, setIsPovListOpen] = useState(false);
+  const isMainBufferingRef = useRef(false);
+  const isPipOutOfBoundsRef = useRef(false);
 
   // PIP Dragging State
   const [pipPosition, setPipPosition] = useState<{ left: number, top: number } | null>(null);
@@ -101,15 +107,36 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
     const mainPlayer = getMainPlayer();
     if (mainPlayer) {
       mainPlayer.volume = volume;
+      mainPlayer.muted = volume === 0;
     }
-  }, [volume, blobUrl]);
+    const pipPlayer = getPipPlayer();
+    if (pipPlayer) {
+      pipPlayer.muted = true;
+    }
+    localStorage.setItem('albion_player_volume', volume.toString());
+  }, [volume, blobUrl, pipBlobUrl]);
 
   // Load main video blob
   useEffect(() => {
     const load = async () => {
       try {
+        const savedUrl = selectedUrls[mainVideo.id];
+        if (savedUrl) {
+          setBlobUrl(savedUrl);
+          setLoading(false);
+          return;
+        }
+
         if (mainVideo.videoUrl) {
           setBlobUrl(mainVideo.videoUrl);
+          setLoading(false);
+          return;
+        }
+
+        if (mainVideo.vid && (!mainVideo.transcodeStatus || Object.keys(mainVideo.transcodeStatus).length === 0)) {
+          // This means it's likely transcoding in Volcengine
+          setBlobUrl(null);
+          setError('');
           setLoading(false);
           return;
         }
@@ -122,7 +149,7 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
       }
     };
     load();
-  }, [mainVideo, t]);
+  }, [mainVideo.id, mainVideo.videoUrl, mainVideo.vid, mainVideo.transcodeStatus, selectedUrls, t]);
 
   // Load pip video blob
   useEffect(() => {
@@ -132,6 +159,11 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
     }
     const load = async () => {
       try {
+        const savedUrl = selectedUrls[pipVideo.id];
+        if (savedUrl) {
+          setPipBlobUrl(savedUrl);
+          return;
+        }
         if (pipVideo.videoUrl) {
           setPipBlobUrl(pipVideo.videoUrl);
         } else {
@@ -142,7 +174,7 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
       }
     };
     load();
-  }, [pipVideo]);
+  }, [pipVideo?.id, pipVideo?.videoUrl, selectedUrls]);
 
   // Load global highlights
   useEffect(() => {
@@ -164,20 +196,17 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
   // Video Events
   const togglePlay = () => {
     const mainPlayer = getMainPlayer();
-    const pipPlayer = getPipPlayer();
     
     if (mainPlayer) {
       if (mainPlayer.paused) {
         try { Promise.resolve(mainPlayer.play()).catch(() => {}); } catch(e) {}
         setIsPlaying(true);
-        if (pipPlayer && pipVideo) {
-          try { Promise.resolve(pipPlayer.play()).catch(() => {}); } catch(e) {}
-        }
       } else {
         mainPlayer.pause();
         setIsPlaying(false);
-        if (pipPlayer && pipVideo) pipPlayer.pause();
       }
+      // Let syncPipVideo handle PiP state correctly based on bounds
+      setTimeout(syncPipVideo, 10);
     }
   };
 
@@ -202,29 +231,51 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
     // Fallback to pipVideo.duration if the video element hasn't loaded metadata yet
     const pipDur = pipPlayer.duration || pipVideo.duration || 1800;
     
-    if (pipTargetTime < 0) {
-      // Before pip video starts
-      if (pipContainerRef.current) pipContainerRef.current.style.opacity = '0.3';
-      pipPlayer.currentTime = 0;
-      if (!pipPlayer.paused) pipPlayer.pause();
-    } else if (!isNaN(pipDur) && pipTargetTime > pipDur) {
-      // After pip video ends
-      if (pipContainerRef.current) pipContainerRef.current.style.opacity = '0.3';
-      pipPlayer.currentTime = pipDur;
-      if (!pipPlayer.paused) pipPlayer.pause();
+    const isPipInBounds = pipTargetTime >= 0 && pipTargetTime <= pipDur;
+
+    if (!isPipInBounds) {
+      isPipOutOfBoundsRef.current = true;
+      // Out of bounds
+      if (pipTargetTime < 0) {
+        if (pipPlayer.currentTime !== 0) pipPlayer.currentTime = 0;
+      } else {
+        if (!isNaN(pipDur) && Math.abs(pipPlayer.currentTime - pipDur) > 0.5) pipPlayer.currentTime = pipDur;
+      }
+      
+      // Force pause if it's playing
+      if (!pipPlayer.paused) {
+        pipPlayer.pause();
+      }
     } else {
-      // During pip video
-      if (pipContainerRef.current) pipContainerRef.current.style.opacity = '1';
+      // In bounds
+      const wasOutOfBounds = isPipOutOfBoundsRef.current;
+      isPipOutOfBoundsRef.current = false;
+      
       // Only seek if diff is too large to avoid stuttering
       if (Math.abs(pipPlayer.currentTime - pipTargetTime) > 0.5) {
         pipPlayer.currentTime = pipTargetTime;
       }
-      if (!mainPlayer.paused && pipPlayer.paused) {
+      
+      // Sync play/pause state
+      // We should play PiP if Main is playing AND Main is not buffering.
+      const shouldPlay = !mainPlayer.paused && !isMainBufferingRef.current;
+      
+      if (shouldPlay && (pipPlayer.paused || wasOutOfBounds)) {
         try { Promise.resolve(pipPlayer.play()).catch(() => {}); } catch(e) {}
-      } else if (mainPlayer.paused && !pipPlayer.paused) {
+      } else if (!shouldPlay && !pipPlayer.paused) {
         pipPlayer.pause();
       }
     }
+  };
+
+  const handleMainWaiting = () => {
+    isMainBufferingRef.current = true;
+    syncPipVideo();
+  };
+
+  const handleMainPlaying = () => {
+    isMainBufferingRef.current = false;
+    syncPipVideo();
   };
 
   const handleLoadedMetadata = () => {
@@ -610,7 +661,7 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
     );
   }
 
-  if (error || !blobUrl) {
+  if (error) {
     return (
       <div className="fixed inset-0 z-[60] bg-system-bg flex items-center justify-center text-system-text p-4">
         <div className="bg-system-surface border border-red-500/30 p-6 rounded text-center max-w-sm">
@@ -652,18 +703,26 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
 
           {/* Video Wrapper */}
           <div className="flex-1 min-h-0 relative flex items-center justify-center overflow-hidden" onClick={togglePlay}>
-            {isCloudflareMain ? (
+            {!blobUrl ? (
+              <div className="w-full h-full flex items-center justify-center bg-black/80">
+                <span className="text-white text-lg tracking-[0.3em] font-bold animate-pulse">转码中...</span>
+              </div>
+            ) : isCloudflareMain ? (
               <div className="w-full h-full relative pointer-events-none">
                 <Stream
                   streamRef={mainStreamRef}
                   src={mainCloudflareUid!}
                   className="w-full h-full object-contain"
+                  volume={volume}
+                  muted={volume === 0}
                   onTimeUpdate={handleTimeUpdate}
                   onSeeked={syncPipVideo}
                   onLoadedMetaData={handleLoadedMetadata}
                   onEnded={() => setIsPlaying(false)}
                   onPlay={() => setIsPlaying(true)}
                   onPause={() => setIsPlaying(false)}
+                  onWaiting={handleMainWaiting}
+                  onPlaying={handleMainPlaying}
                   controls={false}
                   autoplay={true}
                 />
@@ -674,6 +733,8 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
                   ref={videoRef}
                   src={blobUrl || ''}
                   className="w-full h-full object-contain"
+                  volume={volume}
+                  muted={volume === 0}
                   onTimeUpdate={handleTimeUpdate}
                   onSeeked={syncPipVideo}
                   onLoadedMetaData={handleLoadedMetadata}
@@ -729,8 +790,47 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
                     onCanPlay={syncPipVideo}
                     controls={false}
                     autoplay={false}
+                    disableKeyboard={true}
                   />
                 )}
+              </div>
+            )}
+
+            {/* Bitrate overlay */}
+            {mainVideo.transcodeStatus && Object.keys(mainVideo.transcodeStatus).length > 0 && blobUrl && !isCloudflareMain && (
+              <div className="absolute bottom-[20px] right-[20px] z-[35] flex gap-2 pointer-events-auto">
+                {Object.keys(mainVideo.transcodeStatus).map(def => (
+                  <div
+                    key={def}
+                    className={cn(
+                      "px-2 py-1 text-[10px] sm:text-xs font-bold rounded bg-black/60 border border-transparent cursor-pointer hover:border-system-accent/50 transition-colors",
+                      blobUrl === mainVideo.transcodeStatus![def] ? "text-system-accent border-system-accent/50" : "text-white"
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const chosenUrl = mainVideo.transcodeStatus![def];
+                      if (blobUrl === chosenUrl) return;
+                      
+                      setSelectedUrls(prev => ({ ...prev, [mainVideo.id]: chosenUrl }));
+                      
+                      const time = currentTime;
+                      const wasPlaying = isPlaying;
+                      setBlobUrl(chosenUrl);
+                      
+                      setTimeout(() => {
+                        const player = getMainPlayer();
+                        if (player) {
+                          player.currentTime = time;
+                          if (wasPlaying) {
+                            try { Promise.resolve(player.play()).catch(() => {}); } catch(e) {}
+                          }
+                        }
+                      }, 200);
+                    }}
+                  >
+                    {def}
+                  </div>
+                ))}
               </div>
             )}
           </div>

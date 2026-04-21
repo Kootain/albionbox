@@ -1,0 +1,4 @@
+- [x] "Click to Unmute" overlay is not visible on PiP video.
+- [x] Volume level remains the same after swapping POV.
+- [x] Pressing Spacebar when clicking on PiP video does not toggle its playback independently.
+- [x] PiP video automatically resumes playing when main video timeline enters PiP's valid timeline.

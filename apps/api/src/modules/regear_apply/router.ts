@@ -13,7 +13,7 @@ import {
   ListRegearAppliesQuerySchema,
   ListRegearApplySupplementCandidatesQuerySchema
 } from '@albionbox/shared'
-import { regearApplies } from '@albionbox/db'
+import { regearApplies, regears } from '@albionbox/db'
 import { authMiddleware } from '../users'
 import { internalAuthMiddleware } from '../internal'
 import type { AppContext } from '../../context'
@@ -66,22 +66,18 @@ const listAppliesHandler = factory.createHandlers(
     const { msgGuild, status, msgChannel, msgUserid, victimName, limit, offset } = c.req.valid('query')
     const db = drizzle(c.env.DB)
 
-    const conditions = []
+    const conditions = [isNull(regearApplies.deletedAt)]
     if (msgGuild) conditions.push(eq(regearApplies.msgGuild, msgGuild))
     if (status) conditions.push(eq(regearApplies.status, status))
     if (msgChannel) conditions.push(eq(regearApplies.msgChannel, msgChannel))
     if (msgUserid) conditions.push(eq(regearApplies.msgUserid, msgUserid))
     if (victimName) conditions.push(like(regearApplies.victimName, `%${victimName}%`))
 
-    const where = conditions.length > 0 ? and(...conditions) : undefined
+    const where = and(...conditions)
 
-    const itemsQuery = where
-      ? db.select().from(regearApplies).where(where)
-      : db.select().from(regearApplies)
+    const itemsQuery = db.select().from(regearApplies).where(where)
 
-    const totalQuery = where
-      ? db.select({ value: count() }).from(regearApplies).where(where)
-      : db.select({ value: count() }).from(regearApplies)
+    const totalQuery = db.select({ value: count() }).from(regearApplies).where(where)
 
     const [itemsRaw, totalRows] = await Promise.all([
       itemsQuery.orderBy(desc(regearApplies.createTime)).limit(limit).offset(offset).all(),
@@ -122,7 +118,8 @@ const listAppliesByBattlesHandler = factory.createHandlers(
       .from(regearApplies)
       .where(and(
         inArray(regearApplies.battleId, battleIds),
-        isNull(regearApplies.regearId)
+        isNull(regearApplies.regearId),
+        isNull(regearApplies.deletedAt)
       ))
       .all()
 
@@ -137,7 +134,7 @@ const listSupplementCandidatesHandler = factory.createHandlers(
     const db = drizzle(c.env.DB)
 
     const itemsRaw = await db.select().from(regearApplies)
-      .where(and(eq(regearApplies.msgGuild, msgGuild), eq(regearApplies.status, ApplyStatus.PENDING_AUDIT)))
+      .where(and(eq(regearApplies.msgGuild, msgGuild), eq(regearApplies.status, ApplyStatus.PENDING_AUDIT), isNull(regearApplies.deletedAt)))
       .orderBy(desc(regearApplies.createTime))
       .all()
 
@@ -182,7 +179,7 @@ const deleteApplyHandler = factory.createHandlers(
     const id = c.req.param('id') as string
     const db = drizzle(c.env.DB)
 
-    const record = await db.select().from(regearApplies).where(eq(regearApplies.id, id)).get()
+    const record = await db.select().from(regearApplies).where(and(eq(regearApplies.id, id), isNull(regearApplies.deletedAt))).get()
     if (!record) return c.json({ error: '记录不存在' }, 404)
 
     await db.delete(regearApplies).where(eq(regearApplies.id, id)).execute()
@@ -198,7 +195,7 @@ const updateStatusHandler = factory.createHandlers(
     const db = drizzle(c.env.DB)
     const now = new Date().toISOString()
 
-    const record = await db.select().from(regearApplies).where(eq(regearApplies.id, id)).get()
+    const record = await db.select().from(regearApplies).where(and(eq(regearApplies.id, id), isNull(regearApplies.deletedAt))).get()
     if (!record) return c.json({ error: '记录不存在' }, 404)
 
     await db.update(regearApplies)
@@ -218,7 +215,7 @@ const bindRegearHandler = factory.createHandlers(
     const db = drizzle(c.env.DB)
     const now = new Date().toISOString()
 
-    const record = await db.select().from(regearApplies).where(eq(regearApplies.id, id)).get()
+    const record = await db.select().from(regearApplies).where(and(eq(regearApplies.id, id), isNull(regearApplies.deletedAt))).get()
     if (!record) return c.json({ error: '记录不存在' }, 404)
 
     await db.update(regearApplies)
@@ -237,7 +234,7 @@ const updateDetailHandler = factory.createHandlers(
     const { applyDetail } = c.req.valid('json')
     const db = drizzle(c.env.DB)
 
-    const record = await db.select().from(regearApplies).where(eq(regearApplies.id, id)).get()
+    const record = await db.select().from(regearApplies).where(and(eq(regearApplies.id, id), isNull(regearApplies.deletedAt))).get()
     if (!record) return c.json({ error: '记录不存在' }, 404)
 
     await db.update(regearApplies)
@@ -249,8 +246,76 @@ const updateDetailHandler = factory.createHandlers(
   }
 )
 
+const deleteApplyByMsgHandler = factory.createHandlers(
+  async (c) => {
+    const msgId = c.req.param('msgId') as string
+    const db = drizzle(c.env.DB)
+    const now = new Date().toISOString()
+
+    const record = await db.select().from(regearApplies).where(and(eq(regearApplies.msgId, msgId), isNull(regearApplies.deletedAt))).get()
+    if (!record) return c.json({ error: '记录不存在' }, 404)
+
+    await db.update(regearApplies)
+      .set({ deletedAt: now })
+      .where(eq(regearApplies.msgId, msgId))
+      .execute()
+
+    return c.json({ message: '删除成功' })
+  }
+)
+
+const reactionByMsgHandler = factory.createHandlers(
+  zValidator('json', z.object({
+    action: z.enum(['add', 'remove'])
+  })),
+  async (c) => {
+    const msgId = c.req.param('msgId') as string
+    const { action } = c.req.valid('json')
+    const db = drizzle(c.env.DB)
+    const now = new Date().toISOString()
+
+    const apply = await db.select().from(regearApplies).where(and(eq(regearApplies.msgId, msgId), isNull(regearApplies.deletedAt))).get()
+    if (!apply) return c.json({ error: '记录不存在' }, 404)
+
+    if (action === 'add') {
+      await db.update(regearApplies)
+        .set({ status: ApplyStatus.DONE, lastStatusTime: now })
+        .where(eq(regearApplies.msgId, msgId))
+        .execute()
+
+      if (apply.regearId) {
+        await db.update(regears)
+          .set({ status: 'completed', updatedAt: now })
+          .where(eq(regears.id, apply.regearId))
+          .execute()
+      }
+    } else if (action === 'remove') {
+      if (apply.regearId) {
+        await db.update(regearApplies)
+          .set({ status: ApplyStatus.PENDING_REGEAR, lastStatusTime: now })
+          .where(eq(regearApplies.msgId, msgId))
+          .execute()
+
+        await db.update(regears)
+          .set({ status: 'pending_regear', updatedAt: now })
+          .where(eq(regears.id, apply.regearId))
+          .execute()
+      } else {
+        await db.update(regearApplies)
+          .set({ status: ApplyStatus.BINDING, lastStatusTime: now })
+          .where(eq(regearApplies.msgId, msgId))
+          .execute()
+      }
+    }
+
+    return c.json({ message: '操作成功' })
+  }
+)
+
 const routes = router
   .post('/', authOrInternalMiddleware, ...createApplyHandler)
+  .delete('/by-msg/:msgId', internalAuthMiddleware, ...deleteApplyByMsgHandler)
+  .post('/by-msg/:msgId/reaction', internalAuthMiddleware, ...reactionByMsgHandler)
   .use('*', authMiddleware)
   .post('/by-battles', ...listAppliesByBattlesHandler)
   .get('/supplement-candidates', ...listSupplementCandidatesHandler)

@@ -1,0 +1,1 @@
+ALTER TABLE `regear_applies` ADD `deleted_at` text;

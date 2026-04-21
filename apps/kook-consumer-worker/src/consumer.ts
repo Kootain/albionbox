@@ -1,4 +1,6 @@
 import { regearImageRecognitionConsumer } from "./consumers/regear_image_recognition.js";
+import { messageDeletedConsumer } from "./consumers/message_deleted.js";
+import { reactionChangedConsumer } from "./consumers/reaction_changed.js";
 
 export interface FilterRule {
   id: string;
@@ -33,6 +35,8 @@ export class ConsumerRegistry {
 export const registry = new ConsumerRegistry();
 
 registry.register(regearImageRecognitionConsumer);
+registry.register(messageDeletedConsumer);
+registry.register(reactionChangedConsumer);
 
 export async function dispatchEvent(event: any, env: any) {
   // 1. Fetch filter configs from KV

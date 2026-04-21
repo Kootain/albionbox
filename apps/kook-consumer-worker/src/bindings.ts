@@ -6,5 +6,6 @@ export type Bindings = {
   MODEL_ID?: string
   API_BASE_URL: string
   INTERNAL_API_TOKEN: string
+  ADMIN_USER_IDS?: string
 }
 

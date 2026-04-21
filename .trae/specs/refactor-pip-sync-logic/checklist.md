@@ -1,0 +1,4 @@
+- [x] PiP video is completely muted upon opening, overriding any previous unmuted state.
+- [x] Out-of-bounds PiP video is not transparent and remains paused at start/end.
+- [x] PiP video resumes playback automatically when main video plays into its valid timeline.
+- [x] PiP video pauses when main video buffers (waiting for network).

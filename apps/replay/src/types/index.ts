@@ -26,6 +26,7 @@ export interface VideoRecord {
   filename?: string;
   blobId?: string; // Used to fetch from idb (or can we remove this?)
   videoUrl?: string; // Optional: Remote URL if no local blob exists
+  transcodeStatus?: Record<string, string>;
   createdAt: number;
   duration?: number;
   highlights: Highlight[];

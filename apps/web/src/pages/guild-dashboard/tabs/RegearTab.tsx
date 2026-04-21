@@ -196,7 +196,7 @@ export function RegearTab({ guildId }: RegearTabProps) {
       const generatedRecords = Array.from(recordsMap.values());
       generatedRecords.sort((a, b) => new Date(a.deathTime).getTime() - new Date(b.deathTime).getTime());
 
-      const pendingReview = generatedRecords.filter(r => r.status === 'pending_review').length;
+      const pendingReview = generatedRecords.filter(r => r.status === 'pending_review' || r.status === 'new_pending_review').length;
       const pendingRegear = generatedRecords.filter(r => r.status === 'pending_regear').length;
       const completedRegear = generatedRecords.filter(r => r.status === 'completed').length;
       // const excludedRegear = generatedRecords.filter(r => r.status === 'excluded').length;
@@ -365,7 +365,7 @@ export function RegearTab({ guildId }: RegearTabProps) {
         }
       }
 
-      const pendingReview = regearRecords.filter(r => r.status === 'pending_review').length;
+      const pendingReview = regearRecords.filter(r => r.status === 'pending_review' || r.status === 'new_pending_review').length;
       const pendingRegear = regearRecords.filter(r => r.status === 'pending_regear').length;
       const completedRegear = regearRecords.filter(r => r.status === 'completed').length;
 

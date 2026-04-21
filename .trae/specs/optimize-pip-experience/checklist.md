@@ -1,0 +1,3 @@
+- [x] PiP video is always muted and main video volume works correctly after swapping.
+- [x] Selected bitrate does not reset when swapping POV or adding comments.
+- [x] Player does not freeze when PiP video is out of bounds (before start or after end).

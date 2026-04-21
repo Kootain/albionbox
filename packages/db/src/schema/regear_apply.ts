@@ -18,4 +18,5 @@ export const regearApplies = sqliteTable('regear_applies', {
   victimName: text('victim_name'),
   victimGuild: text('victim_guild'),
   applyDetail: text('apply_detail'), // JSON string
+  deletedAt: text('deleted_at'),
 })

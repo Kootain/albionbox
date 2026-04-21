@@ -87,22 +87,45 @@ const getVideosHandler = factory.createHandlers(authMiddleware, async (c) => {
 
   const data = await Promise.all(videos.map(async (video) => {
     let videoUrl = null
+    let transcodeStatus = video.transcodeStatus
+
     if (video.vid) {
       // Cloudflare stream-media-id is typically a 32-character hex string without 'v' prefix
       if (video.vid.length === 32 && !video.vid.startsWith('v')) {
         videoUrl = `cloudflare:${video.vid}`
       } else {
-        videoUrl = await getPlayInfo(
-          video.vid,
-          c.env.VOLC_ACCESS_KEY_ID as string,
-          c.env.VOLC_SECRET_ACCESS_KEY as string
-        )
+        if (transcodeStatus && Object.keys(transcodeStatus).length > 0) {
+          // If we have cached multi-bitrate URLs, use them instead of querying again
+          // Fallback to the first available URL for `videoUrl` just in case some old clients rely on it
+          const firstKey = Object.keys(transcodeStatus)[0]
+          videoUrl = transcodeStatus[firstKey]
+        } else {
+          // Query Volcengine
+          const playInfo = await getPlayInfo(
+            video.vid,
+            c.env.VOLC_ACCESS_KEY_ID as string,
+            c.env.VOLC_SECRET_ACCESS_KEY as string
+          )
+          if (playInfo) {
+            transcodeStatus = playInfo
+            const firstKey = Object.keys(playInfo)[0]
+            videoUrl = playInfo[firstKey]
+            
+            // Optionally, update the DB with this transcodeStatus so we don't have to query again
+            // but usually this is handled by the webhook. We do it just in case.
+            // Avoid awaiting here to not block the response
+            c.executionCtx.waitUntil(
+              db.update(replayVideos).set({ transcodeStatus: playInfo }).where(eq(replayVideos.id, video.id)).execute()
+            )
+          }
+        }
       }
     }
 
     return {
       ...video,
       videoUrl,
+      transcodeStatus,
       highlights: highlightsByVideoId[video.id] || []
     }
   }))
@@ -372,9 +395,35 @@ const getCloudflareDirectUploadUrlHandler = factory.createHandlers(authMiddlewar
   }, 200)
 })
 
+const volcengineWebhookHandler = factory.createHandlers(async (c) => {
+  try {
+    const data = await c.req.json()
+    if (data?.EventType === 'WorkflowComplete' && data?.Data?.Vid) {
+      const vid = data.Data.Vid
+      
+      const playInfo = await getPlayInfo(
+        vid,
+        c.env.VOLC_ACCESS_KEY_ID as string,
+        c.env.VOLC_SECRET_ACCESS_KEY as string
+      )
+      
+      if (playInfo) {
+        const db = drizzle(c.env.DB)
+        await db.update(replayVideos).set({ transcodeStatus: playInfo }).where(eq(replayVideos.vid, vid)).execute()
+      }
+    }
+    
+    return c.json({ message: 'ok' })
+  } catch (err) {
+    console.error('Webhook error:', err)
+    return c.json({ error: 'Internal Server Error' }, 500)
+  }
+})
+
 const routes = router
   .post('/', ...createVideoHandler)
   .post('/cloudflare-direct-upload', ...getCloudflareDirectUploadUrlHandler)
+  .post('/volcengine-webhook', ...volcengineWebhookHandler)
   .get('/highlights/global', ...getGlobalHighlightsHandler)
   .get('/', ...getVideosHandler)
   .put('/:id/sync', ...syncVideoHandler)
