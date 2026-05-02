@@ -3,6 +3,7 @@
     "dashboard": "仪表盘",
     "guild_dashboard": "工会大盘",
     "guilds": "公会列表",
+    "data_collection": "数据采集",
     "regear": "补装系统",
     "profile": "个人中心",
     "settings": "设置",
@@ -38,7 +39,29 @@
     "members": "成员",
     "continue": "继续",
     "delete": "删除",
-    "all": "全部"
+    "all": "全部",
+    "guild_might_ranking": "工会力量个人榜",
+    "clear_data": "清除数据",
+    "upload_data": "上传数据",
+    "connecting": "连接中...",
+    "websocket_url": "WebSocket 地址",
+    "connect": "连接",
+    "disconnect": "断开连接",
+    "collected_data": "采集数据"
+  },
+  "rankings": {
+    "castle": "城堡与哨站",
+    "corrupted": "腐蚀地下城",
+    "energycrystal": "能量水晶",
+    "gathering": "采集",
+    "gvgseason": "GvG 赛季",
+    "helldungeon": "无底深渊",
+    "hellgate": "炼狱之门",
+    "powercore": "能量核心",
+    "pve": "PvE",
+    "smugglers": "走私者",
+    "spiders": "水晶蜘蛛",
+    "treasures": "异域宝藏"
   },
   "auth": {
     "title": "Albion ERP",
@@ -159,6 +182,12 @@
     }
   },
   "guild_dashboard": {
+    "might_rankings": {
+      "title": "力量排行榜",
+      "desc": "查看工会力量排行榜数据",
+      "no_guild_id": "未绑定数据采集工会 ID",
+      "bind_hint": "请先在设置中绑定数据采集工会 ID。"
+    },
     "tabs": {
       "battle_report": "战报",
       "members": "人员",
@@ -167,6 +196,7 @@
       "orders": "订单",
       "activities": "活动",
       "attendance": "考勤",
+      "might_rankings": "力量榜",
       "settings": "配置"
     },
     "selector": {
@@ -192,10 +222,12 @@
         "status": "状态",
         "channel": "频道",
         "msg_userid": "申请人ID",
-        "victim_name": "死亡玩家"
+        "victim_name": "死亡玩家",
+        "group_by_battle": "按战斗分组"
       },
       "table": {
         "time": "时间",
+        "death_time": "死亡",
         "status": "状态",
         "victim": "死亡玩家",
         "victim_guild": "公会",
@@ -241,6 +273,8 @@
     "settings": {
       "title": "系统设置",
       "desc": "配置补装规则与物资箱分配",
+      "data_collection_guild_id": "数据采集工会 ID",
+      "data_collection_guild_id_desc": "用于关联数据采集模块上传的工会力量数据",
       "regear_rules": "默认补装栏位",
       "regear_rules_desc": "选择默认支持补偿的装备栏位。新建补装工单时将默认应用此配置。",
       "chest_config": "补装箱配置",

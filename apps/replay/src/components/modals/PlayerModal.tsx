@@ -687,7 +687,7 @@ export function PlayerModal({ video, videos = [], onClose, onUpdate }: PlayerMod
         {/* Main Player Display */}
         <div className="flex-1 min-h-0 bg-black relative flex flex-col">
           <div className="absolute top-[20px] left-[20px] text-white bg-[rgba(0,0,0,0.5)] px-[10px] py-[5px] rounded-[4px] text-[12px] z-10 font-bold pointer-events-none tracking-widest flex items-center gap-2">
-            <span>{mainVideo.username} <span className="opacity-50">/</span> {mainVideo.filename}</span>
+            <span>{mainVideo.title && mainVideo.title.trim() !== 'title' ? `${mainVideo.title} ` : ''}<span className="opacity-50">/</span> {mainVideo.username}</span>
             {Boolean(mainVideo.absoluteStartTime) && (
               <span className="text-system-accent border-l border-system-dim/50 pl-2 ml-1">
                 {t('player.realTime')} {new Date(mainVideo.absoluteStartTime + currentTime * 1000).toISOString().substring(11, 19)}

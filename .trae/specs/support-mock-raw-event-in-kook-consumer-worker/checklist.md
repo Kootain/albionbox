@@ -1,0 +1,4 @@
+- [x] `/api/consumer/message_to_event` accepts `consumer_id` and falls back to `regearImageRecognitionConsumer` when omitted
+- [x] `/api/consumer/raw_event` endpoint is created and correctly routes events based on `consumer_id` with fallback
+- [x] UI includes a new section for sending mock raw events with a consumer dropdown and JSON textarea
+- [x] Submitting the mock raw event form successfully calls the `/api/consumer/raw_event` API and displays feedback

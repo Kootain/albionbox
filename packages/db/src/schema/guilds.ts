@@ -57,5 +57,6 @@ export const guildSettings = sqliteTable('guild_settings', {
     }[];
   }[]>(),
   kookGuildId: text('kook_guild_id'),
+  dataCollectionGuildId: text('data_collection_guild_id'),
   updatedAt: text('updated_at').notNull(),
 })

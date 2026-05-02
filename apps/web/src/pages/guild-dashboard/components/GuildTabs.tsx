@@ -9,6 +9,7 @@ export type TabType =
   | 'orders'
   | 'activities'
   | 'attendance'
+  | 'might-rankings'
   | 'settings';
 
 interface GuildTabsProps {
@@ -27,6 +28,7 @@ export function GuildTabs({ activeTab, onChange }: GuildTabsProps) {
     { id: 'orders', label: t('guild_dashboard.tabs.orders') },
     { id: 'activities', label: t('guild_dashboard.tabs.activities') },
     { id: 'attendance', label: t('guild_dashboard.tabs.attendance') },
+    { id: 'might-rankings', label: t('guild_dashboard.tabs.might_rankings', { defaultValue: 'Might Rankings' }) },
     { id: 'settings', label: t('guild_dashboard.tabs.settings', { defaultValue: 'Settings' }) },
   ];
 

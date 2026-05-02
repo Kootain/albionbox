@@ -20,6 +20,7 @@ export interface Highlight {
 export interface VideoRecord {
   id: string;
   vid?: string;
+  title?: string;
   username: string;
   role: Role;
   date: string; // YYYY-MM-DD format

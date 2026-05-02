@@ -1,0 +1,15 @@
+# Tasks
+- [x] Task 1: 完善多语言翻译 i18n
+  - [x] SubTask 1.1: 更新 `apps/web/src/i18n/zh.json` 和 `en.json`，增加如“力量榜”(`might_rankings`)、“数据采集工会 ID”(`data_collection_guild_id`) 等必要翻译。
+- [x] Task 2: 扩展工会 Settings 配置项
+  - [x] SubTask 2.1: 在 `apps/web/src/pages/guild-dashboard/tabs/SettingsTab.tsx` 中增加 `dataCollectionGuildId` 状态和输入框。
+  - [x] SubTask 2.2: 更新 `handleSave` 逻辑，在 `json` payload 中保存 `dataCollectionGuildId`，并在 `useEffect` 初始加载时读取赋值。
+- [x] Task 3: 新增 Might Rankings Tab 路由和 UI
+  - [x] SubTask 3.1: 在 `apps/web/src/pages/guild-dashboard/components/GuildTabs.tsx` 中增加 `'might-rankings'` Tab 项。
+  - [x] SubTask 3.2: 在 `apps/web/src/pages/guild-dashboard/GuildDashboardPage.tsx` 中增加 `might-rankings` 的渲染路由。
+  - [x] SubTask 3.3: 创建 `apps/web/src/pages/guild-dashboard/tabs/MightRankingsTab.tsx` 页面组件。
+- [x] Task 4: 实现 Might Rankings 数据加载和渲染
+  - [x] SubTask 4.1: 在 `MightRankingsTab.tsx` 首先请求当前工会的 Settings 以获取 `dataCollectionGuildId`。若为空，提示用户去 Settings 配置。
+  - [x] SubTask 4.2: 增加一个日期选择器 `<input type="date" />`，默认为今天。
+  - [x] SubTask 4.3: 当选择日期时（包含今天），由于后端已有 `/api/rankings/:guildId/latest` （仅获取当前最新）和 `/api/rankings/:guildId/:type?seconds=N`。为了实现按日期查询，前端可以分别请求各类型（使用 `api.rankings[':guildId'].rankings[':type'].$get`），计算 `seconds` 差值，取最后一条，或者后端可以扩展接口（如果只能改前端，则调用各类型的 `/rankings/:type` 接口或多次调用）。为了性能和避免过多并发，我们可以使用 Promise.all 请求所有类型的指定时间前的数据，或者如果需要前端简单处理，可以请求一个大范围并过滤。（*注意：由于时间查询是按距离当前时间 `seconds` 往前推的范围并返回所有，我们可以传一个较大的 `seconds` 获取选中日期之前的数据并在前端过滤*）。
+  - [x] SubTask 4.4: 按照 `ChallengeType` (PVE, GATHERING等) 用网格或列表渲染个人的力量贡献值，并按数值倒序排序。

@@ -3,7 +3,7 @@ import { cors } from "hono/cors";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { RestClient } from "@kookapp/js-sdk";
-import { registry } from "./consumer.js";
+import { registry, type Consumer } from "./consumer.js";
 import type { Bindings } from "./bindings.js";
 import { regearImageRecognitionConsumer } from "./consumers/regear_image_recognition.js";
 import { messageToEvent } from "@albionbox/shared/kook/convert";
@@ -24,17 +24,51 @@ function getKookClient(token: string) {
 const MessageToEventBodySchema = z.object({
   message: MessageSchema,
   context: MessageToEventContextSchema.optional(),
+  consumer_id: z.string().optional(),
 });
 
 app.post(
   "/api/consumer/message_to_event",
   zValidator("json", MessageToEventBodySchema),
   async (c) => {
-    const { message, context } = c.req.valid("json");
+    const { message, context, consumer_id } = c.req.valid("json");
     
     const event = messageToEvent(message, context);
     
-    await regearImageRecognitionConsumer.handle(event, c.env, true);
+    let consumer: Consumer = regearImageRecognitionConsumer;
+    if (consumer_id) {
+      const registered = registry.get(consumer_id);
+      if (registered) {
+        consumer = registered;
+      }
+    }
+    
+    await consumer.handle(event, c.env, true);
+    
+    return c.json({ success: true, event });
+  }
+);
+
+const RawEventBodySchema = z.object({
+  event: z.any(),
+  consumer_id: z.string().optional(),
+});
+
+app.post(
+  "/api/consumer/raw_event",
+  zValidator("json", RawEventBodySchema),
+  async (c) => {
+    const { event, consumer_id } = c.req.valid("json");
+    
+    let consumer: Consumer = regearImageRecognitionConsumer;
+    if (consumer_id) {
+      const registered = registry.get(consumer_id);
+      if (registered) {
+        consumer = registered;
+      }
+    }
+    
+    await consumer.handle(event, c.env, true);
     
     return c.json({ success: true, event });
   }

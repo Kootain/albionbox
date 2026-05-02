@@ -3,6 +3,7 @@ import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core'
 export const replayVideos = sqliteTable('replay_videos', {
   id: text('id').primaryKey(),
   vid: text('vid').notNull(),
+  title: text('title'),
   duration: integer('duration'),
   username: text('username').notNull(),
   date: text('date').notNull(),

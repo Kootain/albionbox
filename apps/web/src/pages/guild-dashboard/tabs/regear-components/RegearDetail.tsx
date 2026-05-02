@@ -29,6 +29,7 @@ interface RegearDetailProps {
   onBack: () => void;
   guildId: string;
   isPreview?: boolean;
+  isCreating?: boolean;
   onCreateFromPreview?: () => void;
   onDelete?: (id: string) => void;
   onDeleteRecord?: (id: string) => void;
@@ -44,7 +45,7 @@ function getItemDisplayName(itemType: string): string {
   return GameData.getItemNameByUniqueName(itemType);
 }
 
-export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromPreview, onDelete, onDeleteRecord }: RegearDetailProps) {
+export function RegearDetail({ detail, onBack, guildId, isPreview, isCreating, onCreateFromPreview, onDelete, onDeleteRecord }: RegearDetailProps) {
   const { t, i18n } = useTranslation();
   const toast = useToast();
   const confirm = useConfirm();
@@ -561,8 +562,10 @@ export function RegearDetail({ detail, onBack, guildId, isPreview, onCreateFromP
           {isPreview && onCreateFromPreview && (
             <button 
               onClick={onCreateFromPreview}
-              className="hidden md:flex items-center gap-2 px-4 py-2 bg-gold hover:bg-gold-hover text-black rounded-lg border border-gold font-black uppercase tracking-widest transition-colors shadow-[0_0_15px_rgba(250,204,21,0.2)]"
+              disabled={isCreating}
+              className="hidden md:flex items-center gap-2 px-4 py-2 bg-gold hover:bg-gold-hover text-black rounded-lg border border-gold font-black uppercase tracking-widest transition-colors shadow-[0_0_15px_rgba(250,204,21,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
+              {isCreating && <Loader2 className="w-4 h-4 animate-spin" />}
               {t('guild_dashboard.regear_tab.create_from_preview', { defaultValue: 'Create Ticket' })}
             </button>
           )}

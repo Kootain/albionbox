@@ -1,0 +1,1 @@
+ALTER TABLE `replay_videos` ADD `title` text;

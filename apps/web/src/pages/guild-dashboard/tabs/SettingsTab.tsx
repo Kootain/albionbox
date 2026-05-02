@@ -37,6 +37,7 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
 
   const [kookGuildId, setKookGuildId] = useState<string>('');
+  const [dataCollectionGuildId, setDataCollectionGuildId] = useState<string>('');
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,6 +59,7 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
         if (res.ok) {
           const data = await res.json() as any;
           if (data.kookGuildId) setKookGuildId(data.kookGuildId);
+          if (data.dataCollectionGuildId) setDataCollectionGuildId(data.dataCollectionGuildId);
           if (data.regearConfig) {
             if (data.regearConfig.allowedSlots) setAllowedSlots(data.regearConfig.allowedSlots);
             if (data.regearConfig.defaultPLevel) setDefaultPLevel(data.regearConfig.defaultPLevel);
@@ -91,7 +93,8 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
     currentPLevel = defaultPLevel,
     currentNoRegear = noRegearPlayers,
     currentLevelGroups = levelGroups,
-    currentKookGuildId = kookGuildId
+    currentKookGuildId = kookGuildId,
+    currentDataCollectionGuildId = dataCollectionGuildId
   ) => {
     if (!guildId) return;
     setIsSaving(true);
@@ -100,6 +103,7 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
         param: { id: guildId },
         json: {
           kookGuildId: currentKookGuildId || null,
+          dataCollectionGuildId: currentDataCollectionGuildId || null,
           regearConfig: { 
             allowedSlots: currentSlots,
             defaultPLevel: currentPLevel,
@@ -286,6 +290,30 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
               type="text"
               value={kookGuildId}
               onChange={(e) => setKookGuildId(e.target.value)}
+              placeholder="e.g. 1234567890"
+              className="flex-1 bg-black-bg border border-black-border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-gold transition-colors text-sm font-mono"
+            />
+            <button
+              onClick={() => handleSave()}
+              className="px-4 py-3 bg-gold/10 hover:bg-gold/20 text-gold border border-gold/30 rounded-xl font-bold uppercase tracking-widest text-sm transition-colors"
+            >
+              {t('common.save', { defaultValue: 'Save' })}
+            </button>
+          </div>
+        </section>
+
+        <hr className="border-black-border" />
+
+        {/* Data Collection Guild Config */}
+        <section className="space-y-4">
+          <h3 className="text-lg font-bold text-white uppercase tracking-tight">{t('guild_dashboard.settings.data_collection_guild_id', { defaultValue: 'Data Collection Guild ID' })}</h3>
+          <p className="text-sm text-slate-400">{t('guild_dashboard.settings.data_collection_guild_id_desc', { defaultValue: 'Bind the Data Collection Guild ID to resolve might rankings.' })}</p>
+          
+          <div className="flex items-center gap-4 max-w-md">
+            <input
+              type="text"
+              value={dataCollectionGuildId}
+              onChange={(e) => setDataCollectionGuildId(e.target.value)}
               placeholder="e.g. 1234567890"
               className="flex-1 bg-black-bg border border-black-border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-gold transition-colors text-sm font-mono"
             />

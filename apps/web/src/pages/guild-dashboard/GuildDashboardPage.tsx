@@ -14,6 +14,7 @@ import { RegearApprovalTab } from './tabs/RegearApprovalTab';
 import { OrdersTab } from './tabs/OrdersTab';
 import { ActivitiesTab } from './tabs/ActivitiesTab';
 import { AttendanceTab } from './tabs/AttendanceTab';
+import { MightRankingsTab } from './tabs/MightRankingsTab';
 import { SettingsTab } from './tabs/SettingsTab';
 
 const mockStats = {
@@ -73,13 +74,14 @@ export default function GuildDashboardPage() {
       case 'orders': return <OrdersTab />;
       case 'activities': return <ActivitiesTab />;
       case 'attendance': return <AttendanceTab />;
+      case 'might-rankings': return <MightRankingsTab guildId={currentGuild.id} />;
       case 'settings': return <SettingsTab guildId={currentGuild.id} />;
       default: return null;
     }
   };
 
   return (
-    <div className="space-y-6 md:space-y-8 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 md:space-y-8 w-full mx-auto pb-12 px-4 sm:px-6 md:px-8 max-w-[1800px]">
       {/* Header & Selector */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -103,7 +105,7 @@ export default function GuildDashboardPage() {
       >
         <GuildTabs activeTab={activeTab} onChange={handleTabChange} />
         
-        <div className="p-4 md:p-6 bg-black-bg">
+        <div className="p-4 md:p-8 bg-black-bg">
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, x: 20 }}

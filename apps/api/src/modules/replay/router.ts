@@ -31,6 +31,7 @@ const createVideoHandler = factory.createHandlers(authMiddleware, zValidator('js
   await db.insert(replayVideos).values({
     id,
     vid: data.vid,
+    title: data.title ?? null,
     duration: data.duration ?? null,
     username: data.username,
     date: data.date,
@@ -94,30 +95,16 @@ const getVideosHandler = factory.createHandlers(authMiddleware, async (c) => {
       if (video.vid.length === 32 && !video.vid.startsWith('v')) {
         videoUrl = `cloudflare:${video.vid}`
       } else {
-        if (transcodeStatus && Object.keys(transcodeStatus).length > 0) {
-          // If we have cached multi-bitrate URLs, use them instead of querying again
-          // Fallback to the first available URL for `videoUrl` just in case some old clients rely on it
-          const firstKey = Object.keys(transcodeStatus)[0]
-          videoUrl = transcodeStatus[firstKey]
-        } else {
-          // Query Volcengine
-          const playInfo = await getPlayInfo(
-            video.vid,
-            c.env.VOLC_ACCESS_KEY_ID as string,
-            c.env.VOLC_SECRET_ACCESS_KEY as string
-          )
-          if (playInfo) {
-            transcodeStatus = playInfo
-            const firstKey = Object.keys(playInfo)[0]
-            videoUrl = playInfo[firstKey]
-            
-            // Optionally, update the DB with this transcodeStatus so we don't have to query again
-            // but usually this is handled by the webhook. We do it just in case.
-            // Avoid awaiting here to not block the response
-            c.executionCtx.waitUntil(
-              db.update(replayVideos).set({ transcodeStatus: playInfo }).where(eq(replayVideos.id, video.id)).execute()
-            )
-          }
+        // Query Volcengine
+        const playInfo = await getPlayInfo(
+          video.vid,
+          c.env.VOLC_ACCESS_KEY_ID as string,
+          c.env.VOLC_SECRET_ACCESS_KEY as string
+        )
+        if (playInfo) {
+          transcodeStatus = playInfo
+          const firstKey = Object.keys(playInfo)[0]
+          videoUrl = playInfo[firstKey]
         }
       }
     }
@@ -219,6 +206,7 @@ const updateVideoHandler = factory.createHandlers(authMiddleware, zValidator('js
   if (!video) return c.json({ error: 'Video not found' }, 404)
 
   const updateData: any = {}
+  if (data.title !== undefined) updateData.title = data.title
   if (data.role !== undefined) updateData.role = data.role
   if (data.date !== undefined) updateData.date = data.date
 

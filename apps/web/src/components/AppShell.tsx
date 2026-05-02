@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   LogOut, User as UserIcon, LayoutDashboard, Shield, Sword, 
   ChevronLeft, ChevronRight, Languages, Settings as SettingsIcon,
-  List
+  List, Database
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../lib/utils';
@@ -32,6 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { name: t('common.dashboard'), path: '/', icon: LayoutDashboard },
     { name: t('common.guild_dashboard', 'Guild Dashboard'), path: '/guild-dashboard', icon: Shield },
     { name: t('common.guilds'), path: '/guilds', icon: List },
+    { name: t('common.data_collection', 'Data Collection'), path: '/data-collection', icon: Database },
     { name: t('common.profile'), path: '/profile', icon: UserIcon },
     { name: t('common.settings'), path: '/settings', icon: SettingsIcon },
   ];

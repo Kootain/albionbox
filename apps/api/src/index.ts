@@ -10,6 +10,7 @@ import { regearRouter } from './modules/regear'
 import { regearApplyRouter } from './modules/regear_apply/router'
 import { kookRouter } from './modules/kook'
 import { replayRouter } from './modules/replay'
+import { rankingsRouter } from './modules/rankings/router'
 import { runRegearApplyAutoBinder } from './modules/cron/cron_regear_apply_binder'
 import { internalAuthMiddleware } from './modules/internal/auth.middleware'
 import type { AppContext } from './context'
@@ -84,6 +85,7 @@ const routes = app
   .route('/regear_applies', regearApplyRouter)
   .route('/kook', kookRouter)
   .route('/replay', replayRouter)
+  .route('/rankings', rankingsRouter)
   .get('/__scheduled', async (c) => {
     const startedAt = Date.now()
     try {

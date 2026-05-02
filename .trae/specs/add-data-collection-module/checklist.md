@@ -1,0 +1,5 @@
+- [x] AppShell 中出现“数据采集”菜单项。
+- [x] 访问 `/data-collection` 路由能正常加载页面。
+- [x] 页面能连接到 `ws://127.0.0.1:8081/events` 并显示连接状态。
+- [x] 当收到 `Type=2, Code=445` 的数据时，页面能够正确提取并合并显示。
+- [x] 点击上传按钮，能正确格式化数据并发送 POST 请求到后端接口 `POST /rankings/:guildId/rankings`。

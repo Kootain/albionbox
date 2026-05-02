@@ -28,6 +28,7 @@ const getSettingsHandler = factory.createHandlers(
         chestRooms: [{ id: 'default', name: 'Main Room', width: 10, height: 10, assignments: [] }],
         updatedAt: new Date().toISOString(),
         kookGuildId: null,
+        dataCollectionGuildId: null,
       }
     }
     return c.json(settings)
@@ -47,12 +48,14 @@ const updateSettingsHandler = factory.createHandlers(
     if (data.regearConfig !== undefined) setValues.regearConfig = data.regearConfig
     if (data.chestRooms !== undefined) setValues.chestRooms = data.chestRooms
     if (data.kookGuildId !== undefined) setValues.kookGuildId = data.kookGuildId
+    if (data.dataCollectionGuildId !== undefined) setValues.dataCollectionGuildId = data.dataCollectionGuildId
 
     await db.insert(guildSettings).values({
       guildId,
       regearConfig: data.regearConfig || { allowedSlots: ['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Cape'] },
       chestRooms: data.chestRooms || [{ id: 'default', name: 'Main Room', width: 10, height: 10, assignments: [] }],
       kookGuildId: data.kookGuildId,
+      dataCollectionGuildId: data.dataCollectionGuildId,
       updatedAt: now,
     }).onConflictDoUpdate({
       target: guildSettings.guildId,

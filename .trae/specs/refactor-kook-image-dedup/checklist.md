@@ -1,0 +1,3 @@
+- [x] The deduplication logic is simplified and rewritten into three steps: URL extraction, Hashing, and Grouping.
+- [x] No false positive duplicates (self-duplication) exist when a single message has multiple images.
+- [x] The UI renders the duplicated images and associated messages correctly.

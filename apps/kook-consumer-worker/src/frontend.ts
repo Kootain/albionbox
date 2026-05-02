@@ -102,6 +102,26 @@ export const htmlTemplate = `<!DOCTYPE html>
         </tbody>
       </table>
     </div>
+
+    <div class="section">
+      <h2>Send Mock Raw Event</h2>
+      <form id="mock-event-form">
+        <div class="form-group">
+          <label for="mock-consumer-select">Consumer Instance</label>
+          <select id="mock-consumer-select" required>
+            <option value="">Loading...</option>
+          </select>
+        </div>
+        <div class="form-group full-width">
+          <label for="mock-event-json">Raw Event JSON</label>
+          <textarea id="mock-event-json" rows="8" required placeholder='{&#10;  "type": 1,&#10;  "content": "Hello",&#10;  ...&#10;}' style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 14px; width: 100%; box-sizing: border-box;"></textarea>
+        </div>
+        <div class="form-group full-width">
+          <button type="submit">Send Event</button>
+          <div id="mock-form-message" style="font-size: 14px; margin-top: 10px;"></div>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script>
@@ -127,7 +147,11 @@ export const htmlTemplate = `<!DOCTYPE html>
       formError: document.getElementById('form-error'),
       filtersTable: document.getElementById('filters-table'),
       filtersTbody: document.querySelector('#filters-table tbody'),
-      filtersLoading: document.getElementById('filters-loading')
+      filtersLoading: document.getElementById('filters-loading'),
+      mockConsumerSelect: document.getElementById('mock-consumer-select'),
+      mockEventForm: document.getElementById('mock-event-form'),
+      mockEventJson: document.getElementById('mock-event-json'),
+      mockFormMessage: document.getElementById('mock-form-message')
     };
 
     // API calls
@@ -167,6 +191,18 @@ export const htmlTemplate = `<!DOCTYPE html>
       async deleteFilter(id) {
         const res = await fetch(\`/api/filters/\${id}\`, { method: 'DELETE' });
         if (!res.ok) throw new Error('Failed to delete filter');
+        return res.json();
+      },
+      async sendMockEvent(consumerId, event) {
+        const res = await fetch('/api/consumer/raw_event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ consumer_id: consumerId, event })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'Failed to send mock event');
+        }
         return res.json();
       }
     };
@@ -284,15 +320,43 @@ export const htmlTemplate = `<!DOCTYPE html>
       }
     });
 
+    elements.mockEventForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      elements.mockFormMessage.textContent = '';
+      elements.mockFormMessage.style.color = '#dc3545';
+      
+      const consumerId = elements.mockConsumerSelect.value;
+      const eventJsonStr = elements.mockEventJson.value;
+      
+      let eventObj;
+      try {
+        eventObj = JSON.parse(eventJsonStr);
+      } catch (err) {
+        elements.mockFormMessage.textContent = 'Invalid JSON format.';
+        return;
+      }
+
+      try {
+        await api.sendMockEvent(consumerId, eventObj);
+        elements.mockFormMessage.style.color = '#28a745';
+        elements.mockFormMessage.textContent = 'Event sent successfully!';
+      } catch (err) {
+        elements.mockFormMessage.textContent = err.message;
+      }
+    });
+
     // Render functions
     function renderConsumers() {
       if (state.consumers.length === 0) {
         elements.consumerSelect.innerHTML = '<option value="">No consumers found</option>';
+        elements.mockConsumerSelect.innerHTML = '<option value="">No consumers found</option>';
         return;
       }
-      elements.consumerSelect.innerHTML = state.consumers.map(c => 
+      const options = state.consumers.map(c => 
         \`<option value="\${c}">\${c}</option>\`
       ).join('');
+      elements.consumerSelect.innerHTML = options;
+      elements.mockConsumerSelect.innerHTML = options;
     }
 
     function renderGuilds() {

@@ -49,7 +49,7 @@ export async function syncVideoTime(id: string, payload: SyncReplayVideo): Promi
   return { absoluteStartTime: payload.absoluteStartTime } as unknown as VideoRecord;
 }
 
-export async function updateVideo(id: string, data: { role?: string; date?: string }) {
+export async function updateVideo(id: string, data: { role?: string; date?: string; title?: string }) {
   const res = await client.replay[':id'].$put({
     param: { id },
     json: data,

@@ -1,0 +1,6 @@
+- [x] `packages/db/src/schema/rankings.ts` contains `guildRankings` with correct fields and no foreign keys.
+- [x] `packages/shared/src/schemas/rankings.ts` defines all requested enum types.
+- [x] `apps/api/src/modules/rankings/router.ts` handles POST to save ranking data using API token validation.
+- [x] `apps/api/src/modules/rankings/router.ts` handles GET for latest rankings across all types for a guild.
+- [x] `apps/api/src/modules/rankings/router.ts` handles GET for specific type rankings over the last N seconds.
+- [x] `pnpm tsc --noEmit` runs successfully in `apps/api` without errors.

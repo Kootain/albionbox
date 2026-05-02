@@ -27,7 +27,7 @@
   "vars": {
     "API_BASE_URL": "https://api.albionbox.com",
     "ARK_MODEL_ID": "doubao-seed-2-0-lite-260215",
-    "ADMIN_USER_IDS": ""
+    "ADMIN_USER_IDS": "2931876149,3180547742"
   },
   "observability": {
     "enabled": false,
@@ -70,7 +70,7 @@
         "vars": {
           "API_BASE_URL": "http://127.0.0.1:8787",
           "ARK_MODEL_ID": "doubao-seed-2-0-lite-260215",
-          "ADMIN_USER_IDS": ""
+          "ADMIN_USER_IDS": "2931876149,3180547742"
         }
     }
   }

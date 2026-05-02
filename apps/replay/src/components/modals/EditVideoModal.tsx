@@ -12,6 +12,10 @@ interface EditVideoModalProps {
 
 export function EditVideoModal({ video, onClose, onUpdated }: EditVideoModalProps) {
   const { t } = useLanguage();
+  const [title, setTitle] = useState(() => {
+    if (!video.title || video.title.trim() === 'title') return '';
+    return video.title;
+  });
   const [role, setRole] = useState<Role>(video.role as Role);
   const [date, setDate] = useState(video.date);
   const [isSaving, setIsSaving] = useState(false);
@@ -19,7 +23,8 @@ export function EditVideoModal({ video, onClose, onUpdated }: EditVideoModalProp
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (role === video.role && date === video.date) {
+    const originalTitle = (!video.title || video.title.trim() === 'title') ? '' : video.title;
+    if (role === video.role && date === video.date && title === originalTitle) {
       onClose();
       return;
     }
@@ -33,8 +38,8 @@ export function EditVideoModal({ video, onClose, onUpdated }: EditVideoModalProp
     setError('');
 
     try {
-      await updateVideo(video.id, { role, date });
-      onUpdated({ ...video, role, date });
+      await updateVideo(video.id, { role, date, title });
+      onUpdated({ ...video, role, date, title });
       onClose();
     } catch (err: any) {
       setError(err.message || 'Failed to update video');
@@ -66,6 +71,19 @@ export function EditVideoModal({ video, onClose, onUpdated }: EditVideoModalProp
           )}
 
           <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-system-dim uppercase tracking-widest mb-2">
+                {t('edit.videoTitle') || 'Video Title'}
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full bg-system-bg border border-system-border rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-system-accent"
+                placeholder=""
+              />
+            </div>
+            
             <div>
               <label className="block text-xs font-bold text-system-dim uppercase tracking-widest mb-2">
                 {t('upload.role') || 'Role'}

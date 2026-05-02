@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlbionGo WebSocket Test Client</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            margin: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        .header-controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .connection-panel {
+            flex: 1;
+            min-width: 300px;
+        }
+        .filter-panel {
+            flex: 2;
+            min-width: 300px;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #eee;
+        }
+        #status {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status-connected { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-disconnected { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status-connecting { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        button#clear-btn { background-color: #6c757d; }
+        button#clear-btn:hover { background-color: #545b62; }
+        
+        .filter-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .filter-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        .filter-tag {
+            background-color: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .filter-tag .remove {
+            cursor: pointer;
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        #log {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #fafafa;
+            border-radius: 4px;
+            font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+        .log-meta {
+            min-width: 150px;
+            color: #666;
+            flex-shrink: 0;
+        }
+        .log-content {
+            flex: 1;
+            word-break: break-all;
+        }
+        .kv-pair {
+            display: inline-block;
+            margin-right: 15px;
+            color: #444;
+        }
+        .kv-key {
+            color: #0056b3;
+            font-weight: bold;
+        }
+        .kv-value {
+            color: #28a745;
+        }
+        .log-type-tag {
+            display: inline-block;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-size: 10px;
+            margin-right: 5px;
+            background-color: #eee;
+            color: #333;
+        }
+        input[type="text"], select {
+            padding: 6px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AlbionGo Event Stream</h1>
+        
+        <div class="header-controls">
+            <div class="connection-panel">
+                <div id="status" class="status-disconnected">Status: Disconnected</div>
+                <div style="display: flex; gap: 10px;">
+                    <button id="connect-btn" onclick="connect()">Connect</button>
+                    <button id="disconnect-btn" onclick="disconnect()" disabled>Disconnect</button>
+                    <button id="clear-btn" onclick="clearLog()">Clear Log</button>
+                </div>
+            </div>
+
+            <div class="filter-panel">
+                <div class="filter-row">
+                    <label>Mode:</label>
+                    <select id="filter-mode">
+                        <option value="whitelist">Whitelist (Show Only)</option>
+                        <option value="blacklist">Blacklist (Hide These)</option>
+                    </select>
+                </div>
+                <div class="filter-row">
+                    <select id="filter-type" style="width: 150px;">
+                        <option value="0">Event (0)</option>
+                        <option value="1">Request (1)</option>
+                        <option value="2">Response (2)</option>
+                        <option value="3">Operation (3)</option>
+                    </select>
+                    <input type="number" id="filter-code" placeholder="Code (e.g. 1)" style="width: 100px;">
+                    <button onclick="addFilter()">Add Filter</button>
+                </div>
+                <div id="filter-list" class="filter-list"></div>
+            </div>
+        </div>
+
+        <div id="log"></div>
+    </div>
+
+    <script src="spell_manager.js"></script>
+    <script>
+        const OperationCodes = {
+            0: 'OpUnused',
+            1: 'OpPing',
+            2: 'OpJoin',
+            3: 'OpVersionedOperation',
+            4: 'OpCreateAccount',
+            5: 'OpLogin',
+            6: 'OpCreateGuestAccount',
+            7: 'OpSendCrashLog',
+            8: 'OpSendTraceRoute',
+            9: 'OpSendVfxStats',
+            10: 'OpSendGamePingInfo',
+            11: 'OpCreateCharacter',
+            12: 'OpDeleteCharacter',
+            13: 'OpSelectCharacter',
+            14: 'OpAcceptPopups',
+            15: 'OpRedeemKeycode',
+            16: 'OpGetGameServerByCluster',
+            17: 'OpGetShopPurchaseUrl',
+            18: 'OpGetReferralSeasonDetails',
+            19: 'OpGetReferralLink',
+            20: 'OpGetShopTilesForCategory',
+            21: 'OpMove',
+            22: 'OpAttackStart',
+            23: 'OpCastStart',
+            24: 'OpCastCancel',
+            25: 'OpTerminateToggleSpell',
+            26: 'OpChannelingCancel',
+            27: 'OpAttackBuildingStart',
+            28: 'OpInventoryDestroyItem',
+            29: 'OpInventoryMoveItem',
+            30: 'OpInventoryRecoverItem',
+            31: 'OpInventoryRecoverAllItems',
+            32: 'OpInventorySplitStack',
+            33: 'OpInventorySplitStackInto',
+            34: 'OpGetClusterData',
+            35: 'OpChangeCluster',
+            36: 'OpConsoleCommand',
+            37: 'OpChatMessage',
+            38: 'OpReportClientError',
+            39: 'OpRegisterToObject',
+            40: 'OpUnRegisterFromObject',
+            41: 'OpCraftBuildingChangeSettings',
+            42: 'OpCraftBuildingTakeMoney',
+            43: 'OpRepairBuildingChangeSettings',
+            44: 'OpRepairBuildingTakeMoney',
+            45: 'OpActionBuildingChangeSettings',
+            46: 'OpHarvestStart',
+            47: 'OpHarvestCancel',
+            48: 'OpTakeSilver',
+            49: 'OpActionOnBuildingStart',
+            50: 'OpActionOnBuildingCancel',
+            51: 'OpInstallResourceStart',
+            52: 'OpInstallResourceCancel',
+            53: 'OpInstallSilver',
+            54: 'OpBuildingFillNutrition',
+            55: 'OpBuildingChangeRenovationState',
+            56: 'OpBuildingBuySkin',
+            57: 'OpBuildingClaim',
+            58: 'OpBuildingGiveup',
+            59: 'OpBuildingNutritionSilverStorageDeposit',
+            60: 'OpBuildingNutritionSilverStorageWithdraw',
+            61: 'OpBuildingNutritionSilverRewardSet',
+            62: 'OpConstructionSiteCreate',
+            63: 'OpPlaceableObjectPlace',
+            64: 'OpPlaceableObjectPlaceCancel',
+            65: 'OpPlaceableObjectPickup',
+            66: 'OpFurnitureObjectUse',
+            67: 'OpFarmableHarvest',
+            68: 'OpFarmableFinishGrownItem',
+            69: 'OpFarmableDestroy',
+            70: 'OpFarmableGetProduct',
+            71: 'OpFarmableFill',
+            72: 'OpTearDownConstructionSite',
+            73: 'OpAuctionCreateOffer',
+            74: 'OpAuctionCreateRequest',
+            75: 'OpAuctionGetOffers',
+            76: 'OpAuctionGetRequests',
+            77: 'OpAuctionBuyOffer',
+            78: 'OpAuctionAbortAuction',
+            79: 'OpAuctionModifyAuction',
+            80: 'OpAuctionAbortOffer',
+            81: 'OpAuctionAbortRequest',
+            82: 'OpAuctionSellRequest',
+            83: 'OpAuctionGetFinishedAuctions',
+            84: 'OpAuctionGetFinishedAuctionsCount',
+            85: 'OpAuctionFetchAuction',
+            86: 'OpAuctionGetMyOpenOffers',
+            87: 'OpAuctionGetMyOpenRequests',
+            88: 'OpAuctionGetMyOpenAuctions',
+            89: 'OpAuctionGetItemAverageStats',
+            90: 'OpAuctionGetItemAverageValue',
+            91: 'OpAuctionGetLowestOfferPrices',
+            92: 'OpContainerOpen',
+            93: 'OpContainerClose',
+            94: 'OpContainerManageSubContainer',
+            95: 'OpRespawn',
+            96: 'OpSuicide',
+            97: 'OpJoinGuild',
+            98: 'OpLeaveGuild',
+            99: 'OpCreateGuild',
+            100: 'OpInviteToGuild',
+            101: 'OpDeclineGuildInvitation',
+            102: 'OpKickFromGuild',
+            103: 'OpInstantJoinGuild',
+            104: 'OpDuellingChallengePlayer',
+            105: 'OpDuellingAcceptChallenge',
+            106: 'OpDuellingDenyChallenge',
+            107: 'OpChangeClusterTax',
+            108: 'OpClaimTerritory',
+            109: 'OpGiveUpTerritory',
+            110: 'OpChangeTerritoryAccessRights',
+            111: 'OpGetMonolithInfo',
+            112: 'OpGetClaimInfo',
+            113: 'OpGetAttackInfo',
+            114: 'OpGetTerritorySeasonPoints',
+            115: 'OpGetAttackSchedule',
+            116: 'OpGetMatches',
+            117: 'OpGetMatchDetails',
+            118: 'OpJoinMatch',
+            119: 'OpLeaveMatch',
+            120: 'OpGetClusterInstanceInfoForStaticCluster',
+            121: 'OpChangeChatSettings',
+            122: 'OpLogoutStart',
+            123: 'OpLogoutCancel',
+            124: 'OpClaimOrbStart',
+            125: 'OpClaimOrbCancel',
+            126: 'OpMatchLootChestOpeningStart',
+            127: 'OpMatchLootChestOpeningCancel',
+            128: 'OpDepositToGuildAccount',
+            129: 'OpWithdrawalFromAccount',
+            130: 'OpChangeGuildPayUpkeepFlag',
+            131: 'OpChangeGuildTax',
+            132: 'OpGetMyTerritories',
+            133: 'OpMorganaCommand',
+            134: 'OpGetServerInfo',
+            135: 'OpSubscribeToCluster',
+            136: 'OpAnswerMercenaryInvitation',
+            137: 'OpGetCharacterEquipment',
+            138: 'OpGetCharacterSteamAchievements',
+            139: 'OpGetCharacterStats',
+            140: 'OpGetKillHistoryDetails',
+            141: 'OpReSpecAchievement',
+            142: 'OpChangeAvatar',
+            143: 'OpGetRankings',
+            144: 'OpGetRank',
+            145: 'OpGetGvgSeasonRankings',
+            146: 'OpGetGvgSeasonRank',
+            147: 'OpGetGvgSeasonHistoryRankings',
+            148: 'OpGetGvgSeasonGuildMemberHistory',
+            149: 'OpKickFromGvGMatch',
+            150: 'OpGetCrystalLeagueDailySeasonPoints',
+            151: 'OpGetChestLogs',
+            152: 'OpGetAccessRightLogs',
+            153: 'OpGetGuildAccountLogs',
+            154: 'OpGetGuildAccountLogsLargeAmount',
+            155: 'OpInviteToPlayerTrade',
+            156: 'OpPlayerTradeCancel',
+            157: 'OpPlayerTradeInvitationAccept',
+            158: 'OpPlayerTradeAddItem',
+            159: 'OpPlayerTradeRemoveItem',
+            160: 'OpPlayerTradeAcceptTrade',
+            161: 'OpPlayerTradeSetSilverOrGold',
+            162: 'OpSendMiniMapPing',
+            163: 'OpStuck',
+            164: 'OpBuyRealEstate',
+            165: 'OpClaimRealEstate',
+            166: 'OpGiveUpRealEstate',
+            167: 'OpChangeRealEstateOutline',
+            168: 'OpGetMailInfos',
+            169: 'OpGetMailCount',
+            170: 'OpReadMail',
+            171: 'OpSendNewMail',
+            172: 'OpDeleteMail',
+            173: 'OpMarkMailUnread',
+            174: 'OpClaimAttachmentFromMail',
+            175: 'OpApplyToGuild',
+            176: 'OpAnswerGuildApplication',
+            177: 'OpRequestGuildFinderFilteredList',
+            178: 'OpUpdateGuildRecruitmentInfo',
+            179: 'OpRequestGuildRecruitmentInfo',
+            180: 'OpRequestGuildFinderNameSearch',
+            181: 'OpRequestGuildFinderRecommendedList',
+            182: 'OpRegisterChatPeer',
+            183: 'OpSendChatMessage',
+            184: 'OpSendModeratorMessage',
+            185: 'OpJoinChatChannel',
+            186: 'OpLeaveChatChannel',
+            187: 'OpSendWhisperMessage',
+            188: 'OpSay',
+            189: 'OpPlayEmote',
+            190: 'OpStopEmote',
+            191: 'OpGetClusterMapInfo',
+            192: 'OpAccessRightsChangeSettings',
+            193: 'OpMount',
+            194: 'OpMountCancel',
+            195: 'OpBuyJourney',
+            196: 'OpSetSaleStatusForEstate',
+            197: 'OpResolveGuildOrPlayerName',
+            198: 'OpGetRespawnInfos',
+            199: 'OpMakeHome',
+            200: 'OpLeaveHome',
+            201: 'OpResurrectionReply',
+            202: 'OpAllianceCreate',
+            203: 'OpAllianceDisband',
+            204: 'OpAllianceGetMemberInfos',
+            205: 'OpAllianceInvite',
+            206: 'OpAllianceAnswerInvitation',
+            207: 'OpAllianceCancelInvitation',
+            208: 'OpAllianceKickGuild',
+            209: 'OpAllianceLeave',
+            210: 'OpAllianceChangeGoldPaymentFlag',
+            211: 'OpAllianceGetDetailInfo',
+            212: 'OpGetIslandInfos',
+            213: 'OpBuyMyIsland',
+            214: 'OpBuyGuildIsland',
+            215: 'OpUpgradeMyIsland',
+            216: 'OpUpgradeGuildIsland',
+            217: 'OpTerritoryFillNutrition',
+            218: 'OpTeleportBack',
+            219: 'OpPartyInvitePlayer',
+            220: 'OpPartyRequestJoin',
+            221: 'OpPartyAnswerInvitation',
+            222: 'OpPartyAnswerJoinRequest',
+            223: 'OpPartyLeave',
+            224: 'OpPartyKickPlayer',
+            225: 'OpPartyMakeLeader',
+            226: 'OpPartyChangeLootSetting',
+            227: 'OpPartyMarkObject',
+            228: 'OpPartySetRole',
+            229: 'OpPartyChangeFactionWarfareRequestReinforcementsSetting',
+            230: 'OpSetGuildCodex',
+            231: 'OpExitEnterStart',
+            232: 'OpExitEnterCancel',
+            233: 'OpQuestGiverRequest',
+            234: 'OpGoldMarketGetBuyOffer',
+            235: 'OpGoldMarketGetBuyOfferFromSilver',
+            236: 'OpGoldMarketGetSellOffer',
+            237: 'OpGoldMarketGetSellOfferFromSilver',
+            238: 'OpGoldMarketBuyGold',
+            239: 'OpGoldMarketSellGold',
+            240: 'OpGoldMarketCreateSellOrder',
+            241: 'OpGoldMarketCreateBuyOrder',
+            242: 'OpGoldMarketGetInfos',
+            243: 'OpGoldMarketCancelOrder',
+            244: 'OpGoldMarketGetAverageInfo',
+            245: 'OpTreasureChestUsingStart',
+            246: 'OpTreasureChestUsingCancel',
+            247: 'OpUseLootChest',
+            248: 'OpUseShrine',
+            249: 'OpUseHellgateShrine',
+            250: 'OpGetSiegeBannerInfo',
+            251: 'OpLaborerStartJob',
+            252: 'OpLaborerTakeJobLoot',
+            253: 'OpLaborerDismiss',
+            254: 'OpLaborerMove',
+            255: 'OpLaborerBuyItem',
+            256: 'OpLaborerUpgrade',
+            257: 'OpBuyPremium',
+            258: 'OpRealEstateGetAuctionData',
+            259: 'OpRealEstateBidOnAuction',
+            260: 'OpFriendInvite',
+            261: 'OpFriendAnswerInvitation',
+            262: 'OpFriendCancelnvitation',
+            263: 'OpFriendRemove',
+            264: 'OpInventoryStack',
+            265: 'OpInventoryReorder',
+            266: 'OpInventoryDropAll',
+            267: 'OpInventoryAddToStacks',
+            268: 'OpEquipmentItemChangeSpell',
+            269: 'OpExpeditionRegister',
+            270: 'OpExpeditionRegisterCancel',
+            271: 'OpJoinExpedition',
+            272: 'OpDeclineExpeditionInvitation',
+            273: 'OpVoteStart',
+            274: 'OpVoteDoVote',
+            275: 'OpRatingDoRate',
+            276: 'OpEnteringExpeditionStart',
+            277: 'OpEnteringExpeditionCancel',
+            278: 'OpActivateExpeditionCheckPoint',
+            279: 'OpArenaRegister',
+            280: 'OpArenaAddInvite',
+            281: 'OpArenaRegisterCancel',
+            282: 'OpArenaLeave',
+            283: 'OpJoinArenaMatch',
+            284: 'OpDeclineArenaInvitation',
+            285: 'OpEnteringArenaStart',
+            286: 'OpEnteringArenaCancel',
+            287: 'OpArenaCustomMatch',
+            288: 'OpUpdateCharacterStatement',
+            289: 'OpBoostFarmable',
+            290: 'OpGetStrikeHistory',
+            291: 'OpUseFunction',
+            292: 'OpUsePortalEntrance',
+            293: 'OpResetPortalBinding',
+            294: 'OpQueryPortalBinding',
+            295: 'OpClaimPaymentTransaction',
+            296: 'OpChangeUseFlag',
+            297: 'OpClientPerformanceStats',
+            298: 'OpExtendedHardwareStats',
+            299: 'OpClientLowMemoryWarning',
+            300: 'OpTerritoryClaimStart',
+            301: 'OpTerritoryClaimCancel',
+            302: 'OpDeliverCarriableObjectStart',
+            303: 'OpDeliverCarriableObjectCancel',
+            304: 'OpTerritoryUpgradeWithPowerCrystal',
+            305: 'OpRequestAppStoreProducts',
+            306: 'OpVerifyProductPurchase',
+            307: 'OpQueryGuildPlayerStats',
+            308: 'OpQueryAllianceGuildStats',
+            309: 'OpTrackAchievements',
+            310: 'OpSetAchievementsAutoLearn',
+            311: 'OpDepositItemToGuildCurrency',
+            312: 'OpWithdrawalItemFromGuildCurrency',
+            313: 'OpAuctionSellSpecificItemRequest',
+            314: 'OpFishingStart',
+            315: 'OpFishingCasting',
+            316: 'OpFishingCast',
+            317: 'OpFishingCatch',
+            318: 'OpFishingPull',
+            319: 'OpFishingGiveLine',
+            320: 'OpFishingFinish',
+            321: 'OpFishingCancel',
+            322: 'OpCreateGuildAccessTag',
+            323: 'OpDeleteGuildAccessTag',
+            324: 'OpRenameGuildAccessTag',
+            325: 'OpFlagGuildAccessTagGuildPermission',
+            326: 'OpAssignGuildAccessTag',
+            327: 'OpRemoveGuildAccessTagFromPlayer',
+            328: 'OpModifyGuildAccessTagEditors',
+            329: 'OpRequestPublicAccessTags',
+            330: 'OpChangeAccessTagPublicFlag',
+            331: 'OpUpdateGuildAccessTag',
+            332: 'OpSteamStartMicrotransaction',
+            333: 'OpSteamFinishMicrotransaction',
+            334: 'OpRequestXboxPurchaseIntent',
+            335: 'OpCloseXboxPurchaseIntent',
+            336: 'OpSteamIdHasActiveAccount',
+            337: 'OpCheckEmailAccountState',
+            338: 'OpLinkAccountToSteamId',
+            339: 'OpEpicIdHasActiveAccount',
+            340: 'OpLinkAccountToEpicId',
+            341: 'OpXboxIdHasActiveAccount',
+            342: 'OpInAppConfirmPaymentGooglePlay',
+            343: 'OpInAppConfirmPaymentAppleAppStore',
+            344: 'OpInAppPurchaseRequest',
+            345: 'OpInAppPurchaseFailed',
+            346: 'OpCharacterSubscriptionInfo',
+            347: 'OpAccountSubscriptionInfo',
+            348: 'OpBuyGvgSeasonBooster',
+            349: 'OpChangeFlaggingPrepare',
+            350: 'OpOverCharge',
+            351: 'OpOverChargeEnd',
+            352: 'OpRequestTrusted',
+            353: 'OpChangeGuildLogo',
+            354: 'OpPartyFinderRegisterForUpdates',
+            355: 'OpPartyFinderUnregisterForUpdates',
+            356: 'OpPartyFinderEnlistNewPartySearch',
+            357: 'OpPartyFinderDeletePartySearch',
+            358: 'OpPartyFinderChangePartySearch',
+            359: 'OpPartyFinderChangeRole',
+            360: 'OpPartyFinderApplyForGroup',
+            361: 'OpPartyFinderAcceptOrDeclineApplyForGroup',
+            362: 'OpPartyFinderGetEquipmentSnapshot',
+            363: 'OpPartyFinderRegisterApplicants',
+            364: 'OpPartyFinderUnregisterApplicants',
+            365: 'OpPartyFinderFulltextSearch',
+            366: 'OpPartyFinderRequestEquipmentSnapshot',
+            367: 'OpGetPersonalSeasonTrackerData',
+            368: 'OpGetPersonalSeasonPastRewardData',
+            369: 'OpUseConsumableFromInventory',
+            370: 'OpClaimPersonalSeasonReward',
+            371: 'OpXignCodeMessageToServer',
+            372: 'OpBattlEyeMessageToServer',
+            373: 'OpSetNextTutorialState',
+            374: 'OpAddPlayerToMuteList',
+            375: 'OpRemovePlayerFromMuteList',
+            376: 'OpProductShopUserEvent',
+            377: 'OpGetVanityUnlocks',
+            378: 'OpBuyVanityUnlocks',
+            379: 'OpGetMountSkins',
+            380: 'OpSetMountSkin',
+            381: 'OpSetWardrobe',
+            382: 'OpChangeCustomization',
+            383: 'OpChangePlayerIslandData',
+            384: 'OpGetGuildChallengePoints',
+            385: 'OpSmartQueueJoin',
+            386: 'OpSmartQueueLeave',
+            387: 'OpSmartQueueSelectSpawnCluster',
+            388: 'OpUpgradeHideout',
+            389: 'OpInitHideoutAttackStart',
+            390: 'OpInitHideoutAttackCancel',
+            391: 'OpHideoutFillNutrition',
+            392: 'OpHideoutGetInfo',
+            393: 'OpHideoutGetOwnerInfo',
+            394: 'OpHideoutSetTribute',
+            395: 'OpHideoutUpgradeWithPowerCrystal',
+            396: 'OpHideoutDeclareHQ',
+            397: 'OpHideoutUndeclareHQ',
+            398: 'OpHideoutGetHQRequirements',
+            399: 'OpHideoutBoost',
+            400: 'OpHideoutBoostConstruction',
+            401: 'OpOpenWorldAttackScheduleStart',
+            402: 'OpOpenWorldAttackScheduleCancel',
+            403: 'OpOpenWorldAttackConquerStart',
+            404: 'OpOpenWorldAttackConquerCancel',
+            405: 'OpGetOpenWorldAttackDetails',
+            406: 'OpGetNextOpenWorldAttackScheduleTime',
+            407: 'OpRecoverVaultFromHideout',
+            408: 'OpGetGuildEnergyDrainInfo',
+            409: 'OpChannelingUpdate',
+            410: 'OpUseCorruptedShrine',
+            411: 'OpRequestEstimatedMarketValue',
+            412: 'OpLogFeedback',
+            413: 'OpGetInfamyInfo',
+            414: 'OpGetPartySmartClusterQueuePriority',
+            415: 'OpSetPartySmartClusterQueuePriority',
+            416: 'OpClientAntiAutoClickerInfo',
+            417: 'OpClientBotPatternDetectionInfo',
+            418: 'OpClientAntiGatherClickerInfo',
+            419: 'OpLoadoutCreate',
+            420: 'OpLoadoutRead',
+            421: 'OpLoadoutReadHeaders',
+            422: 'OpLoadoutUpdate',
+            423: 'OpLoadoutDelete',
+            424: 'OpLoadoutOrderUpdate',
+            425: 'OpLoadoutEquip',
+            426: 'OpBatchUseItemCancel',
+            427: 'OpEnlistFactionWarfare',
+            428: 'OpGetFactionWarfareWeeklyReport',
+            429: 'OpClaimFactionWarfareWeeklyReport',
+            430: 'OpGetFactionWarfareCampaignData',
+            431: 'OpClaimFactionWarfareItemReward',
+            432: 'OpSendMemoryConsumption',
+            433: 'OpPickupCarriableObjectStart',
+            434: 'OpPickupCarriableObjectCancel',
+            435: 'OpSetSavingChestLogsFlag',
+            436: 'OpGetSavingChestLogsFlag',
+            437: 'OpRegisterGuestAccount',
+            438: 'OpResendGuestAccountVerificationEmail',
+            439: 'OpDoSimpleActionStart',
+            440: 'OpDoSimpleActionCancel',
+            441: 'OpGetGvgSeasonContributionByActivity',
+            442: 'OpGetGvgSeasonContributionByCrystalLeague',
+            443: 'OpGetGuildMightCategoryContribution',
+            444: 'OpGetGuildMightCategoryOverview',
+            445: 'OpGetPvpChallengeData',
+            446: 'OpClaimPvpChallengeWeeklyReward',
+            447: 'OpGetPersonalMightStats',
+            448: 'OpGetPvpChallengeSeasonRewards',
+            449: 'OpGetPvpChallengeSeasonRewardItems',
+            450: 'OpClaimPvpChallengeSeasonRewards',
+            451: 'OpClaimPvpChallengeSeasonRewardItems',
+            452: 'OpAuctionGetLoadoutOffers',
+            453: 'OpAuctionBuyLoadoutOffer',
+            454: 'OpAccountDeletionRequest',
+            455: 'OpAccountReactivationRequest',
+            456: 'OpCreateModeratorNotesForAccount',
+            457: 'OpGetModeratorNotesForAccount',
+            458: 'OpGetModerationEscalationDefiniton',
+            459: 'OpEventBasedPopupAddSeen',
+            460: 'OpGetItemKillHistory',
+            461: 'OpGetVanityConsumables',
+            462: 'OpEquipKillEmote',
+            463: 'OpChangeKillEmotePlayOnKnockdownSetting',
+            464: 'OpBuyVanityConsumableCharges',
+            465: 'OpReclaimVanityItem',
+            466: 'OpGetArenaRankings',
+            467: 'OpGetCrystalLeagueStatistics',
+            468: 'OpSendOptionsLog',
+            469: 'OpSendControlsOptionsLog',
+            470: 'OpMistsUseImmediateReturnExit',
+            471: 'OpMistsUseStaticEntrance',
+            472: 'OpMistsUseCityRoadsEntrance',
+            473: 'OpChangeNewGuildMemberMail',
+            474: 'OpGetNewGuildMemberMail',
+            475: 'OpChangeGuildFactionAllegiance',
+            476: 'OpGetGuildFactionAllegiance',
+            477: 'OpGuildBannerChange',
+            478: 'OpGuildGetOptionalStats',
+            479: 'OpGuildSetOptionalStats',
+            480: 'OpGetPlayerInfoForStalk',
+            481: 'OpPayGoldForCharacterTypeChange',
+            482: 'OpQuickSellAuctionQueryAction',
+            483: 'OpQuickSellAuctionSellAction',
+            484: 'OpFcmTokenToServer',
+            485: 'OpApnsTokenToServer',
+            486: 'OpDeathRecap',
+            487: 'OpAuctionFetchFinishedAuctions',
+            488: 'OpAbortAuctionFetchFinishedAuctions',
+            489: 'OpRequestLegendaryEvenHistory',
+            490: 'OpPartyAnswerStartHuntRequest',
+            491: 'OpHuntAbort',
+            492: 'OpUseFindTrackSpellFromItemPrepare',
+            493: 'OpInteractWithTrackStart',
+            494: 'OpInteractWithTrackCancel',
+            495: 'OpTerritoryRaidStart',
+            496: 'OpTerritoryRaidCancel',
+            497: 'OpTerritoryClaimRaidedRawEnergyCrystalResult',
+            498: 'OpGvGSeasonPlayerGuildParticipationDetails',
+            499: 'OpDailyMightBonus',
+            500: 'OpClaimDailyMightBonus',
+            501: 'OpGetFortificationGroupInfo',
+            502: 'OpUpgradeFortificationGroup',
+            503: 'OpCancelUpgradeFortificationGroup',
+            504: 'OpDowngradeFortificationGroup',
+            505: 'OpGetClusterActivityChestEstimates',
+            506: 'OpPartyReadyCheckBegin',
+            507: 'OpPartyReadyCheckUpdate',
+            508: 'OpClaimAlbionJournalReward',
+            509: 'OpTrackAlbionJournalAchievements',
+            510: 'OpTrackAlbionJournalAchievementSubCategory',
+            511: 'OpRequestOutlandsTeleportationUsage',
+            512: 'OpPickupFromPiledObjectStart',
+            513: 'OpPickupFromPiledObjectCancel',
+            514: 'OpAssetOverview',
+            515: 'OpAssetOverviewTabs',
+            516: 'OpAssetOverviewTabContent',
+            517: 'OpAssetOverviewUnfreezeCache',
+            518: 'OpAssetOverviewSearch',
+            519: 'OpAssetOverviewSearchTabs',
+            520: 'OpAssetOverviewSearchTabContent',
+            521: 'OpAssetOverviewRecoverPlayerVault',
+            522: 'OpImmortalizeKillTrophy',
+            523: 'OpArmorySearch',
+            524: 'OpArmoryItemUsageStatistics',
+            525: 'OpArmoryActivityUsageStatistics',
+            526: 'OpHellDungeonUseStaticEntrance',
+            527: 'OpTravelIslandShowroom',
+            528: 'OpGetXuids',
+            529: 'OpXboxServiceTicket',
+            530: 'OpEvaluatePlatformPerks',
+            531: 'OpLinkAccountToXbox',
+            532: 'OpTravelFactionWarfarePortal',
+            533: 'OpRequestRedZoneEventStandings'
+        };
+
+        const EventCodes = {
+            0: 'EvUnused',
+            1: 'EvLeave',
+            2: 'EvJoinFinished',
+            3: 'EvMove',
+            4: 'EvTeleport',
+            5: 'EvChangeEquipment',
+            6: 'EvHealthUpdate',
+            7: 'EvHealthUpdates',
+            8: 'EvEnergyUpdate',
+            9: 'EvDamageShieldUpdate',
+            10: 'EvCraftingFocusUpdate',
+            11: 'EvActiveSpellEffectsUpdate',
+            12: 'EvResetCooldowns',
+            13: 'EvAttack',
+            14: 'EvCastStart',
+            15: 'EvChannelingUpdate',
+            16: 'EvCastCancel',
+            17: 'EvCastTimeUpdate',
+            18: 'EvCastFinished',
+            19: 'EvCastSpell',
+            20: 'EvCastSpells',
+            21: 'EvCastHit',
+            22: 'EvCastHits',
+            23: 'EvStoredTargetsUpdate',
+            24: 'EvChannelingEnded',
+            25: 'EvAttackBuilding',
+            26: 'EvInventoryPutItem',
+            27: 'EvInventoryDeleteItem',
+            28: 'EvInventoryState',
+            29: 'EvNewCharacter',
+            30: 'EvNewEquipmentItem',
+            31: 'EvNewSiegeBannerItem',
+            32: 'EvNewSimpleItem',
+            33: 'EvNewFurnitureItem',
+            34: 'EvNewKillTrophyItem',
+            35: 'EvNewJournalItem',
+            36: 'EvNewLaborerItem',
+            37: 'EvNewEquipmentItemLegendarySoul',
+            38: 'EvNewSimpleHarvestableObject',
+            39: 'EvNewSimpleHarvestableObjectList',
+            40: 'EvNewHarvestableObject',
+            41: 'EvNewTreasureDestinationObject',
+            42: 'EvTreasureDestinationObjectStatus',
+            43: 'EvCloseTreasureDestinationObject',
+            44: 'EvNewSilverObject',
+            45: 'EvNewBuilding',
+            46: 'EvHarvestableChangeState',
+            47: 'EvMobChangeState',
+            48: 'EvFactionBuildingInfo',
+            49: 'EvCraftBuildingInfo',
+            50: 'EvRepairBuildingInfo',
+            51: 'EvMeldBuildingInfo',
+            52: 'EvConstructionSiteInfo',
+            53: 'EvPlayerBuildingInfo',
+            54: 'EvFarmBuildingInfo',
+            55: 'EvTutorialBuildingInfo',
+            56: 'EvLaborerObjectInfo',
+            57: 'EvLaborerObjectJobInfo',
+            58: 'EvMarketPlaceBuildingInfo',
+            59: 'EvHarvestStart',
+            60: 'EvHarvestCancel',
+            61: 'EvHarvestFinished',
+            62: 'EvTakeSilver',
+            63: 'EvRemoveSilver',
+            64: 'EvActionOnBuildingStart',
+            65: 'EvActionOnBuildingCancel',
+            66: 'EvActionOnBuildingFinished',
+            67: 'EvItemRerollQualityFinished',
+            68: 'EvInstallResourceStart',
+            69: 'EvInstallResourceCancel',
+            70: 'EvInstallResourceFinished',
+            71: 'EvCraftItemFinished',
+            72: 'EvLogoutCancel',
+            73: 'EvChatMessage',
+            74: 'EvChatSay',
+            75: 'EvChatWhisper',
+            76: 'EvChatMuted',
+            77: 'EvPlayEmote',
+            78: 'EvStopEmote',
+            79: 'EvSystemMessage',
+            80: 'EvUtilityTextMessage',
+            81: 'EvUpdateMoney',
+            82: 'EvUpdateFame',
+            83: 'EvUpdateLearningPoints',
+            84: 'EvUpdateReSpecPoints',
+            85: 'EvUpdateCurrency',
+            86: 'EvUpdateFactionStanding',
+            87: 'EvUpdateStanding',
+            88: 'EvRespawn',
+            89: 'EvServerDebugLog',
+            90: 'EvCharacterEquipmentChanged',
+            91: 'EvRegenerationHealthChanged',
+            92: 'EvRegenerationEnergyChanged',
+            93: 'EvRegenerationMountHealthChanged',
+            94: 'EvRegenerationCraftingChanged',
+            95: 'EvRegenerationHealthEnergyComboChanged',
+            96: 'EvRegenerationPlayerComboChanged',
+            97: 'EvDurabilityChanged',
+            98: 'EvNewLoot',
+            99: 'EvAttachItemContainer',
+            100: 'EvDetachItemContainer',
+            101: 'EvInvalidateItemContainer',
+            102: 'EvLockItemContainer',
+            103: 'EvGuildUpdate',
+            104: 'EvGuildPlayerUpdated',
+            105: 'EvInvitedToGuild',
+            106: 'EvGuildMemberWorldUpdate',
+            107: 'EvUpdateMatchDetails',
+            108: 'EvObjectEvent',
+            109: 'EvNewMonolithObject',
+            110: 'EvMonolithHasBannersPlacedUpdate',
+            111: 'EvNewOrbObject',
+            112: 'EvNewCastleObject',
+            113: 'EvNewSpellEffectArea',
+            114: 'EvUpdateSpellEffectArea',
+            115: 'EvNewChainSpell',
+            116: 'EvUpdateChainSpell',
+            117: 'EvNewTreasureChest',
+            118: 'EvStartMatch',
+            119: 'EvStartArenaMatchInfos',
+            120: 'EvEndArenaMatch',
+            121: 'EvMatchUpdate',
+            122: 'EvActiveMatchUpdate',
+            123: 'EvNewMob',
+            124: 'EvDebugMobInfo',
+            125: 'EvDebugVariablesInfo',
+            126: 'EvDebugReputationInfo',
+            127: 'EvDebugDiminishingReturnInfo',
+            128: 'EvDebugSmartClusterQueueInfo',
+            129: 'EvClaimOrbStart',
+            130: 'EvClaimOrbFinished',
+            131: 'EvClaimOrbCancel',
+            132: 'EvOrbUpdate',
+            133: 'EvOrbClaimed',
+            134: 'EvOrbReset',
+            135: 'EvNewWarCampObject',
+            136: 'EvNewMatchLootChestObject',
+            137: 'EvNewArenaExit',
+            138: 'EvGuildMemberTerritoryUpdate',
+            139: 'EvInvitedMercenaryToMatch',
+            140: 'EvClusterInfoUpdate',
+            141: 'EvForcedMovement',
+            142: 'EvForcedMovementCancel',
+            143: 'EvCharacterStats',
+            144: 'EvCharacterStatsKillHistory',
+            145: 'EvCharacterStatsDeathHistory',
+            146: 'EvCharacterStatsKnockDownHistory',
+            147: 'EvCharacterStatsKnockedDownHistory',
+            148: 'EvGuildStats',
+            149: 'EvKillHistoryDetails',
+            150: 'EvItemKillHistoryDetails',
+            151: 'EvFullAchievementInfo',
+            152: 'EvFinishedAchievement',
+            153: 'EvAchievementProgressInfo',
+            154: 'EvFullAchievementProgressInfo',
+            155: 'EvFullTrackedAchievementInfo',
+            156: 'EvFullAutoLearnAchievementInfo',
+            157: 'EvQuestGiverQuestOffered',
+            158: 'EvQuestGiverDebugInfo',
+            159: 'EvConsoleEvent',
+            160: 'EvTimeSync',
+            161: 'EvChangeAvatar',
+            162: 'EvChangeMountSkin',
+            163: 'EvGameEvent',
+            164: 'EvKilledPlayer',
+            165: 'EvDied',
+            166: 'EvKnockedDown',
+            167: 'EvUnconcious',
+            168: 'EvMatchPlayerJoinedEvent',
+            169: 'EvMatchPlayerStatsEvent',
+            170: 'EvMatchPlayerStatsCompleteEvent',
+            171: 'EvMatchTimeLineEventEvent',
+            172: 'EvMatchPlayerMainGearStatsEvent',
+            173: 'EvMatchPlayerChangedAvatarEvent',
+            174: 'EvInvitationPlayerTrade',
+            175: 'EvPlayerTradeStart',
+            176: 'EvPlayerTradeCancel',
+            177: 'EvPlayerTradeUpdate',
+            178: 'EvPlayerTradeFinished',
+            179: 'EvPlayerTradeAcceptChange',
+            180: 'EvMiniMapPing',
+            181: 'EvMarketPlaceNotification',
+            182: 'EvDuellingChallengePlayer',
+            183: 'EvNewDuellingPost',
+            184: 'EvDuelStarted',
+            185: 'EvDuelEnded',
+            186: 'EvDuelDenied',
+            187: 'EvDuelRequestCanceled',
+            188: 'EvDuelLeftArea',
+            189: 'EvDuelReEnteredArea',
+            190: 'EvNewRealEstate',
+            191: 'EvMiniMapOwnedBuildingsPositions',
+            192: 'EvRealEstateListUpdate',
+            193: 'EvGuildLogoUpdate',
+            194: 'EvGuildLogoChanged',
+            195: 'EvPlaceableObjectPlace',
+            196: 'EvPlaceableObjectPlaceCancel',
+            197: 'EvFurnitureObjectBuffProviderInfo',
+            198: 'EvFurnitureObjectCheatProviderInfo',
+            199: 'EvFarmableObjectInfo',
+            200: 'EvNewUnreadMails',
+            201: 'EvMailOperationPossible',
+            202: 'EvGuildLogoObjectUpdate',
+            203: 'EvStartLogout',
+            204: 'EvNewChatChannels',
+            205: 'EvJoinedChatChannel',
+            206: 'EvLeftChatChannel',
+            207: 'EvRemovedChatChannel',
+            208: 'EvAccessStatus',
+            209: 'EvMounted',
+            210: 'EvMountStart',
+            211: 'EvMountCancel',
+            212: 'EvNewTravelpoint',
+            213: 'EvNewIslandAccessPoint',
+            214: 'EvNewExit',
+            215: 'EvUpdateHome',
+            216: 'EvUpdateChatSettings',
+            217: 'EvResurrectionOffer',
+            218: 'EvResurrectionReply',
+            219: 'EvLootEquipmentChanged',
+            220: 'EvUpdateUnlockedGuildLogos',
+            221: 'EvUpdateUnlockedAvatars',
+            222: 'EvUpdateUnlockedAvatarRings',
+            223: 'EvUpdateUnlockedBuildings',
+            224: 'EvNewIslandManagement',
+            225: 'EvNewTeleportStone',
+            226: 'EvCloak',
+            227: 'EvPartyInvitation',
+            228: 'EvPartyJoinRequest',
+            229: 'EvPartyJoined',
+            230: 'EvPartyDisbanded',
+            231: 'EvPartyPlayerJoined',
+            232: 'EvPartyChangedOrder',
+            233: 'EvPartyPlayerLeft',
+            234: 'EvPartyLeaderChanged',
+            235: 'EvPartyLootSettingChangedPlayer',
+            236: 'EvPartySilverGained',
+            237: 'EvPartyPlayerUpdated',
+            238: 'EvPartyInvitationAnswer',
+            239: 'EvPartyJoinRequestAnswer',
+            240: 'EvPartyMarkedObjectsUpdated',
+            241: 'EvPartyOnClusterPartyJoined',
+            242: 'EvPartySetRoleFlag',
+            243: 'EvPartyInviteOrJoinPlayerEquipmentInfo',
+            244: 'EvPartyReadyCheckUpdate',
+            245: 'EvPartyFactionWarfareReinforcementSettingChangedPlayer',
+            246: 'EvSpellCooldownUpdate',
+            247: 'EvNewHellgateExitPortal',
+            248: 'EvNewExpeditionExit',
+            249: 'EvNewExpeditionNarrator',
+            250: 'EvExitEnterStart',
+            251: 'EvExitEnterCancel',
+            252: 'EvExitEnterFinished',
+            253: 'EvNewQuestGiverObject',
+            254: 'EvFullQuestInfo',
+            255: 'EvQuestProgressInfo',
+            256: 'EvQuestGiverInfoForPlayer',
+            257: 'EvFullExpeditionInfo',
+            258: 'EvExpeditionQuestProgressInfo',
+            259: 'EvInvitedToExpedition',
+            260: 'EvExpeditionRegistrationInfo',
+            261: 'EvEnteringExpeditionStart',
+            262: 'EvEnteringExpeditionCancel',
+            263: 'EvRewardGranted',
+            264: 'EvArenaRegistrationInfo',
+            265: 'EvEnteringArenaStart',
+            266: 'EvEnteringArenaCancel',
+            267: 'EvEnteringArenaLockStart',
+            268: 'EvEnteringArenaLockCancel',
+            269: 'EvInvitedToArenaMatch',
+            270: 'EvUsingHellgateShrine',
+            271: 'EvEnteringHellgateLockStart',
+            272: 'EvEnteringHellgateLockCancel',
+            273: 'EvPlayerCounts',
+            274: 'EvInCombatStateUpdate',
+            275: 'EvOtherGrabbedLoot',
+            276: 'EvTreasureChestUsingStart',
+            277: 'EvTreasureChestUsingFinished',
+            278: 'EvTreasureChestUsingCancel',
+            279: 'EvTreasureChestUsingOpeningComplete',
+            280: 'EvTreasureChestForceCloseInventory',
+            281: 'EvLocalTreasuresUpdate',
+            282: 'EvLootChestSpawnpointsUpdate',
+            283: 'EvPremiumChanged',
+            284: 'EvPremiumExtended',
+            285: 'EvPremiumLifeTimeRewardGained',
+            286: 'EvGoldPurchased',
+            287: 'EvLaborerGotUpgraded',
+            288: 'EvJournalGotFull',
+            289: 'EvJournalFillError',
+            290: 'EvFriendRequest',
+            291: 'EvFriendRequestInfos',
+            292: 'EvFriendInfos',
+            293: 'EvFriendRequestAnswered',
+            294: 'EvFriendOnlineStatus',
+            295: 'EvFriendRequestCanceled',
+            296: 'EvFriendRemoved',
+            297: 'EvFriendUpdated',
+            298: 'EvPartyLootItems',
+            299: 'EvPartyLootItemsRemoved',
+            300: 'EvPartyLootItemTypesRemoved',
+            301: 'EvReputationUpdate',
+            302: 'EvDefenseUnitAttackBegin',
+            303: 'EvDefenseUnitAttackEnd',
+            304: 'EvDefenseUnitAttackDamage',
+            305: 'EvUnrestrictedPvpZoneUpdate',
+            306: 'EvUnrestrictedPvpZoneStatus',
+            307: 'EvReputationImplicationUpdate',
+            308: 'EvNewMountObject',
+            309: 'EvMountHealthUpdate',
+            310: 'EvMountCooldownUpdate',
+            311: 'EvNewExpeditionAgent',
+            312: 'EvNewExpeditionCheckPoint',
+            313: 'EvExpeditionStartEvent',
+            314: 'EvVoteEvent',
+            315: 'EvRatingEvent',
+            316: 'EvNewArenaAgent',
+            317: 'EvBoostFarmable',
+            318: 'EvUseFunction',
+            319: 'EvNewPortalEntrance',
+            320: 'EvNewPortalExit',
+            321: 'EvNewRandomDungeonExit',
+            322: 'EvWaitingQueueUpdate',
+            323: 'EvPlayerMovementRateUpdate',
+            324: 'EvObserveStart',
+            325: 'EvMinimapZergs',
+            326: 'EvMinimapSmartClusterZergs',
+            327: 'EvPaymentTransactions',
+            328: 'EvPerformanceStatsUpdate',
+            329: 'EvOverloadModeUpdate',
+            330: 'EvDebugDrawEvent',
+            331: 'EvRecordCameraMove',
+            332: 'EvRecordStart',
+            333: 'EvDeliverCarriableObjectStart',
+            334: 'EvDeliverCarriableObjectCancel',
+            335: 'EvDeliverCarriableObjectReset',
+            336: 'EvDeliverCarriableObjectFinished',
+            337: 'EvTerritoryClaimStart',
+            338: 'EvTerritoryClaimCancel',
+            339: 'EvTerritoryClaimFinished',
+            340: 'EvTerritoryScheduleResult',
+            341: 'EvTerritoryUpgradeWithPowerCrystalResult',
+            342: 'EvReceiveCarriableObjectStart',
+            343: 'EvReceiveCarriableObjectFinished',
+            344: 'EvUpdateAccountState',
+            345: 'EvStartDeterministicRoam',
+            346: 'EvGuildFullAccessTagsUpdated',
+            347: 'EvGuildAccessTagUpdated',
+            348: 'EvGvgSeasonUpdate',
+            349: 'EvGvgSeasonCheatCommand',
+            350: 'EvSeasonPointsByKillingBooster',
+            351: 'EvFishingStart',
+            352: 'EvFishingCast',
+            353: 'EvFishingCatch',
+            354: 'EvFishingFinished',
+            355: 'EvFishingCancel',
+            356: 'EvNewFloatObject',
+            357: 'EvNewFishingZoneObject',
+            358: 'EvFishingMiniGame',
+            359: 'EvAlbionJournalAchievementCompleted',
+            360: 'EvUpdatePuppet',
+            361: 'EvChangeFlaggingFinished',
+            362: 'EvNewOutpostObject',
+            363: 'EvOutpostUpdate',
+            364: 'EvOutpostClaimed',
+            365: 'EvOverChargeEnd',
+            366: 'EvOverChargeStatus',
+            367: 'EvPartyFinderFullUpdate',
+            368: 'EvPartyFinderUpdate',
+            369: 'EvPartyFinderApplicantsUpdate',
+            370: 'EvPartyFinderEquipmentSnapshot',
+            371: 'EvPartyFinderJoinRequestDeclined',
+            372: 'EvNewUnlockedPersonalSeasonRewards',
+            373: 'EvPersonalSeasonPointsGained',
+            374: 'EvPersonalSeasonPastSeasonDataEvent',
+            375: 'EvMatchLootChestOpeningStart',
+            376: 'EvMatchLootChestOpeningFinished',
+            377: 'EvMatchLootChestOpeningCancel',
+            378: 'EvNotifyCrystalMatchReward',
+            379: 'EvCrystalRealmFeedback',
+            380: 'EvNewLocationMarker',
+            381: 'EvNewTutorialBlocker',
+            382: 'EvNewTileSwitch',
+            383: 'EvNewInformationProvider',
+            384: 'EvNewDynamicGuildLogo',
+            385: 'EvNewDecoration',
+            386: 'EvTutorialUpdate',
+            387: 'EvTriggerHintBox',
+            388: 'EvRandomDungeonPositionInfo',
+            389: 'EvNewLootChest',
+            390: 'EvUpdateLootChest',
+            391: 'EvLootChestOpened',
+            392: 'EvUpdateLootProtectedByMobsWithMinimapDisplay',
+            393: 'EvNewShrine',
+            394: 'EvUpdateShrine',
+            395: 'EvUpdateRoom',
+            396: 'EvNewMobSoul',
+            397: 'EvNewHellgateShrine',
+            398: 'EvUpdateHellgateShrine',
+            399: 'EvActivateHellgateExit',
+            400: 'EvMutePlayerUpdate',
+            401: 'EvShopTileUpdate',
+            402: 'EvShopUpdate',
+            403: 'EvAntiCheatKick',
+            404: 'EvBattlEyeServerMessage',
+            405: 'EvUnlockVanityUnlock',
+            406: 'EvAvatarUnlocked',
+            407: 'EvCustomizationChanged',
+            408: 'EvBaseVaultInfo',
+            409: 'EvGuildVaultInfo',
+            410: 'EvBankVaultInfo',
+            411: 'EvRecoveryVaultPlayerInfo',
+            412: 'EvRecoveryVaultGuildInfo',
+            413: 'EvUpdateWardrobe',
+            414: 'EvCastlePhaseChanged',
+            415: 'EvGuildAccountLogEvent',
+            416: 'EvNewHideoutObject',
+            417: 'EvNewHideoutManagement',
+            418: 'EvNewHideoutExit',
+            419: 'EvInitHideoutAttackStart',
+            420: 'EvInitHideoutAttackCancel',
+            421: 'EvInitHideoutAttackFinished',
+            422: 'EvHideoutManagementUpdate',
+            423: 'EvHideoutUpgradeWithPowerCrystalResult',
+            424: 'EvIpChanged',
+            425: 'EvSmartClusterQueueUpdateInfo',
+            426: 'EvSmartClusterQueueActiveInfo',
+            427: 'EvSmartClusterQueueKickWarning',
+            428: 'EvSmartClusterQueueInvite',
+            429: 'EvReceivedGvgSeasonPoints',
+            430: 'EvTowerPowerPointUpdate',
+            431: 'EvOpenWorldAttackScheduleStart',
+            432: 'EvOpenWorldAttackScheduleFinished',
+            433: 'EvOpenWorldAttackScheduleCancel',
+            434: 'EvOpenWorldAttackConquerStart',
+            435: 'EvOpenWorldAttackConquerFinished',
+            436: 'EvOpenWorldAttackConquerCancel',
+            437: 'EvOpenWorldAttackConquerStatus',
+            438: 'EvOpenWorldAttackStart',
+            439: 'EvOpenWorldAttackEnd',
+            440: 'EvNewRandomResourceBlocker',
+            441: 'EvNewHomeObject',
+            442: 'EvHideoutObjectUpdate',
+            443: 'EvUpdateInfamy',
+            444: 'EvMinimapPositionMarkers',
+            445: 'EvNewTunnelExit',
+            446: 'EvCorruptedDungeonUpdate',
+            447: 'EvCorruptedDungeonStatus',
+            448: 'EvCorruptedDungeonInfamy',
+            449: 'EvHellgateRestrictedAreaUpdate',
+            450: 'EvHellgateInfamy',
+            451: 'EvHellgateStatus',
+            452: 'EvHellgateStatusUpdate',
+            453: 'EvHellgateSuspense',
+            454: 'EvReplaceSpellSlotWithMultiSpell',
+            455: 'EvNewCorruptedShrine',
+            456: 'EvUpdateCorruptedShrine',
+            457: 'EvCorruptedShrineUsageStart',
+            458: 'EvCorruptedShrineUsageCancel',
+            459: 'EvExitUsed',
+            460: 'EvLinkedToObject',
+            461: 'EvLinkToObjectBroken',
+            462: 'EvEstimatedMarketValueUpdate',
+            463: 'EvStuckCancel',
+            464: 'EvDungonEscapeReady',
+            465: 'EvFactionWarfareClusterState',
+            466: 'EvFactionWarfareHasUnclaimedWeeklyReportsEvent',
+            467: 'EvSimpleFeedback',
+            468: 'EvSmartClusterQueueSkipClusterError',
+            469: 'EvXignCodeEvent',
+            470: 'EvBatchUseItemStart',
+            471: 'EvBatchUseItemEnd',
+            472: 'EvRedZonePlayerNotification',
+            473: 'EvRedZoneEventCheatCleanup',
+            474: 'EvRedZoneFortressEventChestOpened',
+            475: 'EvRedZoneWorldMapEvent',
+            476: 'EvFactionWarfareStats',
+            477: 'EvUpdateFactionBalanceFactors',
+            478: 'EvFactionEnlistmentChanged',
+            479: 'EvUpdateFactionRank',
+            480: 'EvFactionWarfareCampaignRewardsUnlocked',
+            481: 'EvFeaturedFeatureUpdate',
+            482: 'EvNewCarriableObject',
+            483: 'EvMinimapCrystalPositionMarker',
+            484: 'EvCarriedObjectUpdate',
+            485: 'EvPickupCarriableObjectStart',
+            486: 'EvPickupCarriableObjectCancel',
+            487: 'EvPickupCarriableObjectFinished',
+            488: 'EvDoSimpleActionStart',
+            489: 'EvDoSimpleActionCancel',
+            490: 'EvDoSimpleActionFinished',
+            491: 'EvNotifyGuestAccountVerified',
+            492: 'EvMightAndFavorReceivedEvent',
+            493: 'EvWeeklyPvpChallengeRewardStateUpdate',
+            494: 'EvNewUnlockedPvpSeasonChallengeRewards',
+            495: 'EvStaticDungeonEntrancesDungeonEventStatusUpdates',
+            496: 'EvStaticDungeonDungeonValueUpdate',
+            497: 'EvStaticDungeonEntranceDungeonEventsAborted',
+            498: 'EvInAppPurchaseConfirmedGooglePlay',
+            499: 'EvFeatureSwitchInfo',
+            500: 'EvPartyJoinRequestAborted',
+            501: 'EvPartyInviteAborted',
+            502: 'EvPartyStartHuntRequest',
+            503: 'EvPartyStartHuntRequested',
+            504: 'EvPartyStartHuntRequestAnswer',
+            505: 'EvPartyPlayerLeaveScheduled',
+            506: 'EvGuildInviteDeclined',
+            507: 'EvCancelMultiSpellSlots',
+            508: 'EvNewVisualEventObject',
+            509: 'EvCastleClaimProgress',
+            510: 'EvCastleClaimProgressLogo',
+            511: 'EvTownPortalUpdateState',
+            512: 'EvTownPortalFailed',
+            513: 'EvConsumableVanityChargesAdded',
+            514: 'EvFestivitiesUpdate',
+            515: 'EvNewBannerObject',
+            516: 'EvNewMistsImmediateReturnExit',
+            517: 'EvMistsPlayerJoinedInfo',
+            518: 'EvNewMistsStaticEntrance',
+            519: 'EvNewMistsOpenWorldExit',
+            520: 'EvNewTunnelExitTemp',
+            521: 'EvNewMistsWispSpawn',
+            522: 'EvMistsWispSpawnStateChange',
+            523: 'EvNewMistsCityEntrance',
+            524: 'EvNewMistsCityRoadsEntrance',
+            525: 'EvMistsCityRoadsEntrancePartyStateUpdate',
+            526: 'EvMistsCityRoadsEntranceClearStateForParty',
+            527: 'EvMistsEntranceDataChanged',
+            528: 'EvNewCagedObject',
+            529: 'EvCagedObjectStateUpdated',
+            530: 'EvEntrancePartyBindingCreated',
+            531: 'EvEntrancePartyBindingCleared',
+            532: 'EvEntrancePartyBindingInfos',
+            533: 'EvNewMistsBorderExit',
+            534: 'EvNewMistsDungeonExit',
+            535: 'EvLocalQuestInfos',
+            536: 'EvLocalQuestStarted',
+            537: 'EvLocalQuestActive',
+            538: 'EvLocalQuestInactive',
+            539: 'EvLocalQuestProgressUpdate',
+            540: 'EvNewUnrestrictedPvpZone',
+            541: 'EvTemporaryFlaggingStatusUpdate',
+            542: 'EvSpellTestPerformanceUpdate',
+            543: 'EvTransformation',
+            544: 'EvTransformationEnd',
+            545: 'EvUpdateTrustlevel',
+            546: 'EvRevealHiddenTimeStamps',
+            547: 'EvModifyItemTraitFinished',
+            548: 'EvRerollItemTraitValueFinished',
+            549: 'EvHuntQuestProgressInfo',
+            550: 'EvHuntStarted',
+            551: 'EvHuntFinished',
+            552: 'EvHuntAborted',
+            553: 'EvHuntMissionStepStateUpdate',
+            554: 'EvNewHuntTrack',
+            555: 'EvHuntMissionUpdate',
+            556: 'EvHuntQuestMissionProgressUpdate',
+            557: 'EvHuntTrackUsed',
+            558: 'EvHuntTrackUseableAgain',
+            559: 'EvMinimapHuntTrackMarkers',
+            560: 'EvNoTracksFound',
+            561: 'EvHuntQuestAborted',
+            562: 'EvInteractWithTrackStart',
+            563: 'EvInteractWithTrackCancel',
+            564: 'EvInteractWithTrackFinished',
+            565: 'EvNewDynamicCompound',
+            566: 'EvLegendaryItemDestroyed',
+            567: 'EvAttunementInfo',
+            568: 'EvTerritoryClaimRaidedRawEnergyCrystalResult',
+            569: 'EvCarriedObjectExpiryWarning',
+            570: 'EvCarriedObjectExpired',
+            571: 'EvTerritoryRaidStart',
+            572: 'EvTerritoryRaidCancel',
+            573: 'EvTerritoryRaidFinished',
+            574: 'EvTerritoryRaidResult',
+            575: 'EvTerritoryMonolithActiveRaidStatus',
+            576: 'EvTerritoryMonolithActiveRaidCancelled',
+            577: 'EvMonolithEnergyStorageUpdate',
+            578: 'EvMonolithNextScheduledOpenWorldAttackUpdate',
+            579: 'EvMonolithProtectedBuildingsDamageReductionUpdate',
+            580: 'EvNewBuildingBaseEvent',
+            581: 'EvNewFortificationBuilding',
+            582: 'EvNewCastleGateBuilding',
+            583: 'EvBuildingDurabilityUpdate',
+            584: 'EvMonolithFortificationPointsUpdate',
+            585: 'EvFortificationBuildingUpgradeInfo',
+            586: 'EvFortificationBuildingsDamageStateUpdate',
+            587: 'EvSiegeNotificationEvent',
+            588: 'EvUpdateEnemyWarBannerActive',
+            589: 'EvTerritoryAnnouncePlayerEjection',
+            590: 'EvCastleGateSwitchUseStarted',
+            591: 'EvCastleGateSwitchUseFinished',
+            592: 'EvFortificationBuildingWillDowngrade',
+            593: 'EvBotCommand',
+            594: 'EvJournalAchievementProgressUpdate',
+            595: 'EvJournalClaimableRewardUpdate',
+            596: 'EvKeySync',
+            597: 'EvLocalQuestAreaGone',
+            598: 'EvDynamicTemplate',
+            599: 'EvDynamicTemplateForcedStateChange',
+            600: 'EvNewOutlandsTeleportationPortal',
+            601: 'EvNewOutlandsTeleportationReturnPortal',
+            602: 'EvOutlandsTeleportationBindingCleared',
+            603: 'EvOutlandsTeleportationReturnPortalUpdateEvent',
+            604: 'EvPlayerUsedOutlandsTeleportationPortal',
+            605: 'EvEncumberedRestricted',
+            606: 'EvNewPiledObject',
+            607: 'EvPiledObjectStateChanged',
+            608: 'EvNewSmugglerCrateDeliveryStation',
+            609: 'EvKillRewardedNoFame',
+            610: 'EvPickupFromPiledObjectStart',
+            611: 'EvPickupFromPiledObjectCancel',
+            612: 'EvPickupFromPiledObjectReset',
+            613: 'EvPickupFromPiledObjectFinished',
+            614: 'EvArmoryActivityChange',
+            615: 'EvNewKillTrophyFurnitureBuilding',
+            616: 'EvHellDungeonsPlayerJoinedInfo',
+            617: 'EvNewTileSwitchTrigger',
+            618: 'EvNewMultiRewardObject',
+            619: 'EvNewHellDungeonSoulShrineObject',
+            620: 'EvHellDungeonSoulShrineStateUpdate',
+            621: 'EvNewResurrectionShrine',
+            622: 'EvUpdateResurrectionShrine',
+            623: 'EvStandTimeFinished',
+            624: 'EvEpicAchievementAndStatsUpdate',
+            625: 'EvSpectateTargetAfterDeathUpdate',
+            626: 'EvSpectateTargetAfterDeathEnded',
+            627: 'EvNewHellDungeonUpwardExit',
+            628: 'EvNewHellDungeonSoulExit',
+            629: 'EvNewHellDungeonDownwardExit',
+            630: 'EvNewHellDungeonChestExit',
+            631: 'EvNewCorruptedStaticEntrance',
+            632: 'EvNewHellDungeonStaticEntrance',
+            633: 'EvUpdateHellDungeonStaticEntranceState',
+            634: 'EvDebugTriggerHellDungeonShutdownStart',
+            635: 'EvFullJournalQuestInfo',
+            636: 'EvJournalQuestProgressInfo',
+            637: 'EvNewHellDungeonRoomShrineObject',
+            638: 'EvHellDungeonRoomShrineStateUpdate',
+            639: 'EvSimpleBehaviourBuildingStateUpdate',
+            640: 'EvSetTimeScaling',
+            641: 'EvStopTimeScaling',
+            642: 'EvKeyValidation',
+            643: 'EvPlayerJoinMapMarkerTimerStates',
+            644: 'EvNewMapMarkerTimer',
+            645: 'EvRemoveMapMarkerTimer',
+            646: 'EvNewFactionFortressObject',
+            647: 'EvFactionFortressAnnouncePlayerEjection',
+            648: 'EvRewardFactionWarfareSupply',
+            649: 'EvFactionCaptureAreaProgressUpdate',
+            650: 'EvFactionFortressClaimed',
+            651: 'EvFactionFortressWeaponCachesSpawned',
+            652: 'EvFactionFortressWeaponCacheClaimed',
+            653: 'EvFactionFortressFightStateUpdate',
+            654: 'EvFactionFortressCutoffFightStateUpdate',
+            655: 'EvFactionFortressFightEnded',
+            656: 'EvNewFactionWarfarePortal',
+            657: 'EvFactionPortalTargetUpdate',
+            658: 'EvFactionFortressFightStartedInRemoteClusterEvent',
+            659: 'EvFactionFortressFightFinishedInRemoteClusterEvent',
+            660: 'EvFactionDuchySupplyWarDefensiveVictoryEvent',
+            661: 'EvFactionDuchyReconnectedFromCutoffEvent',
+            662: 'EvFactionFortressCutoffFightCancelledByClusterOwnerChangeEvent',
+            663: 'EvFactionDuchyEnteredCutoffStateEvent',
+            664: 'EvRedZoneEventStandings',
+            665: 'EvNewFactionBattleStandardDeliveryStation'
+        };
+
+        const spellManager = new SpellManager('ZH-CN');
+        spellManager.load('http://localhost:8081/data/spells.json');
+
+        function enrichSpells(obj) {
+            if (typeof obj !== 'object' || obj === null) return;
+            
+            if (obj.SpellIDs && Array.isArray(obj.SpellIDs)) {
+                obj.SpellNames = obj.SpellIDs.map(id => spellManager.getName(id));
+            }
+            if (obj.SpellIndex !== undefined) {
+                 obj.SpellName = spellManager.getName(obj.SpellIndex);
+            }
+            if (obj.SpellID !== undefined) {
+                 obj.SpellName = spellManager.getName(obj.SpellID);
+            }
+            
+            for (let key in obj) {
+                if (typeof obj[key] === 'object') {
+                    enrichSpells(obj[key]);
+                }
+            }
+        }
+
+
+        function getCodeName(type, code) {
+            if (type == 0) {
+                return EventCodes[code] || 'UnknownEvent';
+            } else {
+                return OperationCodes[code] || 'UnknownOp';
+            }
+        }
+
+
+        let ws = null;
+        const statusDiv = document.getElementById('status');
+        const logDiv = document.getElementById('log');
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        
+        let filters = new Set(); // Stores "Type:Code" strings
+
+        function updateStatus(state, message) {
+            statusDiv.className = `status-${state}`;
+            statusDiv.textContent = `Status: ${message}`;
+            
+            if (state === 'connected') {
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+            } else {
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            }
+        }
+
+        function formatValue(val) {
+            if (typeof val === 'object' && val !== null) {
+                return JSON.stringify(val);
+            }
+            return String(val);
+        }
+
+        function flattenObject(obj, prefix = '') {
+            let result = [];
+            for (let key in obj) {
+                if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                    result = result.concat(flattenObject(obj[key], prefix + key + '.'));
+                } else {
+                    result.push(`<span class="kv-pair"><span class="kv-key">${prefix}${key}:</span> <span class="kv-value">${formatValue(obj[key])}</span></span>`);
+                }
+            }
+            return result;
+        }
+
+        function shouldShow(type, code) {
+            const key = `${type}:${code}`;
+            const mode = document.getElementById('filter-mode').value;
+            
+            if (filters.size === 0) return mode === 'blacklist'; // If blacklist mode and no filters, show everything. If whitelist and no filters, show nothing? Or show everything? Usually whitelist empty means show nothing, but for usability maybe show all. Let's assume empty whitelist = show all for now, or strict? Let's make empty whitelist = show nothing to be strict, BUT user experience wise initial state should show all.
+            // Let's implement: 
+            // Whitelist: Show ONLY if in set. (If set empty, show nothing? Or show all? Let's say show all if empty for convenience)
+            // Blacklist: Show UNLESS in set.
+
+            if (filters.size === 0) return true;
+
+            if (mode === 'whitelist') {
+                return filters.has(key);
+            } else {
+                return !filters.has(key);
+            }
+        }
+
+        function addFilter() {
+            const typeInput = document.getElementById('filter-type');
+            const codeInput = document.getElementById('filter-code');
+            const type = typeInput.value;
+            const code = codeInput.value.trim();
+            
+            if (code) {
+                const key = `${type}:${code}`;
+                filters.add(key);
+                codeInput.value = '';
+                renderFilters();
+            }
+        }
+
+        function removeFilter(val) {
+            filters.delete(val);
+            renderFilters();
+        }
+
+        function renderFilters() {
+            const container = document.getElementById('filter-list');
+            container.innerHTML = '';
+            
+            const typeLabels = {
+                '0': 'Event',
+                '1': 'Request',
+                '2': 'Response',
+            };
+
+            filters.forEach(f => {
+                const [type, code] = f.split(':');
+                const label = `${typeLabels[type] || type}:${code}`;
+                
+                const tag = document.createElement('div');
+                tag.className = 'filter-tag';
+                tag.innerHTML = `${label} <span class="remove" onclick="removeFilter('${f}')">×</span>`;
+                container.appendChild(tag);
+            });
+        }
+
+        function appendLog(data) {
+            let parsed = data;
+            if (typeof data === 'string') {
+                try {
+                    parsed = JSON.parse(data);
+                } catch(e) {
+                    parsed = { raw: data };
+                }
+            }
+
+            enrichSpells(parsed);
+            // Determine Type and Code
+            let type = parsed.Type;
+            let code = parsed.Code;
+            
+
+            // Convert code to string for comparison
+            // code = String(code);
+
+            // Filter Check
+            if (!shouldShow(type, code)) return;
+
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            const time = new Date().toLocaleTimeString();
+            const kvPairs = flattenObject(parsed).join('');
+
+            const typeLabels = {
+                '0': 'Event',
+                '1': 'Request',
+                '2': 'Response',
+                '3': 'Operation'
+            };
+            const typeLabel = typeLabels[type] || type;
+
+            entry.innerHTML = `
+                <div class="log-meta">
+                    [${time}] <span class="log-type-tag">${typeLabel}(${type}): ${getCodeName(type, code)} (${code})</span>
+                </div>
+                <div class="log-content">${kvPairs}</div>
+            `;
+            
+            logDiv.appendChild(entry);
+            // Auto scroll if near bottom
+            if (logDiv.scrollHeight - logDiv.scrollTop - logDiv.clientHeight < 100) {
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+        }
+
+        function connect() {
+            if (ws) return;
+
+            updateStatus('connecting', 'Connecting...');
+            
+            try {
+                ws = new WebSocket('ws://127.0.0.1:8081/events');
+
+                ws.onopen = function() {
+                    updateStatus('connected', 'Connected');
+                    appendLog({ system: "Connection established" });
+                };
+
+                ws.onmessage = function(event) {
+                    appendLog(event.data);
+                };
+
+                ws.onclose = function(event) {
+                    ws = null;
+                    updateStatus('disconnected', `Disconnected (Code: ${event.code})`);
+                    appendLog({ system: "Connection closed" });
+                };
+
+                ws.onerror = function(error) {
+                    console.error('WebSocket Error:', error);
+                    updateStatus('disconnected', 'Error occurred');
+                };
+
+            } catch (e) {
+                updateStatus('disconnected', 'Connection failed: ' + e.message);
+                ws = null;
+            }
+        }
+
+        function disconnect() {
+            if (ws) ws.close();
+        }
+
+        function clearLog() {
+            logDiv.innerHTML = '';
+        }
+
+        // Auto connect
+        window.onload = connect;
+    </script>
+</body>
+</html>

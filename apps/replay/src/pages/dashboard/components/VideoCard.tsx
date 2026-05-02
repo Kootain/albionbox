@@ -34,9 +34,11 @@ export function VideoCard({ video, username, onPlay, onEdit, onDelete, boundAcco
       
       <div className="p-3">
         <div className="font-bold text-[14px] text-system-text truncate group-hover:text-system-accent transition-colors flex justify-between items-center">
-          <span>{username}</span>
+          <span className="truncate" title={video.title || ''}>
+            {video.title && video.title.trim() !== 'title' ? video.title : ''}
+          </span>
           {canDelete && (
-            <div className="flex gap-1">
+            <div className="flex gap-1 shrink-0 ml-2">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -64,8 +66,11 @@ export function VideoCard({ video, username, onPlay, onEdit, onDelete, boundAcco
             </div>
           )}
         </div>
-        <div className="text-[11px] text-system-dim mt-1 truncate">
-          <span className="uppercase">{video.filename}</span> • {video.highlights.length} {t('dash.marks')}
+        <div className="text-[11px] text-system-dim mt-1 flex justify-between items-center gap-2">
+          <div className="truncate shrink">
+            <span className="uppercase">{video.filename}</span> • {video.highlights.length} {t('dash.marks')}
+          </div>
+          <span className="font-medium shrink-0 ml-auto">{username}</span>
         </div>
       </div>
     </div>

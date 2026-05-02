@@ -56,14 +56,18 @@ export async function dispatchEvent(event: any, env: any) {
 
   // 2. Evaluate rules against event
   const eventData = event.d || event;
-
   for (const rule of rules) {
     let matches = true;
-
-    if (rule.guild_id && eventData.extra?.guild_id !== rule.guild_id) {
-      matches = false;
+    let channel_id: string|null = null
+    let guild_id: string|null =  null
+    if (eventData.channel_type == 'GROUP' && eventData.type == 255) {
+      guild_id = eventData.target_id
+      channel_id = eventData.extra?.body?.channel_id
+    } else {
+      guild_id = eventData.extra?.guild_id
+      channel_id = eventData.target_id
     }
-    if (rule.channel_id && eventData.target_id !== rule.channel_id) {
+    if (rule.channel_id && channel_id !== rule.channel_id) {
       matches = false;
     }
     if (rule.msg_type && eventData.type !== rule.msg_type) {
@@ -76,8 +80,8 @@ export async function dispatchEvent(event: any, env: any) {
         matches = false;
       }
     }
-
     if (matches) {
+      console.log(`${rule.consumer_id} match: ${matches}`)
       const consumer = registry.get(rule.consumer_id);
       if (consumer) {
         try {

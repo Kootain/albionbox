@@ -15,6 +15,7 @@ import Settings from './pages/settings/SettingsPage';
 import GameDataTestPage from './pages/test/GameDataTestPage';
 import KookMessageBrowserPage from './pages/test/KookMessageBrowserPage';
 import ImageRecognitionTestPage from './pages/test/ImageRecognitionTestPage';
+import DataCollectionPage from './pages/data-collection/DataCollectionPage';
 import { ToastProvider } from './components/ui/Toast';
 import { ConfirmProvider } from './components/ui/Confirm';
 
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="/guild-dashboard" element={<ProtectedRoute><AppShell><GuildDashboard /></AppShell></ProtectedRoute>} />
             <Route path="/battles/:ids" element={<ProtectedRoute><AppShell><BattleReportDetail /></AppShell></ProtectedRoute>} />
             <Route path="/guilds" element={<ProtectedRoute><AppShell><Guilds /></AppShell></ProtectedRoute>} />
+            <Route path="/data-collection" element={<ProtectedRoute><AppShell><DataCollectionPage /></AppShell></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><AppShell><Profile /></AppShell></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><AppShell><Settings /></AppShell></ProtectedRoute>} />
             <Route path="/test/game-data" element={<ProtectedRoute><AppShell><GameDataTestPage /></AppShell></ProtectedRoute>} />

@@ -175,13 +175,15 @@ const sendMessageHandler = factory.createHandlers(
     channelId: z.string().min(1),
     content: z.string().min(1),
     type: z.coerce.number().int().optional(),
+    quote: z.string().optional(),
   })),
   async (c) => {
-    const { channelId, content, type } = c.req.valid('json')
+    const { channelId, content, type, quote } = c.req.valid('json')
     return kookPostForm(c, '/message/create', {
       target_id: channelId,
       content,
       type: String(type ?? 9),
+      quote: quote ?? '',
     })
   }
 )

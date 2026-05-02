@@ -16,6 +16,7 @@ const translations: Translations = {
   'dash.edit': { en: 'EDIT', zh: '编辑' },
   'dash.delete': { en: 'DEL', zh: '删除' },
   'edit.title': { en: 'Edit Video', zh: '编辑视频' },
+  'edit.videoTitle': { en: 'Video Title', zh: '视频标题' },
   'dash.marks': { en: 'Comments', zh: '条评论' },
   'upload.title': { en: 'Upload VOD', zh: '上传游戏录像' },
   'upload.videoFile': { en: 'Video File', zh: '视频文件' },

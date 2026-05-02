@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 export const CreateReplayVideoSchema = z.object({
   vid: z.string().min(1, 'Video ID is required'),
+  title: z.string().optional(),
   duration: z.number().int().optional(),
   username: z.string().min(1, 'Username is required'),
   date: z.string().min(1, 'Date is required'),
@@ -34,6 +35,7 @@ export const UpdateReplayHighlightSchema = z.object({
 export type UpdateReplayHighlight = z.infer<typeof UpdateReplayHighlightSchema>
 
 export const UpdateReplayVideoSchema = z.object({
+  title: z.string().optional(),
   role: z.string().min(1, 'Role is required').optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD').optional(),
 })

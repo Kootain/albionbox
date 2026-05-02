@@ -301,8 +301,12 @@ const reactionByMsgHandler = factory.createHandlers(
           .where(eq(regears.id, apply.regearId))
           .execute()
       } else {
+        let status = ApplyStatus.BINDING
+        if (apply.eventId) {
+          status = ApplyStatus.PENDING_AUDIT
+        }
         await db.update(regearApplies)
-          .set({ status: ApplyStatus.BINDING, lastStatusTime: now })
+          .set({ status: status, lastStatusTime: now })
           .where(eq(regearApplies.msgId, msgId))
           .execute()
       }

@@ -1,0 +1,13 @@
+# Tasks
+- [x] Task 1: 完善多语言翻译 i18n
+  - [x] SubTask 1.1: 更新 `apps/web/src/i18n/zh.json` 和 `en.json`，增加如“工会力量个人榜”(`guild_might_ranking`)、“清除数据”(`clear_data`)、“上传数据”(`upload_data`)、“连接中”(`connecting`) 等必要翻译。
+- [x] Task 2: 拆分榜单 UI 到 `GuildMightRankingTab` 组件
+  - [x] SubTask 2.1: 新建 `apps/web/src/pages/data-collection/tabs/GuildMightRankingTab.tsx` 文件。
+  - [x] SubTask 2.2: 将 `DataCollectionPage.tsx` 中的“Data Display Section”部分代码迁移到新组件中。
+  - [x] SubTask 2.3: 在该组件接受 `collectionData`, `isUploading`, `onUpload`, `onClear` 属性。
+  - [x] SubTask 2.4: 在组件中增加“清除数据”的按钮，并绑定 `onClear`。
+- [x] Task 3: 重构 `DataCollectionPage` 以支持 Tabs
+  - [x] SubTask 3.1: 在 `DataCollectionPage` 中增加 `activeTab` state，默认值为 `'guild-might'`。
+  - [x] SubTask 3.2: 增加一个顶部或模块区域内的 Tab 导航，用于在不同的采集模块间切换。
+  - [x] SubTask 3.3: 渲染 `GuildMightRankingTab`，传递相应的状态和方法。
+  - [x] SubTask 3.4: 在 `DataCollectionPage` 中实现 `handleClearGuildMightData` 方法，用于清空 `collectionData`。

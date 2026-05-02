@@ -1,0 +1,6 @@
+- [x] Database schema is updated and migration is generated.
+- [x] API correctly validates and persists the `title` field.
+- [x] Video title defaults to the original filename upon upload.
+- [x] Users can edit the video title from the dashboard.
+- [x] VideoCard displays the title in the top row and the username in the bottom right corner.
+- [x] PlayerModal displays the title instead of just the username.

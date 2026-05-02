@@ -41,18 +41,27 @@ export function extractImageUrlsFromKookMessageEvent(eventData: KookMessageEvent
   const cardList: any[] = Array.isArray(cards) ? cards : [cards]
   const urls: string[] = []
 
-  for (const card of cardList) {
-    const modules: any[] = Array.isArray(card?.modules) ? card.modules : []
-    for (const module of modules) {
-      if (module?.type !== 'container') continue
-      const elements: any[] = Array.isArray(module?.elements) ? module.elements : []
-      for (const element of elements) {
-        const src = element?.src
-        if (typeof src === 'string' && src) urls.push(src)
+  const traverseAndExtract = (obj: any) => {
+    if (!obj || typeof obj !== 'object') return
+    if (Array.isArray(obj)) {
+      obj.forEach(traverseAndExtract)
+    } else {
+      if (obj.type === 'container' && Array.isArray(obj.elements)) {
+        obj.elements.forEach((el: any) => {
+          if (el && typeof el.src === 'string' && el.src) urls.push(el.src)
+        })
+      } else if (obj.type === 'image' && typeof obj.src === 'string' && obj.src) {
+        urls.push(obj.src)
+      } else if (obj.type === 'image-group' && Array.isArray(obj.elements)) {
+        obj.elements.forEach((el: any) => {
+          if (el && typeof el.src === 'string' && el.src) urls.push(el.src)
+        })
       }
+      Object.values(obj).forEach(traverseAndExtract)
     }
   }
 
+  traverseAndExtract(cardList)
   return urls
 }
 

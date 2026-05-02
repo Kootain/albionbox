@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { createFactory } from 'hono/factory'
 import { zValidator } from '@hono/zod-validator'
-import { z } from 'zod'
+import { promise, z } from 'zod'
 import { drizzle } from 'drizzle-orm/d1'
 import { and, ne, eq, inArray, isNull } from 'drizzle-orm'
 import {
@@ -425,60 +425,70 @@ const updateStatusHandler = factory.createHandlers(
     if (apply) {
       const applyMeta = safeJsonParse<ApplyMeta>(apply.applyMeta)
       if (isStatusUpdating && status === 'completed') {
-        const t = [
-          kook.addReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
-          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }),
-          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '🔄' }),
-          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '❌' }),
-        ]
-        if (applyMeta?.idx) {
-          t.push(kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: num2emoji(applyMeta.idx + 1) }))
+        if ((await db.update(regearApplies).set({ status: 'done' }).where(eq(regearApplies.id, apply.id)).execute()).success) {
+          const t = [
+            kook.addReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
+            kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }),
+            kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '🔄' }),
+            kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '❌' }),
+          ]
+          if (applyMeta?.idx) {
+            t.push(kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: num2emoji(applyMeta.idx + 1) }))
+          }
+          c.executionCtx.waitUntil(Promise.all(t))
+          if (comment) {
+            kook.createMessage({
+              type: 9,
+              target_id: apply.msgChannel ?? '',
+              content: `(met)${apply.msgUserid}(met) ${comment ?? ''}`,
+              quote: apply?.msgId ?? '',
+              reply_msg_id: apply?.msgId ?? '',
+            })
+          }
         }
-        await Promise.all(t)
       }
-      if (comment) {
-        kook.createMessage({
-          type: 9,
-          target_id: apply.msgChannel ?? '',
-          content: `(met)${apply.msgUserid}(met) ${comment ?? ''}`,
-          quote: apply?.msgId ?? '',
-          reply_msg_id: apply?.msgId ?? '',
-        })
-      }
+
       if (isStatusUpdating && status === 'rejected') {
-        const t = [
-          kook.addReaction({ msg_id: apply?.msgId ?? '', emoji: '❌' }),
-          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }),
-          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '🔄' }),
-          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
-        ]
-        await Promise.all(t)
+        if ((await db.update(regearApplies).set({ status: 'reject' }).where(eq(regearApplies.id, apply.id)).execute()).success) {
+          const t = [
+            kook.addReaction({ msg_id: apply?.msgId ?? '', emoji: '❌' }),
+            kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }),
+            kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '🔄' }),
+            kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
+          ]
+          c.executionCtx.waitUntil(Promise.all(t))
+        }
       }
       if (isStatusUpdating && status === 'pending_regear') {
-        const t = [
-          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '❌' }),
-          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
-          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }),
-          kook.addReaction({ msg_id: apply?.msgId ?? '', emoji: '🔄' }),
-        ]
-        await Promise.all(t)
+        if ((await db.update(regearApplies).set({ status: 'pending_regear' }).where(eq(regearApplies.id, apply.id)).execute()).success) {
+          const t = [
+            kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '❌' }),
+            kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
+            kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }),
+            kook.addReaction({ msg_id: apply?.msgId ?? '', emoji: '🔄' }),
+          ]
+          c.executionCtx.waitUntil(Promise.all(t))
+        }
       }
       if (isStatusUpdating && status === 'pending_review') {
-        const t = [
-          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '❌' }),
-          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
-          kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '🔄' }),
-          kook.addReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }),
-        ]
-        await Promise.all(t)
+        if ((await db.update(regearApplies).set({ status: 'pending_audit' }).where(eq(regearApplies.id, apply.id)).execute()).success) {
+
+          const t = [
+            kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '❌' }),
+            kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '✅' }),
+            kook.deleteReaction({ msg_id: apply?.msgId ?? '', emoji: '🔄' }),
+            kook.addReaction({ msg_id: apply?.msgId ?? '', emoji: '⏩' }),
+          ]
+          c.executionCtx.waitUntil(Promise.all(t))
+        }
       }
     }
-    
+
     if (isStatusUpdating || comment || regearedSlots) {
       const actionParts = []
       if (isStatusUpdating) actionParts.push(`${record.status}->${status}`)
       if (regearedSlots !== undefined) actionParts.push('updated_slots')
-      
+
       await db.insert(regearLogs).values({
         id: crypto.randomUUID(),
         regearId,
@@ -505,11 +515,14 @@ const deleteTicketHandler = factory.createHandlers(
 
     if (!record) return c.json({ error: 'Ticket 不存在' }, 404)
 
-    await db.update(regearTickets)
-      .set({ deletedAt: new Date().toISOString() })
-      .where(eq(regearTickets.id, ticketId))
-      .execute()
-
+    const now = new Date().toDateString()
+    await Promise.all(
+      [
+        db.update(regearApplies).set({status: 'pending_audit', regearId: null, regearTicketId: null}).where(eq(regearApplies.regearTicketId, ticketId)).execute(),
+        db.update(regears).set({deletedAt:now }).where(eq(regears.ticketId, ticketId)).execute(),
+        db.update(regearTickets).set({ deletedAt: now }).where(eq(regearTickets.id, ticketId)).execute()
+      ]
+    )
     return c.json({ message: '删除成功' })
   }
 )

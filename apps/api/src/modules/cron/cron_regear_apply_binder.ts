@@ -89,7 +89,7 @@ export async function runRegearApplyAutoBinder(
     // 匹配失败
     if (matched == null) {
       const ts = parseUtcTimestamp(apply.detail.timestamp)
-      if (ts != null && ts.getTime() > Date.now() + 20 * 60 * 1000) return  // 刚击杀完20min buffer
+      if (ts != null && ts.getTime() > Date.now() + 60 * 60 * 1000) return  // 刚击杀完20min buffer
       else {
         if (!omitFailed) {
           db.update(regearApplies)

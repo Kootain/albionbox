@@ -3,6 +3,7 @@
     "dashboard": "Dashboard",
     "guild_dashboard": "Guild Dashboard",
     "guilds": "Guilds",
+    "data_collection": "Data Collection",
     "regear": "Regear",
     "profile": "Profile",
     "settings": "Settings",
@@ -38,7 +39,29 @@
     "members": "Members",
     "continue": "Continue",
     "delete": "Delete",
-    "all": "All"
+    "all": "All",
+    "guild_might_ranking": "Guild Might Rankings",
+    "clear_data": "Clear Data",
+    "upload_data": "Upload Data",
+    "connecting": "Connecting...",
+    "websocket_url": "WebSocket URL",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "collected_data": "Collected Data"
+  },
+  "rankings": {
+    "castle": "Castle",
+    "corrupted": "Corrupted",
+    "energycrystal": "Energy Crystal",
+    "gathering": "Gathering",
+    "gvgseason": "GvG Season",
+    "helldungeon": "Hell Dungeon",
+    "hellgate": "Hellgate",
+    "powercore": "Power Core",
+    "pve": "PvE",
+    "smugglers": "Smugglers",
+    "spiders": "Spiders",
+    "treasures": "Treasures"
   },
   "auth": {
     "title": "Albion ERP",
@@ -159,6 +182,12 @@
     }
   },
   "guild_dashboard": {
+    "might_rankings": {
+      "title": "Might Rankings",
+      "desc": "View guild might rankings by category",
+      "no_guild_id": "Data Collection Guild ID not bound",
+      "bind_hint": "Please bind the Data Collection Guild ID in Settings first."
+    },
     "tabs": {
       "battle_report": "Battle Report",
       "members": "Members",
@@ -167,6 +196,7 @@
       "orders": "Orders",
       "activities": "Activities",
       "attendance": "Attendance",
+      "might_rankings": "Might Rankings",
       "settings": "Settings"
     },
     "selector": {
@@ -192,10 +222,12 @@
         "status": "Status",
         "channel": "Channel",
         "msg_userid": "MsgUserID",
-        "victim_name": "Victim"
+        "victim_name": "Victim",
+        "group_by_battle": "Group by battle"
       },
       "table": {
         "time": "Time",
+        "death_time": "Death",
         "status": "Status",
         "victim": "Victim",
         "victim_guild": "Victim Guild",
@@ -241,6 +273,8 @@
     "settings": {
       "title": "Guild Settings",
       "desc": "Configure regear rules and chest allocations",
+      "data_collection_guild_id": "Data Collection Guild ID",
+      "data_collection_guild_id_desc": "Bind the Data Collection Guild ID to resolve might rankings.",
       "regear_rules": "Default Regear Slots",
       "regear_rules_desc": "Select the equipment slots that are eligible for regear by default.",
       "chest_config": "Chest Grid Configuration",

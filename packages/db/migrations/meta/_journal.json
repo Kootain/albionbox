@@ -85,6 +85,27 @@
       "when": 1776727539661,
       "tag": "0011_bent_rattler",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1776779307193,
+      "tag": "0012_steady_longshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1777150053301,
+      "tag": "0013_busy_malcolm_colcord",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1777151325992,
+      "tag": "0014_typical_exiles",
+      "breakpoints": true
     }
   ]
 }

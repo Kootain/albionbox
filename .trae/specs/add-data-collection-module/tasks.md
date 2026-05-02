@@ -1,0 +1,14 @@
+# Tasks
+- [x] Task 1: 创建数据采集页面路由和侧边栏入口
+  - [x] SubTask 1.1: 在 `apps/web/src/pages/data-collection/DataCollectionPage.tsx` 创建基础页面组件。
+  - [x] SubTask 1.2: 在 `apps/web/src/App.tsx` 注册 `/data-collection` 路由。
+  - [x] SubTask 1.3: 在 `apps/web/src/components/AppShell.tsx` 添加“数据采集”侧边栏菜单。
+  - [x] SubTask 1.4: 更新中英文 i18n 文件 (`zh.json`, `en.json`) 添加 `common.data_collection`。
+- [x] Task 2: 实现 WebSocket 数据采集逻辑
+  - [x] SubTask 2.1: 在 `DataCollectionPage` 中实现 WebSocket 连接管理 (Connect/Disconnect/Status)。
+  - [x] SubTask 2.2: 监听 `onmessage`，解析 JSON，过滤 `Type === 2` 和 `Code === 445` 的事件。
+  - [x] SubTask 2.3: 提取 `GuildID`、`ChallengeType`、`Usernames`、`Mights` 并使用 React State 进行去重和合并（按 ChallengeType 分组）。
+- [x] Task 3: 实现榜单数据的实时渲染与上传
+  - [x] SubTask 3.1: 在页面上按 `ChallengeType` 分类展示收集到的榜单数据。
+  - [x] SubTask 3.2: 添加“完成上传”按钮，点击后将合并好的数据格式化为包含对象 `{"Username": Might}` 的数组。
+  - [x] SubTask 3.3: 调用后端 API 提交数据（使用 `fetch` 或 `hono client` `api.rankings[':guildId'].rankings.$post`）。

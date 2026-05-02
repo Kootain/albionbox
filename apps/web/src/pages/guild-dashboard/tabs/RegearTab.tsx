@@ -34,6 +34,8 @@ export function RegearTab({ guildId }: RegearTabProps) {
   const [realDetail, setRealDetail] = useState<RegearOrderDetail | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [previewDetail, setPreviewDetail] = useState<RegearOrderDetail | null>(null);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const isCreatingRef = useRef(false);
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [previewBattleIdsText, setPreviewBattleIdsText] = useState('');
@@ -420,7 +422,10 @@ export function RegearTab({ guildId }: RegearTabProps) {
 
   const handleCreateOrderFromPreview = async (preview: RegearOrderDetail) => {
     if (!guildId) return;
+    if (isCreatingRef.current) return;
     
+    isCreatingRef.current = true;
+    setIsCreatingOrder(true);
     try {
       const needApply = (location.state as any)?.needApply as boolean | undefined;
       const battleEvents = preview.battleEvents;
@@ -481,6 +486,9 @@ export function RegearTab({ guildId }: RegearTabProps) {
     } catch (err: any) {
       console.error('Failed to create order from preview', err);
       toast.error(err.message || 'Failed to create order');
+    } finally {
+      isCreatingRef.current = false;
+      setIsCreatingOrder(false);
     }
   };
 
@@ -523,6 +531,7 @@ export function RegearTab({ guildId }: RegearTabProps) {
             onBack={handleBack} 
             guildId={guildId!} 
             isPreview={!!previewDetail}
+            isCreating={isCreatingOrder}
             onCreateFromPreview={() => previewDetail && handleCreateOrderFromPreview(previewDetail)}
           />
         ) : (

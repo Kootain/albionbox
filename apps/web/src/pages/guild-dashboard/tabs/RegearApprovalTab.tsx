@@ -10,8 +10,9 @@ import { useToast } from '@/components/ui/Toast';
 import { BattleDetail } from './battle-report-components/BattleDetail';
 import { KillDetailModal } from './battle-report-components/KillDetailModal';
 import { useSearchParams } from 'react-router-dom';
+import { RegearApplyRow } from './regear-components/RegearApplyRow';
 
-type RegearApply = {
+export type RegearApply = {
   id: string;
   msgId: string;
   msgUsername?: string | null;
@@ -51,7 +52,17 @@ export function RegearApprovalTab({
   const { confirm } = useConfirm();
   const toast = useToast();
 
-  const [status, setStatus] = useState<ApplyStatus | ''>('');
+  const statusOptions: { value: string; label: string }[] = [
+    { value: 'all', label: t('common.all', { defaultValue: 'All' }) },
+    { value: ApplyStatus.BINDING, label: t('guild_dashboard.regear_approval.status.binding', { defaultValue: 'binding' }) },
+    { value: ApplyStatus.BIND_FAILED, label: t('guild_dashboard.regear_approval.status.bind_failed', { defaultValue: 'bind_failed' }) },
+    { value: ApplyStatus.PENDING_AUDIT, label: t('guild_dashboard.regear_approval.status.pending_audit', { defaultValue: 'pending_audit' }) },
+    { value: ApplyStatus.PENDING_REGEAR, label: t('guild_dashboard.regear_approval.status.pending_regear', { defaultValue: 'pending_regear' }) },
+    { value: ApplyStatus.REJECT, label: t('guild_dashboard.regear_approval.status.reject', { defaultValue: 'reject' }) },
+    { value: ApplyStatus.DONE, label: t('guild_dashboard.regear_approval.status.done', { defaultValue: 'done' }) },
+  ];
+
+  const [status, setStatus] = useState<ApplyStatus[]>(statusOptions.filter(o => o.value !== 'all').map(o => o.value as ApplyStatus));
   const [channel, setChannel] = useState('');
   const [msgUserID, setMsgUserID] = useState('');
   const [victimName, setVictimName] = useState('');
@@ -75,6 +86,7 @@ export function RegearApprovalTab({
   const [detailBattleId, setDetailBattleId] = useState<string | null>(null);
   const [massSaving, setMassSaving] = useState<Record<string, boolean>>({});
   const [deleteSaving, setDeleteSaving] = useState<Record<string, boolean>>({});
+  const [groupByBattle, setGroupByBattle] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -141,7 +153,6 @@ export function RegearApprovalTab({
         const res = await api.regear_applies.$get({
           query: {
             msgGuild: DEFAULT_MSG_GUILD,
-            status: status || undefined,
             msgChannel: resolveId(channel, channelsMap),
             msgUserid: resolveId(msgUserID, usersMap),
             victimName: victimName || undefined,
@@ -195,10 +206,16 @@ export function RegearApprovalTab({
     fetchData();
     return () => { mounted = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, channel, msgUserID, victimName]);
+  }, [channel, msgUserID, victimName]);
 
   const sortedBattles = useMemo(() => {
-    const copy = [...battles];
+    const copy = battles.map(b => {
+      const filteredApplies = status.length > 0 
+        ? b.applies.filter(a => status.includes(a.status))
+        : b.applies;
+      return { ...b, applies: filteredApplies };
+    }).filter(b => b.applies.length > 0);
+
     copy.sort((a, b) => {
       if (a.battleId === 'unknown') return 1;
       if (b.battleId === 'unknown') return -1;
@@ -216,7 +233,7 @@ export function RegearApprovalTab({
       return Number(b.battleId) - Number(a.battleId);
     });
     return copy;
-  }, [battles]);
+  }, [battles, status]);
 
   const filteredChannels = useMemo(() => {
     const q = channel.trim().toLowerCase();
@@ -285,10 +302,11 @@ export function RegearApprovalTab({
 
   const handleGenerateSupplementTicket = async () => {
     if (loading) return;
-    const battleIds = sortedBattles.filter(b => b.battleId !== 'unknown').map(b => b.battleId);
+    const valid_battles = sortedBattles.filter(b => b.battleId !== 'unknown').filter(b => b.applies.filter(a => a.status === ApplyStatus.PENDING_AUDIT).length > 0)
+    const battleIds = valid_battles.map(b => b.battleId);
     if (battleIds.length === 0) return;
 
-    const hasNonMass = sortedBattles.filter(b => b.battleId !== 'unknown').some(b => !b.types.includes(BattleType.MASS));
+    const hasNonMass = valid_battles.some(b => !b.types.includes(BattleType.MASS));
     if (hasNonMass) {
       const ok = await confirm({
         message: t('guild_dashboard.regear_approval.supplement.confirm_non_mass', { defaultValue: '存在未标记为 MASS 的战斗，仍要生成补装工单吗？' }),
@@ -298,16 +316,6 @@ export function RegearApprovalTab({
 
     onRegearPreview(battleIds, true);
   };
-
-  const statusOptions: { value: string; label: string }[] = [
-    { value: '', label: t('common.all', { defaultValue: 'All' }) },
-    { value: ApplyStatus.BINDING, label: t('guild_dashboard.regear_approval.status.binding', { defaultValue: 'binding' }) },
-    { value: ApplyStatus.BIND_FAILED, label: t('guild_dashboard.regear_approval.status.bind_failed', { defaultValue: 'bind_failed' }) },
-    { value: ApplyStatus.PENDING_AUDIT, label: t('guild_dashboard.regear_approval.status.pending_audit', { defaultValue: 'pending_audit' }) },
-    { value: ApplyStatus.PENDING_REGEAR, label: t('guild_dashboard.regear_approval.status.pending_regear', { defaultValue: 'pending_regear' }) },
-    { value: ApplyStatus.REJECT, label: t('guild_dashboard.regear_approval.status.reject', { defaultValue: 'reject' }) },
-    { value: ApplyStatus.DONE, label: t('guild_dashboard.regear_approval.status.done', { defaultValue: 'done' }) },
-  ];
 
   const getStatusBadge = (s: ApplyStatus) => {
     const cls = {
@@ -335,6 +343,15 @@ export function RegearApprovalTab({
       return `${d.getUTCFullYear()}/${pad(d.getUTCMonth() + 1)}/${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
     }
     return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const normalizeApplyTimestamp = (ts: string) => {
+    const s = ts.trim();
+    if (!s) return '';
+    if (/[zZ]$/.test(s) || /[+\-]\d{2}:?\d{2}$/.test(s)) return s;
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?$/.test(s)) return `${s}Z`;
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?$/.test(s)) return `${s}Z`;
+    return s;
   };
 
   const getBattleTimeRange = (applies: RegearApply[]) => {
@@ -402,6 +419,18 @@ export function RegearApprovalTab({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setGroupByBattle(!groupByBattle)}
+              className={cn(
+                "px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-2",
+                groupByBattle
+                  ? "bg-emerald-500/20 text-emerald-500 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.1)]"
+                  : "bg-black-bg border-black-border text-slate-400 hover:text-slate-200 hover:border-slate-700"
+              )}
+            >
+              <div className={cn("w-2 h-2 rounded-full", groupByBattle ? "bg-emerald-500" : "bg-slate-500")} />
+              {t('guild_dashboard.regear_approval.filters.group_by_battle', { defaultValue: 'Group by battle' })}
+            </button>
             <Button
               size="sm"
               variant="primary"
@@ -413,20 +442,49 @@ export function RegearApprovalTab({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="space-y-2 lg:col-span-2">
             <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">
               {t('guild_dashboard.regear_approval.filters.status', { defaultValue: 'Status' })}
             </label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as ApplyStatus | '')}
-              className="w-full bg-black-bg border border-black-border rounded-xl py-3 px-4 text-white focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold transition-all text-sm"
-            >
-              {statusOptions.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+            <div className="flex flex-wrap gap-2">
+              {statusOptions.map(o => {
+                const isActive = o.value === 'all' 
+                  ? status.length === statusOptions.length - 1 
+                  : status.includes(o.value as ApplyStatus);
+                return (
+                  <button
+                    key={o.value}
+                    onClick={() => {
+                      if (o.value === 'all') {
+                        if (status.length === statusOptions.length - 1) {
+                          setStatus([]); // 取消全选
+                        } else {
+                          setStatus(statusOptions.filter(opt => opt.value !== 'all').map(opt => opt.value as ApplyStatus)); // 全选
+                        }
+                      } else {
+                        setStatus(prev => {
+                          const isSelected = prev.includes(o.value as ApplyStatus);
+                          if (isSelected) {
+                            return prev.filter(s => s !== o.value);
+                          } else {
+                            return [...prev, o.value as ApplyStatus];
+                          }
+                        });
+                      }
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-bold rounded-lg border transition-all",
+                      isActive 
+                        ? "bg-emerald-500/20 text-emerald-500 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.1)]" 
+                        : "bg-black-bg border-black-border text-slate-400 hover:text-slate-200 hover:border-slate-700"
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="space-y-2 relative">
@@ -582,6 +640,51 @@ export function RegearApprovalTab({
           <div className="py-10 text-center text-slate-500">
             {t('guild_dashboard.regear_approval.states.empty', { defaultValue: 'No regear applies found' })}
           </div>
+        ) : !groupByBattle ? (
+          <div className="bg-black-bg border border-black-border rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse whitespace-nowrap">
+                <thead>
+                  <tr className="border-b border-black-border bg-black-bg/50">
+                    <th 
+                      className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer hover:text-white transition-colors"
+                      onClick={() => setTimeFormat(timeFormat === 'UTC' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC')}
+                    >
+                      {t('guild_dashboard.regear_approval.table.time', { defaultValue: 'Time' })} ({timeFormat})
+                    </th>
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.status', { defaultValue: 'Status' })}</th>
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.victim', { defaultValue: 'Victim' })}</th>
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Map</th>
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.victim_guild', { defaultValue: 'Victim Guild' })}</th>
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.msg_user', { defaultValue: 'Msg User' })}</th>
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.channel', { defaultValue: 'Channel' })}</th>
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">{t('guild_dashboard.regear_approval.table.regear_ticket_id', { defaultValue: 'Ticket' })}</th>
+                    <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">{t('guild_dashboard.battle_report.columns.action', { defaultValue: 'Action' })}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-black-border/50">
+                  {sortedBattles
+                    .flatMap(b => b.applies)
+                    .sort((a, b) => new Date(b.createTime).getTime() - new Date(a.createTime).getTime())
+                    .map((row) => (
+                      <RegearApplyRow
+                        key={row.id}
+                        row={row}
+                        usersMap={usersMap}
+                        channelsMap={channelsMap}
+                        deleteSaving={!!deleteSaving[row.id]}
+                        formatTime={formatTime}
+                        normalizeApplyTimestamp={normalizeApplyTimestamp}
+                        getStatusBadge={getStatusBadge}
+                        onShowDeathDetails={handleShowDeathDetails}
+                        onSetSelectedImage={setSelectedImage}
+                        onDeleteApply={deleteApply}
+                      />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : (
           sortedBattles.map((battle) => (
             <div key={battle.battleId} className="bg-black-bg border border-black-border rounded-xl overflow-hidden">
@@ -648,112 +751,21 @@ export function RegearApprovalTab({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black-border/50">
-                    {battle.applies.map((row) => {
-                      let mapName = '-';
-                      try {
-                        if (row.applyDetail) {
-                          const detail = JSON.parse(row.applyDetail);
-                          mapName = detail.mapName || '-';
-                        }
-                      } catch (e) {}
-
-                      return (
-                        <tr key={row.id} className="hover:bg-black-card/50 transition-colors">
-                          <td className="py-3 px-4 text-sm text-slate-300">{formatTime(row.createTime)}</td>
-                          <td className="py-3 px-4">{getStatusBadge(row.status)}</td>
-                          <td className="py-3 px-4 text-sm text-slate-200 font-bold">{row.victimName || '-'}</td>
-                          <td className="py-3 px-4 text-xs text-slate-400">{mapName}</td>
-                          <td className="py-3 px-4 text-xs text-slate-400">{row.victimGuild || '-'}</td>
-                          <td className="py-3 px-4">
-                            <div className="flex flex-col">
-                              <span className="text-xs text-slate-200 font-bold">{row.msgUsername || usersMap[row.msgUserid || ''] || '-'}</span>
-                              <span className="text-[10px] text-slate-600 font-mono">{row.msgUserid || '-'}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-xs text-slate-400 font-mono">
-                            {channelsMap[row.msgChannel || ''] || row.msgChannel || '-'}
-                          </td>
-                          <td className="py-3 px-4">
-                            {row.regearTicketId ? (
-                              <button
-                                onClick={() => {
-                                  setSearchParams(prev => {
-                                    prev.set('tab', 'regear');
-                                    prev.set('ticketId', String(row.regearTicketId));
-                                    prev.delete('action');
-                                    return prev;
-                                  });
-                                }}
-                                className="flex items-center justify-center p-1.5 bg-black-bg border border-black-border hover:border-gold/30 text-slate-400 hover:text-gold rounded transition-colors"
-                                title={t('guild_dashboard.regear_approval.supplement.view_ticket', { defaultValue: '查看工单' })}
-                              >
-                                <LinkIcon className="w-4 h-4" />
-                              </button>
-                            ) : (
-                              <span className="text-slate-600">-</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button 
-                                onClick={() => handleShowDeathDetails(row)}
-                                className="p-1.5 bg-black-bg border border-black-border hover:border-gold/30 text-slate-400 hover:text-gold rounded transition-colors inline-flex items-center justify-center"
-                                title={t('guild_dashboard.regear_approval.supplement.detail', { defaultValue: '详情' })}
-                              >
-                                <Crosshair className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (row.applyMeta) {
-                                    try {
-                                      const meta = JSON.parse(row.applyMeta);
-                                      if (meta.imageUrl) {
-                                        try {
-                                          const urlObj = new URL(meta.imageUrl);
-                                          const proxyUrl = `https://img.albionbox.com/kook${urlObj.pathname}${urlObj.search}`;
-                                          setSelectedImage(proxyUrl);
-                                        } catch {
-                                          setSelectedImage(meta.imageUrl);
-                                        }
-                                      } else {
-                                        toast.error('No image URL found in apply record');
-                                      }
-                                    } catch (e) {
-                                      toast.error('Failed to parse apply meta');
-                                    }
-                                  } else {
-                                    toast.error('No apply record meta available');
-                                  }
-                                }}
-                                className="p-1.5 bg-black-bg border border-black-border hover:border-gold/30 text-slate-400 hover:text-gold rounded transition-colors inline-flex items-center justify-center"
-                                title={t('guild_dashboard.regear_approval.supplement.image', { defaultValue: '查看申请图片' })}
-                              >
-                                <ImageIcon className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={async () => {
-                                  const ok = await confirm({
-                                    message: t('guild_dashboard.regear_approval.supplement.confirm_delete_apply', { defaultValue: '确定要删除这条申请吗？' }),
-                                    danger: true,
-                                  });
-                                  if (!ok) return;
-                                  await deleteApply(row.id);
-                                }}
-                                className="p-1.5 bg-black-bg border border-black-border hover:border-rose-500/30 text-slate-400 hover:text-rose-500 rounded transition-colors inline-flex items-center justify-center disabled:opacity-50"
-                                title={t('common.delete', { defaultValue: '删除' })}
-                                disabled={deleteSaving[row.id]}
-                              >
-                                {deleteSaving[row.id] ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-4 h-4" />
-                                )}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {battle.applies.map((row) => (
+                      <RegearApplyRow
+                        key={row.id}
+                        row={row}
+                        usersMap={usersMap}
+                        channelsMap={channelsMap}
+                        deleteSaving={!!deleteSaving[row.id]}
+                        formatTime={formatTime}
+                        normalizeApplyTimestamp={normalizeApplyTimestamp}
+                        getStatusBadge={getStatusBadge}
+                        onShowDeathDetails={handleShowDeathDetails}
+                        onSetSelectedImage={setSelectedImage}
+                        onDeleteApply={deleteApply}
+                      />
+                    ))}
                   </tbody>
                 </table>
               </div>
