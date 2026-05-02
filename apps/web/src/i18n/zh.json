@@ -47,7 +47,10 @@
     "websocket_url": "WebSocket 地址",
     "connect": "连接",
     "disconnect": "断开连接",
-    "collected_data": "采集数据"
+    "collected_data": "采集数据",
+    "export_csv": "导出 CSV",
+    "yes": "是",
+    "no": "否"
   },
   "rankings": {
     "castle": "城堡与哨站",
@@ -188,6 +191,69 @@
       "no_guild_id": "未绑定数据采集工会 ID",
       "bind_hint": "请先在设置中绑定数据采集工会 ID。"
     },
+    "settlements": {
+      "title": "周期结算",
+      "desc": "创建并查看结算周期奖励",
+      "create": "创建结算",
+      "create_title": "创建结算周期",
+      "create_success": "结算创建成功",
+      "delete_success": "结算已删除",
+      "confirm_delete_title": "删除结算周期",
+      "confirm_delete_message": "确认删除结算周期 {{startDate}} ~ {{endDate}} 以及所有结算明细？",
+      "cycles": "结算周期",
+      "empty": "暂无结算周期",
+      "empty_result": "暂无数据",
+      "views": {
+        "aggregated": "按玩家聚合",
+        "details": "按明细"
+      },
+      "table": {
+        "player": "玩家",
+        "type": "奖励类型",
+        "subtype": "子类型",
+        "detail": "详情",
+        "green": "绿",
+        "blue": "蓝",
+        "purple": "紫",
+        "gold": "金",
+        "rank": "排名",
+        "cycle_might": "本期力量",
+        "total_might": "总力量",
+        "qualified": "是否结算",
+        "amount": "奖励金额",
+        "total": "合计",
+        "paid": "是否发放"
+      },
+      "filters": {
+        "reward_type": "奖励类型",
+        "sub_type": "奖励子类型"
+      },
+      "actions": {
+        "pay": "发放"
+      },
+      "reward_types": {
+        "might_reward": "力量奖励",
+        "might_top_reward": "力量TOP",
+        "resource_reward": "资源奖励"
+      },
+      "form": {
+        "start_date": "开始日期",
+        "end_date": "结束日期",
+        "might_reward": "力量奖励",
+        "might_top": "力量TOP奖励",
+        "resource_reward": "资源奖励",
+        "threshold": "阈值",
+        "ratio": "比例（银币/力量）",
+        "ratio_by_type": "各类型比例（银币/力量）",
+        "enabled_types": "参与类型",
+        "top_n": "Top名额",
+        "powercore": "能量核心",
+        "energycrystal": "力量水晶",
+        "import_csv": "导入 CSV",
+        "import_rows": "导入行数",
+        "csv_hint": "CSV 表头：username,kookId,discordId,green,blue,purple,gold"
+      }
+    },
     "tabs": {
       "battle_report": "战报",
       "members": "人员",
@@ -197,6 +263,7 @@
       "activities": "活动",
       "attendance": "考勤",
       "might_rankings": "力量榜",
+      "settlements": "结算",
       "settings": "配置"
     },
     "selector": {
@@ -275,6 +342,13 @@
       "desc": "配置补装规则与物资箱分配",
       "data_collection_guild_id": "数据采集工会 ID",
       "data_collection_guild_id_desc": "用于关联数据采集模块上传的工会力量数据",
+      "settlement_preset": {
+        "title": "结算默认配置",
+        "desc": "创建结算周期时默认使用的配置（不包含 CSV 导入数据）。",
+        "might_reward": "力量奖励",
+        "might_top": "力量TOP奖励",
+        "resource_reward": "资源奖励"
+      },
       "regear_rules": "默认补装栏位",
       "regear_rules_desc": "选择默认支持补偿的装备栏位。新建补装工单时将默认应用此配置。",
       "chest_config": "补装箱配置",

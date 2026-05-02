@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { check, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { check, integer, sqliteTable, text, index, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import { users } from './users'
 import { gameAccounts } from './users'
 
@@ -29,9 +29,17 @@ export const guildMembers = sqliteTable('guild_members', {
   gameAccountId: text('game_account_id').references(() => gameAccounts.id),
   chestX: integer('chest_x'),
   chestY: integer('chest_y'),
+  provider: text('provider', { enum: ['kook', 'discord'] }),
+  providerId: text('provider_id'),
+  providerName: text('provider_name'),
   joinedAt: text('joined_at').notNull(),
 }, (t) => [
   check('guild_members_at_least_one_identity', sql`${t.userId} IS NOT NULL OR ${t.gameAccountId} IS NOT NULL`),
+  index('guild_members_guild_id_idx').on(t.guildId),
+  index('guild_members_guild_game_account_id_idx').on(t.guildId, t.gameAccountId),
+  index('guild_members_guild_provider_id_idx').on(t.guildId, t.provider, t.providerId),
+  uniqueIndex('guild_members_guild_provider_identity_unique').on(t.guildId, t.provider, t.providerId),
+  uniqueIndex('guild_members_guild_game_account_unique').on(t.guildId, t.gameAccountId),
 ])
 
 export const guildSettings = sqliteTable('guild_settings', {
@@ -56,6 +64,7 @@ export const guildSettings = sqliteTable('guild_settings', {
       playerName: string;
     }[];
   }[]>(),
+  settlementPreset: text('settlement_preset', { mode: 'json' }).$type<any>(),
   kookGuildId: text('kook_guild_id'),
   dataCollectionGuildId: text('data_collection_guild_id'),
   updatedAt: text('updated_at').notNull(),

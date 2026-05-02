@@ -29,6 +29,7 @@ const getSettingsHandler = factory.createHandlers(
         updatedAt: new Date().toISOString(),
         kookGuildId: null,
         dataCollectionGuildId: null,
+          settlementPreset: null,
       }
     }
     return c.json(settings)
@@ -49,6 +50,7 @@ const updateSettingsHandler = factory.createHandlers(
     if (data.chestRooms !== undefined) setValues.chestRooms = data.chestRooms
     if (data.kookGuildId !== undefined) setValues.kookGuildId = data.kookGuildId
     if (data.dataCollectionGuildId !== undefined) setValues.dataCollectionGuildId = data.dataCollectionGuildId
+    if (data.settlementPreset !== undefined) setValues.settlementPreset = data.settlementPreset
 
     await db.insert(guildSettings).values({
       guildId,
@@ -56,6 +58,7 @@ const updateSettingsHandler = factory.createHandlers(
       chestRooms: data.chestRooms || [{ id: 'default', name: 'Main Room', width: 10, height: 10, assignments: [] }],
       kookGuildId: data.kookGuildId,
       dataCollectionGuildId: data.dataCollectionGuildId,
+      settlementPreset: data.settlementPreset ?? null,
       updatedAt: now,
     }).onConflictDoUpdate({
       target: guildSettings.guildId,

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { SettlementPresetSchema } from './settlements'
 
 export const CreateGuildSchema = z.object({
   id: z.string().min(1),
@@ -64,6 +65,7 @@ export const UpdateGuildSettingsSchema = z.object({
   })).optional(),
   kookGuildId: z.string().optional().nullable(),
   dataCollectionGuildId: z.string().optional().nullable(),
+  settlementPreset: SettlementPresetSchema.optional().nullable(),
 })
 
 export type { Guild, GuildMember, Role, Permission, GuildMemberRole } from '@albionbox/db'

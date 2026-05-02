@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/lib/api'
 import { MessagePreview } from '@kookapp/kook-message-preview'
 import '@kookapp/kook-message-preview/dist/esm/styles/index.less'
+import { Modal } from '@/components/ui'
+import { AlbionPlayerSearch } from '@/components/AlbionPlayerSearch'
 
 type KookResp<T> = { code: number; message: string; data: T }
 
@@ -16,6 +18,7 @@ type KookList<T> = {
 
 type KookGuild = { id: string; name: string }
 type KookChannel = { id: string; name: string }
+type SystemGuild = { id: string; name: string; server: string }
 
 type KookEmoji = {
   id: string
@@ -64,6 +67,17 @@ function formatTs(ts?: number) {
   const d = new Date(ts * 1000)
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+function formatDateKey(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+}
+
+function escapeCsvValue(value: string | number) {
+  const s = String(value ?? '')
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+  return s
 }
 
 function toKookEmojiId(input: string) {
@@ -280,6 +294,90 @@ export default function KookMessageBrowserPage() {
     '🔁': '0'
   }
   const [emojiRewards, setEmojiRewards] = useState<Record<string, string>>(DEFAULT_EMOJI_REWARDS)
+  const [anchorMessage, setAnchorMessage] = useState<{ id: string; create_at?: number; content: string } | null>(null)
+  const [anchorPickerOpen, setAnchorPickerOpen] = useState(false)
+  const [anchorStartsWith, setAnchorStartsWith] = useState('')
+
+  const [systemGuilds, setSystemGuilds] = useState<SystemGuild[]>([])
+  const [selectedSystemGuildId, setSelectedSystemGuildId] = useState<string>('')
+  const [providerBindings, setProviderBindings] = useState<Record<string, { gameAccountUsername: string; albionPlayerId: string }>>({})
+  const [bindingTarget, setBindingTarget] = useState<{ providerId: string; providerName?: string } | null>(null)
+  const [bindingSaving, setBindingSaving] = useState(false)
+  const [bindingError, setBindingError] = useState<string | null>(null)
+  const [selectedBindingPlayer, setSelectedBindingPlayer] = useState<{ Id: string; Name: string } | null>(null)
+
+  const kookUsers = useMemo(() => {
+    const map = new Map<string, { providerId: string; providerName?: string }>()
+    for (const m of messages) {
+      const id = m.author?.id
+      if (id && !map.has(id)) {
+        map.set(id, { providerId: id, providerName: m.author?.nickname || m.author?.username || undefined })
+      }
+      const qid = m.quote?.author?.id
+      if (qid && !map.has(qid)) {
+        map.set(qid, { providerId: qid, providerName: m.quote?.author?.nickname || m.quote?.author?.username || undefined })
+      }
+    }
+    return Array.from(map.values())
+  }, [messages])
+
+  const nicknameToKookId = useMemo(() => {
+    const mapping: Record<string, string> = {}
+    for (const m of messages) {
+      const nickname = m.author?.nickname
+      const id = m.author?.id
+      if (nickname && id && !mapping[nickname]) mapping[nickname] = id
+      const qn = m.quote?.author?.nickname
+      const qid = m.quote?.author?.id
+      if (qn && qid && !mapping[qn]) mapping[qn] = qid
+    }
+    return mapping
+  }, [messages])
+
+  const messagesAfterAnchor = useMemo(() => {
+    if (!anchorMessage?.create_at) return messages
+    const anchorTs = anchorMessage.create_at
+    return messages.filter(m => (m.create_at ?? 0) >= anchorTs)
+  }, [messages, anchorMessage])
+
+  const reactionCsvRows = useMemo(() => {
+    if (!reactionStats) return []
+
+    const activeUsers = Object.keys(reactionStats).filter(nickname => {
+      const emojis = reactionStats[nickname]
+      return ['🟢', '🔵', '🟣', '🟡', '❓', '🔁'].some(emoji => (emojis?.[emoji] ?? 0) > 0)
+    })
+
+    const userRewardList = activeUsers
+      .map(nickname => {
+        const total = ['🟢', '🔵', '🟣', '🟡', '❓', '🔁'].reduce((sum, emoji) => {
+          return sum + (reactionStats[nickname]?.[emoji] ?? 0) * parseRewardValue(emojiRewards[emoji])
+        }, 0)
+        return { nickname, total }
+      })
+      .sort((a, b) => b.total - a.total)
+
+    return userRewardList.map(({ nickname }) => {
+      const kookId = nicknameToKookId[nickname] ?? ''
+      const username = selectedSystemGuildId && kookId ? (providerBindings[kookId]?.gameAccountUsername ?? '') : ''
+      return {
+        username,
+        kookId,
+        discordId: '',
+        green: reactionStats[nickname]?.['🟢'] ?? 0,
+        blue: reactionStats[nickname]?.['🔵'] ?? 0,
+        purple: reactionStats[nickname]?.['🟣'] ?? 0,
+        gold: reactionStats[nickname]?.['🟡'] ?? 0,
+      }
+    })
+  }, [emojiRewards, nicknameToKookId, providerBindings, reactionStats, selectedSystemGuildId])
+
+  const anchorCandidates = useMemo(() => {
+    const prefix = (anchorStartsWith ?? '').trim()
+    if (!prefix) return []
+    const filtered = messages.filter(m => typeof m.content === 'string' && m.content.startsWith(prefix))
+    return sortMessagesNewestFirst(filtered)
+  }, [messages, anchorStartsWith])
 
   // 当选择的频道改变时，尝试从 localStorage 加载配置
   useEffect(() => {
@@ -950,13 +1048,127 @@ export default function KookMessageBrowserPage() {
       showToast('当前没有加载任何消息，无法分析')
       return
     }
-    const stats = countEmoji(messages)
+    const stats = countEmoji(messagesAfterAnchor)
     setReactionStats(stats)
     showToast('表情回复分析完成')
   }
 
+  function handleExportReactionCsv() {
+    if (!selectedChannelId) {
+      showToast('未选择频道')
+      return
+    }
+    if (!reactionStats || reactionCsvRows.length === 0) {
+      showToast('当前没有可导出的分析结果')
+      return
+    }
+
+    const header = ['username', 'kookId', 'discordId', 'green', 'blue', 'purple', 'gold']
+    const lines = [
+      header.join(','),
+      ...reactionCsvRows.map(r => {
+        return [
+          r.username,
+          r.kookId,
+          r.discordId,
+          r.green,
+          r.blue,
+          r.purple,
+          r.gold,
+        ].map(escapeCsvValue).join(',')
+      }),
+    ]
+
+    const anchorOrDate = anchorMessage?.id ? anchorMessage.id : formatDateKey(new Date())
+    const fileName = `reaction_rewards_${selectedChannelId}_${anchorOrDate}.csv`
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    showToast(`已导出 ${reactionCsvRows.length} 行`)
+  }
+
+  async function loadProviderBindings(guildId: string) {
+    setBindingError(null)
+    setProviderBindings({})
+    if (!guildId) return
+    try {
+      const res = await ((api as any).guilds as any)[':id'].provider_bindings.$get({
+        param: { id: guildId },
+        query: { provider: 'kook' },
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null) as any
+        setBindingError(data?.error ?? '加载绑定失败')
+        return
+      }
+      const data = await res.json().catch(() => null) as any
+      const items = data?.items ?? []
+      const mapping: Record<string, { gameAccountUsername: string; albionPlayerId: string }> = {}
+      for (const item of items) {
+        if (item?.providerId) {
+          mapping[item.providerId] = { gameAccountUsername: item.gameAccountUsername, albionPlayerId: item.albionPlayerId }
+        }
+      }
+      setProviderBindings(mapping)
+    } catch (e: any) {
+      setBindingError(e?.message ?? String(e))
+    }
+  }
+
+  async function submitBinding() {
+    if (!selectedSystemGuildId || !bindingTarget || !selectedBindingPlayer) return
+    setBindingSaving(true)
+    setBindingError(null)
+    try {
+      const res = await ((api as any).guilds as any)[':id'].provider_bindings.$put({
+        param: { id: selectedSystemGuildId },
+        json: {
+          provider: 'kook',
+          providerId: bindingTarget.providerId,
+          providerName: bindingTarget.providerName,
+          gameAccount: {
+            username: selectedBindingPlayer.Name,
+            albionPlayerId: selectedBindingPlayer.Id,
+          },
+        },
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null) as any
+        setBindingError(data?.error ?? '绑定失败')
+        return
+      }
+      setBindingTarget(null)
+      setSelectedBindingPlayer(null)
+      await loadProviderBindings(selectedSystemGuildId)
+    } catch (e: any) {
+      setBindingError(e?.message ?? String(e))
+    } finally {
+      setBindingSaving(false)
+    }
+  }
+
   useEffect(() => {
     loadGuilds()
+  }, [])
+
+  useEffect(() => {
+    const loadSystemGuilds = async () => {
+      try {
+        const res = await api.guilds.$get()
+        if (!res.ok) return
+        const data = await res.json() as any[]
+        setSystemGuilds((data ?? []).map((g: any) => ({ id: g.id, name: g.name, server: g.server })))
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    loadSystemGuilds()
   }, [])
 
   useEffect(() => {
@@ -1217,6 +1429,32 @@ export default function KookMessageBrowserPage() {
           >
             开始分析当前消息
           </button>
+          <button
+            className="w-full md:w-auto px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 font-black rounded-xl border border-emerald-500/30 disabled:opacity-50 uppercase tracking-widest text-xs"
+            onClick={handleExportReactionCsv}
+            disabled={!reactionStats || reactionCsvRows.length === 0 || !selectedChannelId}
+          >
+            导出 CSV
+          </button>
+          <button
+            className="w-full md:w-auto px-4 py-2 bg-black-bg hover:bg-black-border text-white font-black rounded-xl border border-black-border disabled:opacity-50 uppercase tracking-widest text-xs"
+            onClick={() => setAnchorPickerOpen(true)}
+            disabled={messages.length === 0}
+          >
+            选择锚定
+          </button>
+          {anchorMessage && (
+            <button
+              className="w-full md:w-auto px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 font-black rounded-xl border border-rose-500/30 uppercase tracking-widest text-xs"
+              onClick={() => { setAnchorMessage(null); setReactionStats(null) }}
+            >
+              清除锚定
+            </button>
+          )}
+          <div className="text-xs text-slate-400 md:ml-auto">
+            统计范围：{messagesAfterAnchor.length}/{messages.length}
+            {anchorMessage?.create_at ? `（锚定：${formatTs(anchorMessage.create_at)}）` : ''}
+          </div>
         </div>
 
         {reactionStats && (
@@ -1263,6 +1501,9 @@ export default function KookMessageBrowserPage() {
                           <th className="p-3 border-b border-black-border bg-black-bg text-slate-400 font-bold whitespace-nowrap">
                             User
                           </th>
+                          <th className="p-3 border-b border-black-border bg-black-bg text-slate-400 font-bold whitespace-nowrap">
+                            KookId
+                          </th>
                           {['🟢', '🔵', '🟣', '🟡', '❓', '🔁'].map(emoji => (
                             <th key={emoji} className="p-3 border-b border-black-border bg-black-bg text-center min-w-[40px]">
                               {emoji}
@@ -1282,6 +1523,9 @@ export default function KookMessageBrowserPage() {
                             <tr key={nickname} className={idx === arr.length - 1 ? '' : 'border-b border-black-border/50'}>
                               <td className="p-3 font-bold text-white whitespace-nowrap bg-black-card/50">
                                 {nickname}
+                              </td>
+                              <td className="p-3 text-slate-300 whitespace-nowrap bg-black-card/50 font-mono">
+                                {nicknameToKookId[nickname] ?? '-'}
                               </td>
                               {['🟢', '🔵', '🟣', '🟡', '❓', '🔁'].map(emoji => {
                                 const count = reactionStats[nickname][emoji] || 0
@@ -1311,6 +1555,197 @@ export default function KookMessageBrowserPage() {
           </div>
         )}
       </div>
+
+      {anchorPickerOpen && (
+        <Modal
+          title="选择锚定消息"
+          onClose={() => setAnchorPickerOpen(false)}
+          className="max-w-3xl"
+        >
+          <div className="space-y-4">
+            <div className="text-xs text-slate-400">
+              设置锚定后，会忽略锚定消息之前（更早）的所有消息。
+            </div>
+            <div className="space-y-2">
+              <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">StartsWith 过滤</div>
+              <input
+                type="text"
+                className="w-full bg-black-bg border border-black-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-gold/50 font-mono"
+                value={anchorStartsWith}
+                onChange={(e) => setAnchorStartsWith(e.target.value)}
+                placeholder="输入消息内容前缀，例如：#结算"
+              />
+              <div className="text-xs text-slate-500">
+                匹配到 {anchorCandidates.length} 条消息（基于当前已加载的消息列表）。
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-black-border max-h-[420px] overflow-y-auto custom-scrollbar">
+              <table className="w-full text-sm text-left border-collapse">
+                <thead>
+                  <tr>
+                    <th className="p-3 border-b border-black-border bg-black-bg text-slate-400 font-bold whitespace-nowrap">时间</th>
+                    <th className="p-3 border-b border-black-border bg-black-bg text-slate-400 font-bold whitespace-nowrap">ID</th>
+                    <th className="p-3 border-b border-black-border bg-black-bg text-slate-400 font-bold whitespace-nowrap">内容</th>
+                    <th className="p-3 border-b border-black-border bg-black-bg text-slate-400 font-bold whitespace-nowrap">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {anchorCandidates.map((m) => (
+                    <tr key={m.id} className="border-b border-black-border/50">
+                      <td className="p-3 text-slate-300 font-mono whitespace-nowrap">{formatTs(m.create_at)}</td>
+                      <td className="p-3 text-slate-300 font-mono whitespace-nowrap">{m.id}</td>
+                      <td className="p-3 text-slate-200">
+                        <div className="truncate max-w-[520px]" title={m.content}>
+                          {m.content}
+                        </div>
+                      </td>
+                      <td className="p-3 whitespace-nowrap">
+                        <button
+                          className="px-3 py-1 bg-gold hover:bg-gold-hover text-black font-black rounded-lg disabled:opacity-50 uppercase tracking-widest text-[10px]"
+                          onClick={() => {
+                            setAnchorMessage({ id: m.id, create_at: m.create_at, content: m.content })
+                            setReactionStats(null)
+                            setAnchorPickerOpen(false)
+                          }}
+                        >
+                          设为锚定
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {anchorStartsWith.trim() && anchorCandidates.length === 0 && (
+                    <tr>
+                      <td className="p-4 text-slate-500 text-sm" colSpan={4}>未找到符合前缀的消息。</td>
+                    </tr>
+                  )}
+                  {!anchorStartsWith.trim() && (
+                    <tr>
+                      <td className="p-4 text-slate-500 text-sm" colSpan={4}>请输入 startsWith 前缀后再筛选。</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      <div className="bg-black-card border border-black-border rounded-2xl p-4 shadow-xl space-y-4">
+        <div className="space-y-2">
+          <div className="text-sm font-black text-sky-300 uppercase tracking-widest">KOOK 用户绑定游戏角色</div>
+          <div className="text-xs text-slate-400">选择系统工会后，展示当前加载消息中出现的 KOOK 用户及其绑定状态。</div>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-3 md:items-end">
+          <div className="flex-1">
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">系统工会</div>
+            <select
+              className="w-full bg-black-bg border border-black-border rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-gold/50"
+              value={selectedSystemGuildId}
+              onChange={(e) => {
+                const v = e.target.value
+                setSelectedSystemGuildId(v)
+                loadProviderBindings(v)
+              }}
+            >
+              <option value="">请选择工会</option>
+              {systemGuilds.map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="text-xs text-slate-400">当前用户数：{kookUsers.length}</div>
+        </div>
+
+        {bindingError ? <div className="text-rose-400 text-sm">{bindingError}</div> : null}
+
+        <div className="overflow-x-auto rounded-xl border border-black-border">
+          <table className="w-full text-sm text-left border-collapse">
+            <thead>
+              <tr>
+                <th className="p-3 border-b border-black-border bg-black-bg text-slate-400 font-bold whitespace-nowrap">KookId</th>
+                <th className="p-3 border-b border-black-border bg-black-bg text-slate-400 font-bold whitespace-nowrap">Name</th>
+                <th className="p-3 border-b border-black-border bg-black-bg text-slate-400 font-bold whitespace-nowrap">Albion</th>
+                <th className="p-3 border-b border-black-border bg-black-bg text-slate-400 font-bold whitespace-nowrap">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {kookUsers.map((u) => {
+                const binding = providerBindings[u.providerId]
+                return (
+                  <tr key={u.providerId} className="border-b border-black-border/50">
+                    <td className="p-3 text-slate-300 font-mono whitespace-nowrap">{u.providerId}</td>
+                    <td className="p-3 text-white font-bold whitespace-nowrap">{u.providerName ?? '-'}</td>
+                    <td className="p-3 text-slate-200 whitespace-nowrap">
+                      {binding ? (
+                        <span className="font-mono">{binding.gameAccountUsername} ({binding.albionPlayerId})</span>
+                      ) : (
+                        <span className="text-slate-500">未绑定</span>
+                      )}
+                    </td>
+                    <td className="p-3 whitespace-nowrap">
+                      <button
+                        className="px-3 py-1 bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 font-black rounded-lg border border-sky-500/30 disabled:opacity-50 uppercase tracking-widest text-[10px]"
+                        onClick={() => { if (!selectedSystemGuildId) return; setBindingTarget(u); setSelectedBindingPlayer(null); setBindingError(null); }}
+                        disabled={!selectedSystemGuildId}
+                      >
+                        {binding ? '更换绑定' : '绑定'}
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+              {kookUsers.length === 0 && (
+                <tr>
+                  <td className="p-4 text-slate-500 text-sm" colSpan={4}>当前没有可绑定的 KOOK 用户（请先加载消息）。</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {bindingTarget && selectedSystemGuildId && (
+        <Modal
+          title="绑定游戏角色"
+          onClose={() => { if (bindingSaving) return; setBindingTarget(null); setSelectedBindingPlayer(null); }}
+          className="max-w-2xl"
+        >
+          <div className="space-y-4">
+            <div className="text-xs text-slate-400">
+              KOOK: <span className="text-white font-mono">{bindingTarget.providerId}</span> {bindingTarget.providerName ? `(${bindingTarget.providerName})` : ''}
+            </div>
+            <AlbionPlayerSearch
+              guildId={selectedSystemGuildId}
+              autoFocus
+              onSelect={(p) => setSelectedBindingPlayer({ Id: p.Id, Name: p.Name })}
+              isSelected={(p) => selectedBindingPlayer?.Id === p.Id}
+            />
+            {selectedBindingPlayer ? (
+              <div className="text-xs text-slate-300">
+                已选择：<span className="text-white font-bold">{selectedBindingPlayer.Name}</span> <span className="font-mono text-slate-400">({selectedBindingPlayer.Id})</span>
+              </div>
+            ) : null}
+            <div className="flex items-center justify-end gap-2">
+              <button
+                className="px-4 py-2 bg-black-bg hover:bg-black-border text-white font-black rounded-xl border border-black-border disabled:opacity-50 uppercase tracking-widest text-[10px]"
+                onClick={() => { if (bindingSaving) return; setBindingTarget(null); setSelectedBindingPlayer(null); }}
+                disabled={bindingSaving}
+              >
+                取消
+              </button>
+              <button
+                className="px-4 py-2 bg-gold hover:bg-gold-hover text-black font-black rounded-xl disabled:opacity-50 uppercase tracking-widest text-[10px]"
+                onClick={submitBinding}
+                disabled={bindingSaving || !selectedBindingPlayer}
+              >
+                {bindingSaving ? '绑定中...' : '确认绑定'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       <div className="bg-black-card border border-black-border rounded-2xl p-4 shadow-xl space-y-4">
         <div className="space-y-2">

@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Settings, Search, Loader2, Plus, Trash2, CheckCircle } from 'lucide-react';
+import { Settings, Loader2, Plus, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { AlbionSearchResultPlayer } from '@albionbox/shared';
+import { AlbionSearchResultPlayer, RankingType } from '@albionbox/shared';
 import { AutoApprovalPoliciesConfig } from '../components/AutoApprovalPoliciesConfig';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/Confirm';
+import { AlbionPlayerSearch } from '@/components/AlbionPlayerSearch';
 
 interface ChestRoom {
   id: string;
@@ -38,11 +39,14 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
 
   const [kookGuildId, setKookGuildId] = useState<string>('');
   const [dataCollectionGuildId, setDataCollectionGuildId] = useState<string>('');
+  const [settlementMightRewardEnabledTypes, setSettlementMightRewardEnabledTypes] = useState<string[]>([]);
+  const [settlementMightRewardThreshold, setSettlementMightRewardThreshold] = useState<number>(0);
+  const [settlementMightRewardRatioByType, setSettlementMightRewardRatioByType] = useState<Record<string, number>>({});
+  const [settlementMightTopEnabledTypes, setSettlementMightTopEnabledTypes] = useState<string[]>([]);
+  const [settlementMightTopRanksByType, setSettlementMightTopRanksByType] = useState<Record<string, Array<{ rank: number; coinAmount: number }>>>({});
+  const [settlementPowercoreCoins, setSettlementPowercoreCoins] = useState({ green: 0, blue: 0, purple: 0, gold: 0 });
+  const [settlementEnergycrystalCoins, setSettlementEnergycrystalCoins] = useState({ green: 0, blue: 0, purple: 0, gold: 0 });
 
-  // Search state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<AlbionSearchResultPlayer[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [activeSearchContext, setActiveSearchContext] = useState<{ type: 'cell', x: number, y: number } | null>(null);
 
   const allSlots = ['MainHand', 'OffHand', 'Head', 'Armor', 'Shoes', 'Bag', 'Cape', 'Mount', 'Potion', 'Food'];
@@ -60,6 +64,22 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
           const data = await res.json() as any;
           if (data.kookGuildId) setKookGuildId(data.kookGuildId);
           if (data.dataCollectionGuildId) setDataCollectionGuildId(data.dataCollectionGuildId);
+          if (data.settlementPreset) {
+            const preset = data.settlementPreset;
+            if (preset.mightReward?.enabledTypes) setSettlementMightRewardEnabledTypes(preset.mightReward.enabledTypes);
+            if (preset.mightReward?.threshold !== undefined) setSettlementMightRewardThreshold(Number(preset.mightReward.threshold) || 0);
+            if (preset.mightReward?.ratioByType) setSettlementMightRewardRatioByType(preset.mightReward.ratioByType);
+            if (preset.mightTopReward?.enabledTypes) setSettlementMightTopEnabledTypes(preset.mightTopReward.enabledTypes);
+            if (preset.mightTopReward?.topConfigByType) {
+              const ranks: Record<string, Array<{ rank: number; coinAmount: number }>> = {};
+              for (const [type, cfg] of Object.entries<any>(preset.mightTopReward.topConfigByType)) {
+                ranks[type] = Array.isArray(cfg?.rewards) ? cfg.rewards : [];
+              }
+              setSettlementMightTopRanksByType(ranks);
+            }
+            if (preset.resourceReward?.powercore?.coinPerUnitByColor) setSettlementPowercoreCoins(preset.resourceReward.powercore.coinPerUnitByColor);
+            if (preset.resourceReward?.energycrystal?.coinPerUnitByColor) setSettlementEnergycrystalCoins(preset.resourceReward.energycrystal.coinPerUnitByColor);
+          }
           if (data.regearConfig) {
             if (data.regearConfig.allowedSlots) setAllowedSlots(data.regearConfig.allowedSlots);
             if (data.regearConfig.defaultPLevel) setDefaultPLevel(data.regearConfig.defaultPLevel);
@@ -94,7 +114,27 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
     currentNoRegear = noRegearPlayers,
     currentLevelGroups = levelGroups,
     currentKookGuildId = kookGuildId,
-    currentDataCollectionGuildId = dataCollectionGuildId
+    currentDataCollectionGuildId = dataCollectionGuildId,
+    settlementPreset = ({
+      version: 'v1' as const,
+      mightReward: {
+        enabledTypes: settlementMightRewardEnabledTypes as any,
+        threshold: settlementMightRewardThreshold,
+        ratioByType: settlementMightRewardRatioByType,
+        effectivePolicy: 'ZERO_BELOW_THRESHOLD' as const,
+      },
+      mightTopReward: {
+        enabledTypes: settlementMightTopEnabledTypes as any,
+        topConfigByType: settlementMightTopEnabledTypes.reduce((acc, type) => {
+          acc[type] = { rewards: settlementMightTopRanksByType[type] ?? [] };
+          return acc;
+        }, {} as Record<string, { rewards: Array<{ rank: number; coinAmount: number }> }>),
+      },
+      resourceReward: {
+        powercore: { coinPerUnitByColor: settlementPowercoreCoins },
+        energycrystal: { coinPerUnitByColor: settlementEnergycrystalCoins },
+      },
+    }) as any
   ) => {
     if (!guildId) return;
     setIsSaving(true);
@@ -112,7 +152,8 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
               levelGroups: currentLevelGroups
             }
           },
-          chestRooms: currentRooms
+          chestRooms: currentRooms,
+          settlementPreset,
         }
       });
       if (!res.ok) throw new Error('Failed to save settings');
@@ -157,6 +198,23 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
     handleSave(allowedSlots, newRooms, defaultPLevel, noRegearPlayers, levelGroups);
   };
 
+  const toggleSettlementType = (list: string[], type: string) => {
+    if (list.includes(type)) return list.filter(t => t !== type);
+    return [...list, type];
+  };
+
+  const ensureSettlementMightTopRanks = (type: string, topN: number) => {
+    setSettlementMightTopRanksByType(prev => {
+      const existing = prev[type] ?? [];
+      const next = Array.from({ length: topN }).map((_, i) => {
+        const rank = i + 1;
+        const found = existing.find(x => x.rank === rank);
+        return found ?? { rank, coinAmount: 0 };
+      });
+      return { ...prev, [type]: next };
+    });
+  };
+
   const handleDeleteRoom = async () => {
     if (rooms.length <= 1) {
       toast.error(t('guild_dashboard.settings.cannot_delete_last_room', { defaultValue: 'Cannot delete the last room.' }));
@@ -197,26 +255,6 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
 
   const activeRoom = rooms.find(r => r.id === activeRoomId);
 
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query);
-    if (!query.trim() || !guildId) {
-      setSearchResults([]);
-      return;
-    }
-    setIsSearching(true);
-    try {
-      const res = await api.guilds[':id'].albion.search.$get({ param: { id: guildId }, query: { q: query } });
-      if (res.ok) {
-        const data = await res.json() as any;
-        setSearchResults(data.players || []);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
   const assignPlayer = (player: AlbionSearchResultPlayer) => {
     if (!activeSearchContext || activeSearchContext.type !== 'cell') return;
     
@@ -233,9 +271,6 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
       });
       updateActiveRoom({ assignments: newAssignments });
     }
-    
-    setSearchQuery('');
-    setSearchResults([]);
   };
 
   const removePlayerFromCell = (playerId: string) => {
@@ -323,6 +358,197 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
             >
               {t('common.save', { defaultValue: 'Save' })}
             </button>
+          </div>
+        </section>
+
+        <hr className="border-black-border" />
+
+        <section className="space-y-6">
+          <div>
+            <h3 className="text-lg font-bold text-white uppercase tracking-tight">{t('guild_dashboard.settings.settlement_preset.title', { defaultValue: 'Settlement Preset' })}</h3>
+            <p className="text-sm text-slate-400 mt-1">{t('guild_dashboard.settings.settlement_preset.desc', { defaultValue: 'Default settlement configuration used when creating a new settlement cycle.' })}</p>
+          </div>
+
+          <div className="bg-black-bg border border-black-border rounded-xl p-4 space-y-4">
+            <div className="text-sm font-bold text-white uppercase tracking-widest">
+              {t('guild_dashboard.settings.settlement_preset.might_reward', { defaultValue: 'Might Reward' })}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-300">{t('guild_dashboard.settlements.form.threshold', { defaultValue: 'Threshold' })}</label>
+                <input
+                  type="number"
+                  value={settlementMightRewardThreshold}
+                  onChange={(e) => setSettlementMightRewardThreshold(Number(e.target.value))}
+                  className="w-full bg-black-card border border-black-border rounded-xl px-4 py-2 text-white focus:outline-none focus:border-gold transition-colors text-sm font-mono"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm font-bold text-slate-300">{t('guild_dashboard.settlements.form.enabled_types', { defaultValue: 'Enabled Types' })}</div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {Object.values(RankingType).map(type => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => {
+                      setSettlementMightRewardEnabledTypes(prev => {
+                        const next = toggleSettlementType(prev, type);
+                        setSettlementMightRewardRatioByType((ratioPrev) => {
+                          if (next.includes(type)) {
+                            if (ratioPrev[type] === undefined) return { ...ratioPrev, [type]: 0 };
+                            return ratioPrev;
+                          }
+                          const { [type]: _, ...rest } = ratioPrev;
+                          return rest;
+                        });
+                        return next;
+                      });
+                    }}
+                    className={`px-3 py-2 rounded-lg border text-xs font-bold uppercase tracking-widest ${
+                      settlementMightRewardEnabledTypes.includes(type) ? 'border-gold bg-gold/10 text-gold' : 'border-black-border text-slate-300 hover:border-slate-600'
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {settlementMightRewardEnabledTypes.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-sm font-bold text-slate-300">{t('guild_dashboard.settlements.form.ratio_by_type', { defaultValue: 'Ratio by Type' })}</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {settlementMightRewardEnabledTypes.map((type) => (
+                    <div key={type} className="flex items-center justify-between gap-3 bg-black-card border border-black-border rounded-lg px-3 py-2">
+                      <div className="text-xs font-bold text-slate-300">{type}</div>
+                      <input
+                        type="number"
+                        value={settlementMightRewardRatioByType[type] ?? 0}
+                        min={0}
+                        onChange={(e) => setSettlementMightRewardRatioByType(prev => ({ ...prev, [type]: Number(e.target.value) }))}
+                        className="w-32 bg-black-bg border border-black-border rounded-lg px-2 py-1 text-white text-xs font-mono text-right"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-black-bg border border-black-border rounded-xl p-4 space-y-4">
+            <div className="text-sm font-bold text-white uppercase tracking-widest">
+              {t('guild_dashboard.settings.settlement_preset.might_top', { defaultValue: 'Might TOP Reward' })}
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm font-bold text-slate-300">{t('guild_dashboard.settlements.form.enabled_types', { defaultValue: 'Enabled Types' })}</div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {Object.values(RankingType).map(type => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => {
+                      setSettlementMightTopEnabledTypes(prev => toggleSettlementType(prev, type));
+                      setTimeout(() => ensureSettlementMightTopRanks(type, 3), 0);
+                    }}
+                    className={`px-3 py-2 rounded-lg border text-xs font-bold uppercase tracking-widest ${
+                      settlementMightTopEnabledTypes.includes(type) ? 'border-gold bg-gold/10 text-gold' : 'border-black-border text-slate-300 hover:border-slate-600'
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-4">
+              {settlementMightTopEnabledTypes.map(type => (
+                <div key={type} className="border border-black-border rounded-xl p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-bold text-white">{type}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400">{t('guild_dashboard.settlements.form.top_n', { defaultValue: 'Top N' })}</span>
+                      <input
+                        type="number"
+                        value={(settlementMightTopRanksByType[type] ?? []).length || 3}
+                        min={1}
+                        max={50}
+                        onChange={(e) => ensureSettlementMightTopRanks(type, Math.max(1, Number(e.target.value) || 1))}
+                        className="w-20 bg-black-card border border-black-border rounded-lg px-2 py-1 text-white text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    {(settlementMightTopRanksByType[type] ?? []).map(r => (
+                      <div key={r.rank} className="flex items-center justify-between gap-2 bg-black-card border border-black-border rounded-lg px-3 py-2">
+                        <div className="text-xs font-bold text-slate-300">#{r.rank}</div>
+                        <input
+                          type="number"
+                          value={r.coinAmount}
+                          min={0}
+                          onChange={(e) => {
+                            const value = Number(e.target.value);
+                            setSettlementMightTopRanksByType(prev => ({
+                              ...prev,
+                              [type]: (prev[type] ?? []).map(x => x.rank === r.rank ? { ...x, coinAmount: value } : x),
+                            }));
+                          }}
+                          className="w-28 bg-black-bg border border-black-border rounded-lg px-2 py-1 text-white text-xs font-mono text-right"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-black-bg border border-black-border rounded-xl p-4 space-y-4">
+            <div className="text-sm font-bold text-white uppercase tracking-widest">
+              {t('guild_dashboard.settings.settlement_preset.resource_reward', { defaultValue: 'Resource Reward' })}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3 border border-black-border rounded-xl p-3">
+                <div className="text-sm font-bold text-white">{t('guild_dashboard.settlements.form.powercore', { defaultValue: 'Powercore' })}</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['green', 'blue', 'purple', 'gold'] as const).map(color => (
+                    <div key={color} className="space-y-1">
+                      <label className="text-xs font-bold text-slate-400">{color}</label>
+                      <input
+                        type="number"
+                        value={(settlementPowercoreCoins as any)[color]}
+                        onChange={(e) => setSettlementPowercoreCoins(prev => ({ ...prev, [color]: Number(e.target.value) }))}
+                        className="w-full bg-black-card border border-black-border rounded-lg px-3 py-2 text-white text-xs font-mono"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3 border border-black-border rounded-xl p-3">
+                <div className="text-sm font-bold text-white">{t('guild_dashboard.settlements.form.energycrystal', { defaultValue: 'Energy Crystal' })}</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['green', 'blue', 'purple', 'gold'] as const).map(color => (
+                    <div key={color} className="space-y-1">
+                      <label className="text-xs font-bold text-slate-400">{color}</label>
+                      <input
+                        type="number"
+                        value={(settlementEnergycrystalCoins as any)[color]}
+                        onChange={(e) => setSettlementEnergycrystalCoins(prev => ({ ...prev, [color]: Number(e.target.value) }))}
+                        className="w-full bg-black-card border border-black-border rounded-lg px-3 py-2 text-white text-xs font-mono"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div>
+              <button
+                onClick={() => handleSave()}
+                className="px-4 py-3 bg-gold/10 hover:bg-gold/20 text-gold border border-gold/30 rounded-xl font-bold uppercase tracking-widest text-sm transition-colors"
+              >
+                {t('common.save', { defaultValue: 'Save' })}
+              </button>
+            </div>
           </div>
         </section>
 
@@ -528,7 +754,7 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
                       }) : ''
                     }
                   </h4>
-                  <button onClick={() => { setActiveSearchContext(null); setSearchQuery(''); setSearchResults([]); }} className="text-slate-400 hover:text-white">✕</button>
+                  <button onClick={() => { setActiveSearchContext(null); }} className="text-slate-400 hover:text-white">✕</button>
                 </div>
                 
                 <div className="overflow-y-auto flex-1 pr-2 space-y-6">
@@ -566,53 +792,15 @@ export function SettingsTab({ guildId }: SettingsTabProps) {
                   {/* Add Player */}
                   <div>
                     <h5 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{t('guild_dashboard.settings.add_player', { defaultValue: 'Add Player' })}</h5>
-                    <div className="relative mb-4">
-                      <input
-                        type="text"
-                        autoFocus
-                        placeholder={t('guild_dashboard.settings.search', { defaultValue: 'Search player by name...' })}
-                        value={searchQuery}
-                        onChange={e => handleSearch(e.target.value)}
-                        className="w-full bg-black-bg border border-black-border rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:border-gold/50"
-                      />
-                      <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
-                      {isSearching && <Loader2 className="w-4 h-4 text-gold animate-spin absolute right-3 top-3" />}
-                    </div>
-
-                    <div className="space-y-2">
-                      {searchResults.map(player => {
-                        let isAssigned = false;
-                        if (activeSearchContext.type === 'cell') {
-                          isAssigned = activeRoom?.assignments.some(a => a.x === activeSearchContext.x && a.y === activeSearchContext.y && a.playerId === player.Id) || false;
-                        }
-
-                        return (
-                          <div 
-                            key={player.Id} 
-                            onClick={() => !isAssigned && assignPlayer(player)}
-                            className={cn(
-                              "flex items-center justify-between p-2 rounded-lg transition-colors",
-                              isAssigned 
-                                ? "bg-emerald-500/10 border border-emerald-500/20 cursor-default" 
-                                : "hover:bg-black-bg border border-transparent cursor-pointer group"
-                            )}
-                          >
-                            <div>
-                              <div className={cn("text-sm font-bold", isAssigned ? "text-emerald-500" : "text-white")}>{player.Name}</div>
-                              <div className="text-xs text-slate-500 font-bold">{player.GuildName || 'No Guild'}</div>
-                            </div>
-                            {isAssigned ? (
-                              <CheckCircle className="w-4 h-4 text-emerald-500" />
-                            ) : (
-                              <button className="text-xs font-bold text-gold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Select</button>
-                            )}
-                          </div>
-                        );
-                      })}
-                      {searchQuery && !isSearching && searchResults.length === 0 && (
-                        <div className="text-center text-sm font-bold uppercase tracking-widest text-slate-500 py-4">No players found</div>
-                      )}
-                    </div>
+                    <AlbionPlayerSearch
+                      guildId={guildId ?? ''}
+                      autoFocus
+                      onSelect={assignPlayer}
+                      isSelected={(player) => {
+                        if (activeSearchContext.type !== 'cell') return false;
+                        return activeRoom?.assignments.some(a => a.x === activeSearchContext.x && a.y === activeSearchContext.y && a.playerId === player.Id) || false;
+                      }}
+                    />
                   </div>
                 </div>
               </div>

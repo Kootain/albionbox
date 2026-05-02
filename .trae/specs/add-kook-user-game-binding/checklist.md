@@ -1,0 +1,8 @@
+- [x] 数据库：`guild_members` 增加 `provider/provider_id/provider_name` 字段，并存在必要唯一约束与索引。
+- [x] 迁移：新的 D1 migration 可在本地成功生成并 apply。
+- [x] API：`GET /guilds/:id/provider_bindings` 可返回工会内现有绑定（含 game_accounts 信息）。
+- [x] API：`PUT /guilds/:id/provider_bindings` 可完成绑定（upsert game_accounts + upsert guild_members），并做 server 一致性校验。
+- [x] UI：test/kook-messages 可选择工会，并显示当前加载消息中出现的 KOOK 用户列表及其绑定状态。
+- [ ] UI：未绑定用户可完成绑定；已绑定用户可更换绑定；刷新页面后绑定关系仍正确展示。
+- [x] 复用组件：Albion 玩家搜索组件已抽取，宝箱配置页与绑定弹窗均可使用且行为一致。
+- [x] 工程质量：`apps/api`、`apps/web` TypeScript 检查通过。

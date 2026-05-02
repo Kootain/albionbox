@@ -47,7 +47,10 @@
     "websocket_url": "WebSocket URL",
     "connect": "Connect",
     "disconnect": "Disconnect",
-    "collected_data": "Collected Data"
+    "collected_data": "Collected Data",
+    "export_csv": "Export CSV",
+    "yes": "Yes",
+    "no": "No"
   },
   "rankings": {
     "castle": "Castle",
@@ -188,6 +191,69 @@
       "no_guild_id": "Data Collection Guild ID not bound",
       "bind_hint": "Please bind the Data Collection Guild ID in Settings first."
     },
+    "settlements": {
+      "title": "Settlements",
+      "desc": "Create and review settlement cycles",
+      "create": "Create",
+      "create_title": "Create Settlement",
+      "create_success": "Settlement created",
+      "delete_success": "Deleted",
+      "confirm_delete_title": "Delete Settlement",
+      "confirm_delete_message": "Delete settlement {{startDate}} ~ {{endDate}} and all details?",
+      "cycles": "Cycles",
+      "empty": "No cycles yet",
+      "empty_result": "No results",
+      "views": {
+        "aggregated": "By Player",
+        "details": "Details"
+      },
+      "table": {
+        "player": "Player",
+        "type": "Type",
+        "subtype": "SubType",
+        "detail": "Detail",
+        "green": "Green",
+        "blue": "Blue",
+        "purple": "Purple",
+        "gold": "Gold",
+        "rank": "Rank",
+        "cycle_might": "Cycle Might",
+        "total_might": "Total Might",
+        "qualified": "Qualified",
+        "amount": "Amount",
+        "total": "Total",
+        "paid": "Paid"
+      },
+      "filters": {
+        "reward_type": "Reward Type",
+        "sub_type": "Sub Type"
+      },
+      "actions": {
+        "pay": "Pay"
+      },
+      "reward_types": {
+        "might_reward": "Might Reward",
+        "might_top_reward": "Might Top",
+        "resource_reward": "Resource"
+      },
+      "form": {
+        "start_date": "Start Date",
+        "end_date": "End Date",
+        "might_reward": "Might Reward",
+        "might_top": "Might TOP Reward",
+        "resource_reward": "Resource Reward",
+        "threshold": "Threshold",
+        "ratio": "Ratio (coin per might)",
+        "ratio_by_type": "Ratio by Type",
+        "enabled_types": "Enabled Types",
+        "top_n": "Top N",
+        "powercore": "Powercore",
+        "energycrystal": "Energy Crystal",
+        "import_csv": "Import CSV",
+        "import_rows": "Rows",
+        "csv_hint": "CSV header: username,kookId,discordId,green,blue,purple,gold"
+      }
+    },
     "tabs": {
       "battle_report": "Battle Report",
       "members": "Members",
@@ -197,6 +263,7 @@
       "activities": "Activities",
       "attendance": "Attendance",
       "might_rankings": "Might Rankings",
+      "settlements": "Settlements",
       "settings": "Settings"
     },
     "selector": {
@@ -275,6 +342,13 @@
       "desc": "Configure regear rules and chest allocations",
       "data_collection_guild_id": "Data Collection Guild ID",
       "data_collection_guild_id_desc": "Bind the Data Collection Guild ID to resolve might rankings.",
+      "settlement_preset": {
+        "title": "Settlement Preset",
+        "desc": "Default configuration used when creating a settlement cycle (excluding CSV imports).",
+        "might_reward": "Might Reward",
+        "might_top": "Might TOP Reward",
+        "resource_reward": "Resource Reward"
+      },
       "regear_rules": "Default Regear Slots",
       "regear_rules_desc": "Select the equipment slots that are eligible for regear by default.",
       "chest_config": "Chest Grid Configuration",

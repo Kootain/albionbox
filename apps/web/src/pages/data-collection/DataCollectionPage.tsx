@@ -39,7 +39,7 @@ export default function DataCollectionPage() {
       ws.onmessage = (event) => {
         try {
           const json = JSON.parse(event.data);
-          if (json.Type === 2 && json.Code === 445) {
+          if (json.Type === 2 && json.Code === 447) {
             const payload = json.Payload || json;
             const { GuildID, ChallengeType, Usernames, Mights, Ts } = payload;
             

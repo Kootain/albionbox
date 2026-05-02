@@ -1,0 +1,8 @@
+- [x] 数据库：`guild_settings` 新增 `settlement_preset`（json）字段，migration 可本地 apply。
+- [x] Shared：`SettlementPresetSchema` 存在且与结算配置兼容（不含 imports）。
+- [x] Shared：`UpdateGuildSettingsSchema` 支持读写 `settlementPreset`（可选/可空）。
+- [x] API：`GET /guilds/:id/settings` 返回 `settlementPreset`。
+- [x] API：`PUT /guilds/:id/settings` 可保存 `settlementPreset`，并保留其他 settings 字段不受影响。
+- [x] UI：工会配置页可编辑并保存结算 preset（力量奖励/力量TOP/能量核心/力量水晶）。
+- [x] UI：创建结算周期面板会自动用 preset 初始化默认值（CSV 导入表不受影响）。
+- [x] 工程质量：`apps/api`、`apps/web` TypeScript 检查通过。

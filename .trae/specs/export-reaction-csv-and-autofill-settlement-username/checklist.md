@@ -1,0 +1,5 @@
+- [x] test/kook-messages：表情分析结果支持一键导出 CSV，且列格式为 `username,kookId,discordId,green,blue,purple,gold`。
+- [x] 导出 CSV：`green/blue/purple/gold` 与 `🟢/🔵/🟣/🟡` 计数映射正确。
+- [x] 结算导入：导入 CSV 后会调用 provider_bindings（kook）并自动补全缺失的 username。
+- [x] 结算导入：仅补全空 username，不覆盖用户手填/CSV 已给出的 username。
+- [x] 工程质量：`apps/web` lint 通过。

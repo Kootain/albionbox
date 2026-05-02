@@ -15,6 +15,7 @@ import { OrdersTab } from './tabs/OrdersTab';
 import { ActivitiesTab } from './tabs/ActivitiesTab';
 import { AttendanceTab } from './tabs/AttendanceTab';
 import { MightRankingsTab } from './tabs/MightRankingsTab';
+import { SettlementsTab } from './tabs/SettlementsTab';
 import { SettingsTab } from './tabs/SettingsTab';
 
 const mockStats = {
@@ -75,6 +76,7 @@ export default function GuildDashboardPage() {
       case 'activities': return <ActivitiesTab />;
       case 'attendance': return <AttendanceTab />;
       case 'might-rankings': return <MightRankingsTab guildId={currentGuild.id} />;
+      case 'settlements': return <SettlementsTab guildId={currentGuild.id} />;
       case 'settings': return <SettingsTab guildId={currentGuild.id} />;
       default: return null;
     }
